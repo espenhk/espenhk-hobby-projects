@@ -1,0 +1,11 @@
+{
+  "name": "1500m",
+  "total_distance": 1500,
+  "lap_distance": 400,
+  "laps": [
+    {"lap": 1, "distance": 300},
+    {"lap": 2, "distance": 400},
+    {"lap": 3, "distance": 400},
+    {"lap": 4, "distance": 400}
+  ]
+}

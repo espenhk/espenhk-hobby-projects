@@ -1,0 +1,20 @@
+{
+  "name": "5000m",
+  "total_distance": 5000,
+  "lap_distance": 400,
+  "laps": [
+    {"lap": 1, "distance": 200},
+    {"lap": 2, "distance": 400},
+    {"lap": 3, "distance": 400},
+    {"lap": 4, "distance": 400},
+    {"lap": 5, "distance": 400},
+    {"lap": 6, "distance": 400},
+    {"lap": 7, "distance": 400},
+    {"lap": 8, "distance": 400},
+    {"lap": 9, "distance": 400},
+    {"lap": 10, "distance": 400},
+    {"lap": 11, "distance": 400},
+    {"lap": 12, "distance": 400},
+    {"lap": 13, "distance": 400}
+  ]
+}

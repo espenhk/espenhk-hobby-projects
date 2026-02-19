@@ -1,0 +1,47 @@
+{
+  "name": "Demo Competition",
+  "results": [
+    {
+      "skater_name": "Anna",
+      "finish_time": 117.8,
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:53:04.873969",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik",
+      "finish_time": 118.2,
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:53:04.873969",
+      "position": 2
+    },
+    {
+      "skater_name": "Erik",
+      "finish_time": 117.2,
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:53:04.874035",
+      "position": 1
+    },
+    {
+      "skater_name": "Anna",
+      "finish_time": 118.2,
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:53:04.874035",
+      "position": 2
+    },
+    {
+      "skater_name": "Erik",
+      "finish_time": 117.7,
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:53:04.874073",
+      "position": 1
+    },
+    {
+      "skater_name": "Anna",
+      "finish_time": 118.5,
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:53:04.874073",
+      "position": 2
+    }
+  ]
+}
