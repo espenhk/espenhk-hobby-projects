@@ -1,0 +1,395 @@
+{
+  "name": "Demo Competition",
+  "results": [
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:19:12.192834",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:19:12.192834",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:19:45.113829",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:19:45.113829",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:22:56.581706",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:22:56.581706",
+      "position": 2
+    },
+    {
+      "skater_name": "Daniel hallo",
+      "finish_time": 110.5,
+      "lap_times": [
+        24.3,
+        28.4,
+        27.9,
+        29.9
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:24:17.738610",
+      "position": 1
+    },
+    {
+      "skater_name": "Espen hallo",
+      "finish_time": 112.3,
+      "lap_times": [
+        24.8,
+        28.3,
+        29.3,
+        29.9
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:24:17.738610",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:28:19.538708",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:28:19.538708",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:31:31.150386",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:31:31.150386",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:34:00.361884",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:34:00.361884",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:36:46.656023",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:36:46.656023",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:37:05.357181",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:37:05.357181",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:40:05.193376",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:40:05.193376",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:40:41.711425",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:40:41.711425",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:41:02.566207",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:41:02.566207",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:43:35.360341",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:43:35.360341",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:50:58.778851",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:50:58.778851",
+      "position": 2
+    },
+    {
+      "skater_name": "Anna Berg",
+      "finish_time": 117.8,
+      "lap_times": [
+        23.2,
+        31.4,
+        31.5,
+        31.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:51:21.733903",
+      "position": 1
+    },
+    {
+      "skater_name": "Erik Hoff",
+      "finish_time": 118.2,
+      "lap_times": [
+        23.5,
+        31.3,
+        31.6,
+        31.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T18:51:21.733903",
+      "position": 2
+    }
+  ]
+}

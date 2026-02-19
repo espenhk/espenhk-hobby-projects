@@ -1,0 +1,395 @@
+{
+  "name": "Men's 1500m - Milano Speed Skating Stadium",
+  "results": [
+    {
+      "skater_name": "CHUNG Jae-Won",
+      "finish_time": 105.8,
+      "lap_times": [
+        24.45,
+        26.03,
+        26.68,
+        28.64
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 14
+    },
+    {
+      "skater_name": "VOSTE Mathias",
+      "finish_time": 107.19,
+      "lap_times": [
+        23.81,
+        25.82,
+        27.72,
+        29.84
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 24
+    },
+    {
+      "skater_name": "WENGER Livio",
+      "finish_time": 107.8,
+      "lap_times": [
+        24.6,
+        26.7,
+        27.73,
+        28.77
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 28
+    },
+    {
+      "skater_name": "LIIV Marten",
+      "finish_time": 107.76,
+      "lap_times": [
+        23.5,
+        26.12,
+        27.91,
+        30.23
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 27
+    },
+    {
+      "skater_name": "ARITO Motonaga",
+      "finish_time": 107.45,
+      "lap_times": [
+        24.19,
+        26.34,
+        27.64,
+        29.28
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 26
+    },
+    {
+      "skater_name": "HALL Daniel",
+      "finish_time": 106.91,
+      "lap_times": [
+        24.71,
+        26.44,
+        27.21,
+        28.55
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 23
+    },
+    {
+      "skater_name": "KLEIN Moritz",
+      "finish_time": 106.54,
+      "lap_times": [
+        24.02,
+        26.09,
+        27.1,
+        29.33
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 20
+    },
+    {
+      "skater_name": "THIEBAULT Valentin",
+      "finish_time": 106.12,
+      "lap_times": [
+        24.11,
+        26.05,
+        27.22,
+        28.74
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 17
+    },
+    {
+      "skater_name": "LEHMAN Emery",
+      "finish_time": 107.23,
+      "lap_times": [
+        24.38,
+        26.53,
+        27.58,
+        28.74
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 25
+    },
+    {
+      "skater_name": "la RUE David",
+      "finish_time": 106.02,
+      "lap_times": [
+        23.76,
+        25.96,
+        27.12,
+        29.18
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 15
+    },
+    {
+      "skater_name": "DAWSON Casey",
+      "finish_time": 107.88,
+      "lap_times": [
+        24.97,
+        26.77,
+        27.36,
+        28.78
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 29
+    },
+    {
+      "skater_name": "SEMIRUNNIY Vladimir",
+      "finish_time": 105.37,
+      "lap_times": [
+        24.8,
+        26.57,
+        26.72,
+        27.28
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 10
+    },
+    {
+      "skater_name": "JILEK Metodej",
+      "finish_time": 106.08,
+      "lap_times": [
+        24.95,
+        26.71,
+        26.97,
+        27.45
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 16
+    },
+    {
+      "skater_name": "DOMBEK Hendrik",
+      "finish_time": 106.52,
+      "lap_times": [
+        23.76,
+        26.3,
+        27.67,
+        28.79
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 19
+    },
+    {
+      "skater_name": "STRAND Didrik Eng",
+      "finish_time": 106.76,
+      "lap_times": [
+        24.23,
+        26.33,
+        27.24,
+        28.96
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 21
+    },
+    {
+      "skater_name": "FARTHOFER Alexander",
+      "finish_time": 106.77,
+      "lap_times": [
+        24.38,
+        26.3,
+        27.34,
+        28.75
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 22
+    },
+    {
+      "skater_name": "LIU Hanbin",
+      "finish_time": 108.99,
+      "lap_times": [
+        24.42,
+        26.69,
+        28.12,
+        29.76
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 30
+    },
+    {
+      "skater_name": "KIM Min-Seok",
+      "finish_time": 105.13,
+      "lap_times": [
+        23.84,
+        25.53,
+        26.78,
+        28.98
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 7
+    },
+    {
+      "skater_name": "YAMADA Kazuya",
+      "finish_time": 105.53,
+      "lap_times": [
+        23.72,
+        26.12,
+        27.19,
+        28.5
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 12
+    },
+    {
+      "skater_name": "ODOR Gabriel",
+      "finish_time": 105.18,
+      "lap_times": [
+        23.89,
+        25.99,
+        26.97,
+        28.33
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 8
+    },
+    {
+      "skater_name": "di STEFANO Daniele",
+      "finish_time": 103.41,
+      "lap_times": [
+        23.92,
+        25.4,
+        26.31,
+        27.78
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 5
+    },
+    {
+      "skater_name": "WENNEMARS Joep",
+      "finish_time": 103.05,
+      "lap_times": [
+        23.12,
+        24.97,
+        26.37,
+        28.59
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 4
+    },
+    {
+      "skater_name": "SNEL Tijmen",
+      "finish_time": 105.51,
+      "lap_times": [
+        23.31,
+        25.4,
+        27.18,
+        29.62
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 11
+    },
+    {
+      "skater_name": "NONOMURA Taiyo",
+      "finish_time": 106.18,
+      "lap_times": [
+        23.5,
+        25.86,
+        27.46,
+        29.36
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 18
+    },
+    {
+      "skater_name": "NING Zhongyan",
+      "finish_time": 101.98,
+      "lap_times": [
+        22.99,
+        24.87,
+        25.94,
+        28.18
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 1
+    },
+    {
+      "skater_name": "NUIS Kjeld",
+      "finish_time": 102.82,
+      "lap_times": [
+        22.94,
+        24.77,
+        26.41,
+        28.7
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 3
+    },
+    {
+      "skater_name": "SONNEKALB Finn",
+      "finish_time": 105.64,
+      "lap_times": [
+        23.39,
+        25.86,
+        27.59,
+        28.8
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 13
+    },
+    {
+      "skater_name": "EITREM Sander",
+      "finish_time": 105.36,
+      "lap_times": [
+        24.46,
+        26.47,
+        27.04,
+        27.39
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 9
+    },
+    {
+      "skater_name": "STOLZ Jordan",
+      "finish_time": 102.75,
+      "lap_times": [
+        23.36,
+        25.46,
+        26.33,
+        27.6
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 2
+    },
+    {
+      "skater_name": "KONGSHAUG Peder",
+      "finish_time": 103.93,
+      "lap_times": [
+        23.78,
+        25.36,
+        26.52,
+        28.27
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:51:00",
+      "position": 6
+    }
+  ]
+}

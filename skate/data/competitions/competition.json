@@ -1,0 +1,57 @@
+{
+  "name": "Ice Skating Competition",
+  "results": [
+    {
+      "skater_name": "espen",
+      "finish_time": 54.4,
+      "lap_times": [
+        14.1,
+        12.1,
+        10.1,
+        18.1
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:59:10.500739",
+      "position": 1
+    },
+    {
+      "skater_name": "daniel",
+      "finish_time": 56.3,
+      "lap_times": [
+        14.1,
+        13.0,
+        15.1,
+        14.1
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T17:59:10.500739",
+      "position": 2
+    },
+    {
+      "skater_name": "eirin",
+      "finish_time": 110.4,
+      "lap_times": [
+        24.1,
+        29.2,
+        28.9,
+        28.2
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T21:46:24.640758",
+      "position": 1
+    },
+    {
+      "skater_name": "thomas",
+      "finish_time": 113.0,
+      "lap_times": [
+        24.2,
+        29.5,
+        28.9,
+        30.4
+      ],
+      "race_distance": "1500m",
+      "date": "2026-02-19T21:46:24.640758",
+      "position": 2
+    }
+  ]
+}
