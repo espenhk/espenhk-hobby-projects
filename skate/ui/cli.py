@@ -6,6 +6,7 @@ from models.race import Race
 from models.skater import Skater
 from models.race_preset import RacePreset
 from models.competition import Competition
+from models.person import Person
 from engine.predictor import PredictionEngine
 from .base_ui import BaseRaceUI
 
@@ -58,21 +59,46 @@ class RaceCLI(BaseRaceUI):
         # Select or create competition
         self._select_competition(preset.name)
         
-        # Get skater names (for two-skater races)
-        print("\nEnter skater names:")
-        skater1_name = input("Skater 1: ").strip()
-        skater2_name = input("Skater 2: ").strip()
-        
-        while not skater1_name or not skater2_name:
-            print("Both skater names are required!")
-            skater1_name = input("Skater 1: ").strip()
-            skater2_name = input("Skater 2: ").strip()
-        
-        # Create skaters
-        skaters = [
-            Skater(name=skater1_name),
-            Skater(name=skater2_name)
-        ]
+        # Choose or create skaters (allow selecting person profiles)
+        skaters = []
+        available_people = Person.list_people()
+
+        print("\nSelect skaters for the race:")
+        for i in (1, 2):
+            chosen = None
+            if available_people:
+                print(f"\nAvailable people:")
+                for idx, p in enumerate(available_people, 1):
+                    print(f"  {idx}. {p['name']}")
+                print("  n. Enter a new name")
+
+                choice = input(f"Choose person for Skater {i} (number or 'n'): ").strip()
+                if choice.lower() == 'n' or not choice:
+                    name = input(f"Skater {i} name: ").strip()
+                    chosen = Person.create(name)
+                    chosen.save()
+                elif choice.isdigit():
+                    index = int(choice) - 1
+                    if 0 <= index < len(available_people):
+                        chosen = Person.load(available_people[index]['filepath'])
+                    else:
+                        print("Invalid selection, entering new name.")
+                        name = input(f"Skater {i} name: ").strip()
+                        chosen = Person.create(name)
+                        chosen.save()
+                else:
+                    # Treat text as name
+                    name = choice
+                    chosen = Person.create(name)
+                    chosen.save()
+            else:
+                # No people exist yet - prompt for name
+                name = input(f"Skater {i} name: ").strip()
+                chosen = Person.create(name)
+                chosen.save()
+
+            # Create Skater from person profile
+            skaters.append(Skater(name=chosen.name))
         
         # Create numeric ID mapping for fast input
         self.skater_map = {
@@ -308,14 +334,33 @@ class RaceCLI(BaseRaceUI):
             # Show final results
             sorted_skaters = self.display_final_results()
             
-            # Save results to competition
+            # Save results to competition and also update person histories
             race_distance = self.race.preset.name
-            skater_data = [(s['name'], s['total_time'], 
-                           self.race.get_skater_by_name(s['name']).lap_times) 
+            skater_data = [(s['name'], s['total_time'],
+                           self.race.get_skater_by_name(s['name']).lap_times)
                           for s in sorted_skaters]
-            self.competition.add_race_results(race_distance, skater_data)
+
+            race_date, created_results = self.competition.add_race_results(race_distance, skater_data)
+
+            # Update person profiles' history
+            for res in created_results:
+                # Try to load existing person by name or slug; create if missing
+                person = Person.load_by_name(res.skater_name)
+                entry = {
+                    'date': res.date,
+                    'distance': res.race_distance,
+                    'finish_time': res.finish_time,
+                    'lap_times': res.lap_times,
+                    'position': res.position
+                }
+                if person:
+                    person.add_history_entry(entry)
+                else:
+                    new_person = Person.create(res.skater_name)
+                    new_person.add_history_entry(entry)
+
             self.competition.save(self.competition_file)
-            print("\n✅ Results saved to competition!")
+            print("\n✅ Results saved to competition and person histories!")
             
             # Display updated leaderboard
             self.display_leaderboard(race_distance)
