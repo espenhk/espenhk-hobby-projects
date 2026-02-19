@@ -17,6 +17,23 @@ class BaseRaceUI:
         self.competition_file = competition_file
         self.competition = Competition.load_or_create(competition_file, "Ice Skating Competition")
     
+    def _format_name(self, full_name: str) -> str:
+        """Format full name to 'F.S. Name' format (first initial, second initial if present, last name).
+        
+        Examples: 'Anna Berg' -> 'A. Berg', 'Anna Beth Berg' -> 'A.B. Berg'
+        """
+        parts = full_name.strip().split()
+        if len(parts) == 1:
+            return full_name
+        
+        # Last part is always the last name
+        last_name = parts[-1]
+        
+        # Format preceding names as initials
+        initials = '.'.join([p[0] for p in parts[:-1]]) + '.'
+        
+        return f"{initials} {last_name}"
+    
     def clear_screen(self):
         """Preserve terminal history by not clearing (just add spacing)."""
         print("\n" * 3)
@@ -55,9 +72,9 @@ class BaseRaceUI:
         if status['predicted_winner'] and status['predicted_winner'] != status['leader']:
             print(f"📊 Predicted Winner: {status['predicted_winner']}")
         
-        # Header with proper alignment
-        print(f"\n{'SKATER':<20} {'LAPS':<8} {'LAP TIME':<22} {'TOTAL TIME':<22} {'PRED FINISH':<22}")
-        print("-" * 96)
+        # Header with proper alignment - more spacing between time columns
+        print(f"\n{'SKATER':<15} {'LAPS':<8} {'LAP TIME':<24}  {'TOTAL TIME':<24}  {'PRED FINISH':<24}")
+        print("-" * 105)
         
         # Sort skaters by current time
         sorted_skaters = sorted(status['skaters'], 
@@ -68,8 +85,9 @@ class BaseRaceUI:
             laps = f"{skater_info['laps_completed']}/{self.race.total_laps}"
             
             if skater_info['finished']:
+                formatted_name = self._format_name(name)
                 total_time = self.predictor.format_time(skater_info['total_time'])
-                print(f"{name:<20} {'DONE':<8} {'':<22} {total_time:<22} {'✓ FINISHED':<22}")
+                print(f"{formatted_name:<15} {'DONE':<8} {'':<24}  {total_time:<24}  {'✓ FINISHED':<24}")
             else:
                 # Get the skater object for access to lap_times
                 skater = self.race.get_skater_by_name(name)
@@ -112,7 +130,8 @@ class BaseRaceUI:
                 else:
                     pred_finish_str = "N/A"
                 
-                print(f"{name:<20} {laps:<8} {lap_time_str:<22} {total_time_str:<22} {pred_finish_str:<22}")
+                formatted_name = self._format_name(name)
+                print(f"{formatted_name:<15} {laps:<8} {lap_time_str:<24}  {total_time_str:<24}  {pred_finish_str:<24}")
         
         # Show comparison if there's a leader
         if len(sorted_skaters) >= 2 and sorted_skaters[0]['laps_completed'] > 0:
@@ -244,8 +263,9 @@ class BaseRaceUI:
         
         print("\nFINAL RESULTS:")
         for i, skater_info in enumerate(sorted_skaters, 1):
+            formatted_name = self._format_name(skater_info['name'])
             time_str = self.predictor.format_time(skater_info['total_time'])
-            print(f"  {i}. {skater_info['name']:<20} {time_str}")
+            print(f"  {i}. {formatted_name:<15} {time_str}")
         
         if len(sorted_skaters) >= 2:
             winner_time = sorted_skaters[0]['total_time']
@@ -274,13 +294,14 @@ class BaseRaceUI:
         print(f"   Wins: {leader['wins']} / {leader['races_completed']} races")
         
         # Show full leaderboard
-        print(f"\n{'RANK':<6} {'SKATER':<20} {'BEST TIME':<15} {'AVG TIME':<15} {'RACES':<8}")
-        print("-" * 70)
+        print(f"\n{'RANK':<6} {'SKATER':<15} {'BEST TIME':<15} {'AVG TIME':<15} {'RACES':<8}")
+        print("-" * 65)
         
         for rank, stats in enumerate(leaderboard, 1):
+            formatted_name = self._format_name(stats['name'])
             best_time = self.predictor.format_time(stats['best_time'])
             avg_time = self.predictor.format_time(stats['average_time'])
             races = f"{stats['races_completed']}"
             
             emoji = "👑" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
-            print(f"{emoji} {rank:<3} {stats['name']:<20} {best_time:<15} {avg_time:<15} {races:<8}")
+            print(f"{emoji} {rank:<3} {formatted_name:<15} {best_time:<15} {avg_time:<15} {races:<8}")
