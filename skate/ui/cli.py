@@ -13,7 +13,7 @@ from engine.predictor import PredictionEngine
 class RaceCLI:
     """Interactive CLI for live race tracking."""
     
-    def __init__(self, competition_file: str = 'data/competition.json'):
+    def __init__(self, competition_file: str = 'data/competitions/competition.json'):
         """Initialize the CLI."""
         self.race: Optional[Race] = None
         self.predictor = PredictionEngine()

@@ -2,16 +2,20 @@
 
 This directory stores competition data and race results.
 
-## Files
+## Structure
 
-- `competition.json` - Main competition data with all race results and leaderboard
+- `competitions/` - Competition data files
+  - `competition.json` - Main competition with all race results and leaderboard
 
 ## Format
 
 The competition data is stored in JSON format and includes:
-- All race results with timestamps
+- All race results with timestamps and lap times
 - Skater names and finish times
 - Race distances
 - Positions
 
-This data is used to maintain leaderboards and track the overall competition leader.
+This data is used to:
+- Maintain leaderboards
+- Track the overall competition leader
+- Provide lap-by-lap comparison against best historical performance
