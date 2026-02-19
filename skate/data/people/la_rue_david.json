@@ -1,0 +1,18 @@
+{
+  "name": "la RUE David",
+  "slug": "la_rue_david",
+  "history": [
+    {
+      "date": "2026-02-19T17:51:00",
+      "distance": "1500m",
+      "finish_time": 106.02,
+      "lap_times": [
+        23.76,
+        25.96,
+        27.12,
+        29.18
+      ],
+      "position": 15
+    }
+  ]
+}

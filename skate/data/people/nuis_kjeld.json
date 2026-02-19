@@ -1,0 +1,18 @@
+{
+  "name": "NUIS Kjeld",
+  "slug": "nuis_kjeld",
+  "history": [
+    {
+      "date": "2026-02-19T17:51:00",
+      "distance": "1500m",
+      "finish_time": 102.82,
+      "lap_times": [
+        22.94,
+        24.77,
+        26.41,
+        28.7
+      ],
+      "position": 3
+    }
+  ]
+}

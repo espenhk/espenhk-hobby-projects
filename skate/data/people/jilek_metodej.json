@@ -1,0 +1,18 @@
+{
+  "name": "JILEK Metodej",
+  "slug": "jilek_metodej",
+  "history": [
+    {
+      "date": "2026-02-19T17:51:00",
+      "distance": "1500m",
+      "finish_time": 106.08,
+      "lap_times": [
+        24.95,
+        26.71,
+        26.97,
+        27.45
+      ],
+      "position": 16
+    }
+  ]
+}

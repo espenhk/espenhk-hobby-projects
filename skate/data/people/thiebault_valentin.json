@@ -1,0 +1,18 @@
+{
+  "name": "THIEBAULT Valentin",
+  "slug": "thiebault_valentin",
+  "history": [
+    {
+      "date": "2026-02-19T17:51:00",
+      "distance": "1500m",
+      "finish_time": 106.12,
+      "lap_times": [
+        24.11,
+        26.05,
+        27.22,
+        28.74
+      ],
+      "position": 17
+    }
+  ]
+}
