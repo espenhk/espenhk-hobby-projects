@@ -8,8 +8,13 @@ A Python application for live prediction of lap and finish times for ice skating
 - **Race Distance Presets**: Pre-configured distances (1500m, 3000m, 5000m, 10000m)
 - **Variable Lap Distances**: Correctly handles shorter first laps
 - **Fast Numeric Input**: Input lap times as `1 15.00` for skater 1
+- **Dual Input**: Input both skaters at once with `23.5 31.2`
 - **Live Predictions**: Real-time finish time predictions accounting for lap distance variations
 - **Speed-Based Predictions**: Uses average speed (m/s) instead of average lap time for accurate predictions
+- **Competition Management**: Track multiple competitions with leaderboards
+- **Competition Selection**: Choose from existing competitions or create new ones
+- **Lap-by-Lap Storage**: Full lap time history for detailed analysis
+- **Live Comparison**: Compare current race against historical leader reference
 - **Current Leader Tracking**: Compare skaters in real-time
 - **Auto-Refresh Display**: Clean in-place screen updates
 
@@ -38,12 +43,21 @@ python3 race_predictor.py
    - Available: `1500m`, `3000m`, `5000m`, `10000m`
    - Custom presets can be added to `presets/` directory
 
-3. Enter skater names
+3. Choose a competition:
+   - Select from existing competitions for that distance
+   - Or create a new competition by entering a name
 
-4. Input lap times using fast numeric format:
+4. Enter skater names
+
+5. Input lap times using fast numeric format:
    - `1 23.5` - Skater 1 completed lap in 23.5 seconds
    - `2 31.2` - Skater 2 completed lap in 31.2 seconds
+   - `23.5 31.2` - Both skaters at once (skater 1 = 23.5s, skater 2 = 31.2s)
    - The screen auto-refreshes with updated predictions
+
+6. View results:
+   - Race results are automatically saved to the competition
+   - View leaderboard: `python3 race_predictor.py --leaderboard 1500m`
 
 ### Race Distance Examples
 
@@ -77,6 +91,8 @@ Add a new JSON file to `presets/` directory:
 - `models/skater.py` - Skater data model with speed-based predictions
 - `models/race.py` - Race management and state
 - `models/race_preset.py` - Race distance preset loader
+- `models/competition.py` - Competition tracking and leaderboards
 - `engine/predictor.py` - Prediction algorithms and time formatting
 - `ui/cli.py` - Command-line interface with numeric input
 - `presets/` - Race distance configuration files
+- `data/competitions/` - Competition data and results

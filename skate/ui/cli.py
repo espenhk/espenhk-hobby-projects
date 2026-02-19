@@ -79,13 +79,6 @@ class RaceCLI:
         self.clear_screen()
         self.print_header()
         
-        # Show leaderboard if there are previous results
-        if self.competition.results:
-            leader = self.competition.get_current_leader()
-            if leader:
-                print(f"👑 Current Competition Leader: {leader['name']} - {self.predictor.format_time(leader['best_time'])}")
-                print()
-        
         print("RACE SETUP")
         print("-" * 70)
         
@@ -98,7 +91,8 @@ class RaceCLI:
             print()
         
         # Get race distance
-        while True:
+        preset = None
+        while not preset:
             preset_name = input("Enter race distance (e.g., 1500m, 3000m): ").strip()
             preset = RacePreset.load_preset(preset_name)
             
@@ -108,9 +102,12 @@ class RaceCLI:
                 print(f"  Laps: {preset.total_laps}")
                 print(f"  First lap: {preset.get_lap_distance(1)}m")
                 print(f"  Remaining laps: {preset.lap_distance}m")
-                break
+                print()
             else:
                 print(f"❌ Preset '{preset_name}' not found. Try: {', '.join(available_presets)}")
+        
+        # Select or create competition
+        self._select_competition(preset.name)
         
         # Get skater names (for two-skater races)
         print("\nEnter skater names:")
@@ -135,6 +132,74 @@ class RaceCLI:
         }
         
         return Race(preset=preset, skaters=skaters)
+    
+    def _select_competition(self, race_distance: str):
+        """
+        Select an existing competition or create a new one for the given race distance.
+        
+        Args:
+            race_distance: The race distance to filter competitions by
+        """
+        # List competitions matching this distance
+        competitions = Competition.list_competitions_by_distance(race_distance)
+        
+        if competitions:
+            print(f"\n📊 Found {len(competitions)} existing competition(s) for {race_distance}:")
+            print("-" * 70)
+            for i, comp in enumerate(competitions, 1):
+                leader_info = ""
+                if comp.get('leader') and comp.get('best_time'):
+                    leader_info = f" | Leader: {comp['leader']} ({self.predictor.format_time(comp['best_time'])})"
+                print(f"  {i}. {comp['name']} - {comp['race_count']} race(s){leader_info}")
+            print("-" * 70)
+            print()
+            
+            # Get user selection
+            while True:
+                choice = input("Select competition (number) or enter new name: ").strip()
+                
+                # Check if it's a number (selecting existing competition)
+                if choice.isdigit():
+                    index = int(choice) - 1
+                    if 0 <= index < len(competitions):
+                        # Load selected competition
+                        selected = competitions[index]
+                        self.competition_file = selected['filepath']
+                        self.competition = Competition.load(self.competition_file)
+                        print(f"\n✓ Loaded competition: {selected['name']}")
+                        
+                        # Show current leader
+                        leader = self.competition.get_current_leader()
+                        if leader:
+                            print(f"👑 Current Leader: {leader['name']} - {self.predictor.format_time(leader['best_time'])}")
+                        print()
+                        break
+                    else:
+                        print(f"❌ Invalid number. Choose 1-{len(competitions)}")
+                else:
+                    # Create new competition with entered name
+                    if choice:
+                        comp_name = choice
+                        self.competition_file = f"data/competitions/{comp_name.lower().replace(' ', '_')}.json"
+                        self.competition = Competition(name=comp_name)
+                        print(f"\n✓ Created new competition: {comp_name}")
+                        print()
+                        break
+                    else:
+                        print("❌ Please enter a competition name or number")
+        else:
+            # No existing competitions, create new one
+            print(f"\n📊 No existing competitions found for {race_distance}")
+            comp_name = input("Enter new competition name: ").strip()
+            
+            while not comp_name:
+                print("❌ Competition name is required!")
+                comp_name = input("Enter new competition name: ").strip()
+            
+            self.competition_file = f"data/competitions/{comp_name.lower().replace(' ', '_')}.json"
+            self.competition = Competition(name=comp_name)
+            print(f"\n✓ Created new competition: {comp_name}")
+            print()
     
     def display_race_status(self):
         """Display current race status."""

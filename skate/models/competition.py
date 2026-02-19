@@ -210,3 +210,64 @@ class Competition:
         if comp is None:
             comp = cls(name=name)
         return comp
+    
+    @classmethod
+    def list_competitions(cls, directory: str = 'data/competitions') -> List[Dict[str, str]]:
+        """
+        List all available competitions in a directory.
+        
+        Args:
+            directory: Directory to search for competition files
+            
+        Returns:
+            List of dicts with 'name' and 'filepath'
+        """
+        if not os.path.exists(directory):
+            return []
+        
+        competitions = []
+        for filename in os.listdir(directory):
+            if filename.endswith('.json'):
+                filepath = os.path.join(directory, filename)
+                comp = cls.load(filepath)
+                if comp:
+                    competitions.append({
+                        'name': comp.name,
+                        'filepath': filepath,
+                        'filename': filename
+                    })
+        
+        return sorted(competitions, key=lambda x: x['name'])
+    
+    @classmethod
+    def list_competitions_by_distance(cls, race_distance: str, directory: str = 'data/competitions') -> List[Dict]:
+        """
+        List competitions that have results for a specific distance.
+        
+        Args:
+            race_distance: Race distance to filter by (e.g., "1500m")
+            directory: Directory to search for competition files
+            
+        Returns:
+            List of dicts with competition info and stats
+        """
+        all_comps = cls.list_competitions(directory)
+        matching = []
+        
+        for comp_info in all_comps:
+            comp = cls.load(comp_info['filepath'])
+            if comp:
+                # Check if this competition has results for this distance
+                distance_results = [r for r in comp.results if r.race_distance == race_distance]
+                if distance_results:
+                    leader = comp.get_current_leader(race_distance)
+                    matching.append({
+                        'name': comp.name,
+                        'filepath': comp_info['filepath'],
+                        'filename': comp_info['filename'],
+                        'race_count': len(set(r.date for r in distance_results)),
+                        'leader': leader['name'] if leader else None,
+                        'best_time': leader['best_time'] if leader else None
+                    })
+        
+        return matching
