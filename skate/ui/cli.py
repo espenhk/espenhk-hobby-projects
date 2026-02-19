@@ -1,66 +1,340 @@
 """
 Command-line interface for live race tracking.
 """
-import os
-from typing import List, Optional
+from typing import Optional
 from models.race import Race
 from models.skater import Skater
 from models.race_preset import RacePreset
 from models.competition import Competition
 from engine.predictor import PredictionEngine
+from .base_ui import BaseRaceUI
 
 
-class RaceCLI:
+class RaceCLI(BaseRaceUI):
     """Interactive CLI for live race tracking."""
     
     def __init__(self, competition_file: str = 'data/competitions/competition.json'):
         """Initialize the CLI."""
-        self.race: Optional[Race] = None
-        self.predictor = PredictionEngine()
+        super().__init__(competition_file)
         self.skater_map = {}  # Maps numeric IDs to skater names
-        self.competition_file = competition_file
-        self.competition = Competition.load_or_create(competition_file, "Ice Skating Competition")
         
-    def clear_screen(self):
-        """Clear the terminal screen."""
-        os.system('clear' if os.name != 'nt' else 'cls')
-    
-    def print_header(self):
-        """Print application header."""
-        print("=" * 70)
-        print(" " * 15 + "🏁 ICE SKATING RACE PREDICTOR 🏁")
-        print("=" * 70)
-        print()
-    
-    def display_leaderboard(self, race_distance: Optional[str] = None):
-        """Display competition leaderboard."""
-        print("\n📊 LEADERBOARD")
-        if race_distance:
-            print(f"Distance: {race_distance}")
+    def setup_race(self) -> Race:
+        """
+        Setup a new race with user input.
         
-        leaderboard = self.competition.get_leaderboard(race_distance)
+        Returns:
+            Configured Race object
+        """
+        self.clear_screen()
+        self.print_header()
         
-        if not leaderboard:
-            print("No races completed yet.")
-            return
-        
-        # Show current leader
-        leader = leaderboard[0]
-        print(f"👑 CURRENT LEADER: {leader['name']}")
-        print(f"   Best Time: {self.predictor.format_time(leader['best_time'])}")
-        print(f"   Wins: {leader['wins']} / {leader['races_completed']} races")
-        
-        # Show full leaderboard
-        print(f"\n{'RANK':<6} {'SKATER':<20} {'BEST TIME':<15} {'AVG TIME':<15} {'RACES':<8}")
+        print("RACE SETUP")
         print("-" * 70)
         
-        for rank, stats in enumerate(leaderboard, 1):
-            best_time = self.predictor.format_time(stats['best_time'])
-            avg_time = self.predictor.format_time(stats['average_time'])
-            races = f"{stats['races_completed']}"
+        # List available presets
+        available_presets = RacePreset.list_available_presets()
+        if available_presets:
+            print("\nAvailable race distances:")
+            for preset_name in available_presets:
+                print(f"  - {preset_name}")
+            print()
+        
+        # Get race distance
+        preset = None
+        while not preset:
+            preset_name = input("Enter race distance (e.g., 1500m, 3000m): ").strip()
+            preset = RacePreset.load_preset(preset_name)
             
-            emoji = "👑" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
-            print(f"{emoji} {rank:<3} {stats['name']:<20} {best_time:<15} {avg_time:<15} {races:<8}")
+            if preset:
+                print(f"\n✓ Loaded {preset.name} race:")
+                print(f"  Total distance: {preset.total_distance}m")
+                print(f"  Laps: {preset.total_laps}")
+                print(f"  First lap: {preset.get_lap_distance(1)}m")
+                print(f"  Remaining laps: {preset.lap_distance}m")
+                print()
+            else:
+                print(f"❌ Preset '{preset_name}' not found. Try: {', '.join(available_presets)}")
+        
+        # Select or create competition
+        self._select_competition(preset.name)
+        
+        # Get skater names (for two-skater races)
+        print("\nEnter skater names:")
+        skater1_name = input("Skater 1: ").strip()
+        skater2_name = input("Skater 2: ").strip()
+        
+        while not skater1_name or not skater2_name:
+            print("Both skater names are required!")
+            skater1_name = input("Skater 1: ").strip()
+            skater2_name = input("Skater 2: ").strip()
+        
+        # Create skaters
+        skaters = [
+            Skater(name=skater1_name),
+            Skater(name=skater2_name)
+        ]
+        
+        # Create numeric ID mapping for fast input
+        self.skater_map = {
+            '1': skater1_name,
+            '2': skater2_name
+        }
+        
+        return Race(preset=preset, skaters=skaters)
+    
+    def _select_competition(self, race_distance: str):
+        """
+        Select an existing competition or create a new one for the given race distance.
+        
+        Args:
+            race_distance: The race distance to filter competitions by
+        """
+        # List competitions matching this distance
+        competitions = Competition.list_competitions_by_distance(race_distance)
+        
+        if competitions:
+            print(f"\n📊 Found {len(competitions)} existing competition(s) for {race_distance}:")
+            print("-" * 70)
+            for i, comp in enumerate(competitions, 1):
+                leader_info = ""
+                if comp.get('leader') and comp.get('best_time'):
+                    leader_info = f" | Leader: {comp['leader']} ({self.predictor.format_time(comp['best_time'])})"
+                print(f"  {i}. {comp['name']} - {comp['race_count']} race(s){leader_info}")
+            print("-" * 70)
+            print()
+            
+            # Get user selection
+            while True:
+                choice = input("Select competition (number) or enter new name: ").strip()
+                
+                # Check if it's a number (selecting existing competition)
+                if choice.isdigit():
+                    index = int(choice) - 1
+                    if 0 <= index < len(competitions):
+                        # Load selected competition
+                        selected = competitions[index]
+                        self.competition_file = selected['filepath']
+                        self.competition = Competition.load(self.competition_file)
+                        print(f"\n✓ Loaded competition: {selected['name']}")
+                        
+                        # Show current leader
+                        leader = self.competition.get_current_leader()
+                        if leader:
+                            print(f"👑 Current Leader: {leader['name']} - {self.predictor.format_time(leader['best_time'])}")
+                        print()
+                        break
+                    else:
+                        print(f"❌ Invalid number. Choose 1-{len(competitions)}")
+                else:
+                    # Create new competition with entered name
+                    if choice:
+                        comp_name = choice
+                        self.competition_file = f"data/competitions/{comp_name.lower().replace(' ', '_')}.json"
+                        self.competition = Competition(name=comp_name)
+                        print(f"\n✓ Created new competition: {comp_name}")
+                        print()
+                        break
+                    else:
+                        print("❌ Please enter a competition name or number")
+        else:
+            # No existing competitions, create new one
+            print(f"\n📊 No existing competitions found for {race_distance}")
+            comp_name = input("Enter new competition name: ").strip()
+            
+            while not comp_name:
+                print("❌ Competition name is required!")
+                comp_name = input("Enter new competition name: ").strip()
+            
+            self.competition_file = f"data/competitions/{comp_name.lower().replace(' ', '_')}.json"
+            self.competition = Competition(name=comp_name)
+            print(f"\n✓ Created new competition: {comp_name}")
+            print()
+    
+    def input_lap_time(self):
+        """Handle lap time input."""
+        print("\nINPUT LAP TIME")
+        print("-" * 70)
+        print("Commands: 'status' = show status, 'quit' = exit")
+        print("Format: '1 15.00' or '15.00 31.2' (both skaters)")
+        print()
+        
+        # Get input
+        user_input = input("Input: ").strip()
+        
+        if user_input.lower() == 'quit':
+            return 'quit'
+        elif user_input.lower() == 'status':
+            return 'status'
+        
+        parts = user_input.split()
+        
+        # Check if this is a two-time input (both are times, no skater ID)
+        if len(parts) == 2:
+            # Check if first part is a skater ID (1, 2, or a name)
+            is_skater_id = parts[0] in self.skater_map or self.race.get_skater_by_name(parts[0]) is not None
+            
+            if not is_skater_id:
+                # Try to parse both as times
+                time1 = self.predictor.parse_time_input(parts[0])
+                time2 = self.predictor.parse_time_input(parts[1])
+                
+                # If both parse as times and look like reasonable lap times (>5s), record for both skaters
+                if time1 is not None and time2 is not None and time1 > 5 and time2 > 5:
+                    return self._record_both_skaters(time1, time2)
+            
+            # Otherwise treat as "<skater> <time>"
+            skater_id, time_input = parts
+            skater_name = self.skater_map.get(skater_id, skater_id)
+            skater = self.race.get_skater_by_name(skater_name)
+            
+            if not skater:
+                print(f"❌ Skater '{skater_id}' not found!")
+                return None
+            
+            if skater.finished:
+                print(f"ℹ️  {skater.name} has already finished!")
+                return None
+            
+            lap_time = self.predictor.parse_time_input(time_input)
+            if lap_time is None:
+                print("❌ Invalid time format!")
+                return None
+            
+            return self._record_single_skater(skater, lap_time)
+            
+        elif len(parts) == 1:
+            # Single input - could be skater ID or time
+            skater_id = parts[0]
+            skater_name = self.skater_map.get(skater_id, skater_id)
+            skater = self.race.get_skater_by_name(skater_name)
+            
+            if not skater:
+                print(f"❌ Skater '{skater_id}' not found!")
+                return None
+            
+            if skater.finished:
+                print(f"ℹ️  {skater.name} has already finished!")
+                return None
+            
+            # Ask for time
+            time_input = input(f"Lap time for {skater.name} (MM:SS.mmm or SS.mmm): ").strip()
+            
+            if time_input.lower() == 'done':
+                skater.mark_finished(skater.get_total_time())
+                print(f"✅ {skater.name} finished with time: {self.predictor.format_time(skater.finish_time)}")
+                return 'finished'
+            
+            lap_time = self.predictor.parse_time_input(time_input)
+            if lap_time is None:
+                print("❌ Invalid time format!")
+                return None
+            
+            return self._record_single_skater(skater, lap_time)
+        else:
+            print("❌ Invalid input format!")
+            return None
+    
+    def _record_single_skater(self, skater, lap_time):
+        """Record a lap time for a single skater."""
+        self.race.add_lap_time(skater.name, lap_time)
+        
+        laps_completed = skater.get_laps_completed()
+        print(f"✅ Lap {laps_completed} recorded: {self.predictor.format_time(lap_time)}")
+        
+        if skater.finished:
+            print(f"🏁 {skater.name} has finished the race!")
+            print(f"   Final time: {self.predictor.format_time(skater.finish_time)}")
+        
+        return 'recorded'
+    
+    def _record_both_skaters(self, time1, time2):
+        """Record lap times for both skaters (1=first time, 2=second time)."""
+        skater1_name = self.skater_map.get('1')
+        skater2_name = self.skater_map.get('2')
+        
+        if not skater1_name or not skater2_name:
+            print("❌ Both skaters must be configured!")
+            return None
+        
+        skater1 = self.race.get_skater_by_name(skater1_name)
+        skater2 = self.race.get_skater_by_name(skater2_name)
+        
+        # Record both times
+        results = []
+        
+        if skater1 and not skater1.finished:
+            self.race.add_lap_time(skater1.name, time1)
+            laps1 = skater1.get_laps_completed()
+            print(f"✅ {skater1.name} Lap {laps1}: {self.predictor.format_time(time1)}")
+            if skater1.finished:
+                print(f"   🏁 Finished! Total: {self.predictor.format_time(skater1.finish_time)}")
+            results.append('recorded')
+        elif skater1 and skater1.finished:
+            print(f"ℹ️  {skater1.name} has already finished (time not recorded)")
+        
+        if skater2 and not skater2.finished:
+            self.race.add_lap_time(skater2.name, time2)
+            laps2 = skater2.get_laps_completed()
+            print(f"✅ {skater2.name} Lap {laps2}: {self.predictor.format_time(time2)}")
+            if skater2.finished:
+                print(f"   🏁 Finished! Total: {self.predictor.format_time(skater2.finish_time)}")
+            results.append('recorded')
+        elif skater2 and skater2.finished:
+            print(f"ℹ️  {skater2.name} has already finished (time not recorded)")
+        
+        return 'recorded' if results else None
+    
+    def run(self):
+        """Run the interactive CLI."""
+        self.race = self.setup_race()
+        
+        while not self.race.is_race_finished():
+            self.clear_screen()
+            self.print_header()
+            self.display_race_status()
+            
+            result = self.input_lap_time()
+            
+            if result == 'quit':
+                print("\nExiting race tracker...")
+                break
+        
+        if self.race.is_race_finished():
+            self.clear_screen()
+            self.print_header()
+            print("\n🏆 RACE COMPLETE! 🏆")
+            self.display_race_status()
+            
+            # Show final results
+            sorted_skaters = self.display_final_results()
+            
+            # Save results to competition
+            race_distance = self.race.preset.name
+            skater_data = [(s['name'], s['total_time'], 
+                           self.race.get_skater_by_name(s['name']).lap_times) 
+                          for s in sorted_skaters]
+            self.competition.add_race_results(race_distance, skater_data)
+            self.competition.save(self.competition_file)
+            print("\n✅ Results saved to competition!")
+            
+            # Display updated leaderboard
+            self.display_leaderboard(race_distance)
+            
+            # Ask if user wants another race
+            print()
+            response = input("Start another race? (y/n): ").strip().lower()
+            if response == 'y':
+                self.run()  # Start a new race
+
+
+def main():
+    """Main entry point for CLI."""
+    cli = RaceCLI()
+    cli.run()
+
+
+if __name__ == "__main__":
+    main()
     
     def setup_race(self) -> Race:
         """
