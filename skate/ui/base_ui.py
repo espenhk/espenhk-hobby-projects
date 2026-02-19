@@ -55,8 +55,9 @@ class BaseRaceUI:
         if status['predicted_winner'] and status['predicted_winner'] != status['leader']:
             print(f"📊 Predicted Winner: {status['predicted_winner']}")
         
-        print(f"\n{'SKATER':<20} {'LAPS':<8} {'TIME':<25} {'PRED FINISH':<25}")
-        print("-" * 85)
+        # Header with proper alignment
+        print(f"\n{'SKATER':<20} {'LAPS':<8} {'LAP TIME':<22} {'TOTAL TIME':<22} {'PRED FINISH':<22}")
+        print("-" * 96)
         
         # Sort skaters by current time
         sorted_skaters = sorted(status['skaters'], 
@@ -68,34 +69,50 @@ class BaseRaceUI:
             
             if skater_info['finished']:
                 total_time = self.predictor.format_time(skater_info['total_time'])
-                print(f"{name:<20} {'DONE':<8} {total_time:<25} {'✓ FINISHED':<25}")
+                print(f"{name:<20} {'DONE':<8} {'':<22} {total_time:<22} {'✓ FINISHED':<22}")
             else:
-                # Calculate times and comparisons
-                total_time_str = ""
-                pred_finish_str = ""
+                # Get the skater object for access to lap_times
+                skater = self.race.get_skater_by_name(name)
                 
+                # Lap time comparison (most recent lap vs leader's same lap)
+                lap_time_str = ""
+                if skater_info['laps_completed'] > 0:
+                    recent_lap_time = skater.lap_times[-1]
+                    lap_time_str = self.predictor.format_time(recent_lap_time)
+                    if leader_ref and skater_info['laps_completed'] <= len(leader_ref.get('lap_times', [])):
+                        lap_diff = self._get_individual_lap_difference(
+                            recent_lap_time, 
+                            leader_ref['lap_times'][skater_info['laps_completed'] - 1]
+                        )
+                        if lap_diff:
+                            lap_time_str += f" {lap_diff}"
+                else:
+                    lap_time_str = "N/A"
+                
+                # Total time comparison (cumulative time vs leader at this lap)
+                total_time_str = ""
                 if skater_info['laps_completed'] > 0:
                     total_time = skater_info['total_time']
                     total_time_str = self.predictor.format_time(total_time)
-                    
-                    # Compare cumulative time at same lap count with leader reference
                     if leader_ref:
                         lap_diff = self._get_lap_time_difference(total_time, leader_ref, skater_info['laps_completed'])
-                        if lap_diff is not None:
+                        if lap_diff:
                             total_time_str += f" {lap_diff}"
-                    
-                    pred_finish = skater_info['predicted_finish']
-                    if pred_finish:
-                        pred_finish_str = self.predictor.format_time(pred_finish)
-                        if leader_ref:
-                            pred_diff = self._get_pred_time_difference(pred_finish, leader_ref)
-                            if pred_diff is not None:
-                                pred_finish_str += f" {pred_diff}"
                 else:
                     total_time_str = "N/A"
+                
+                # Predicted finish comparison
+                pred_finish_str = ""
+                if skater_info['predicted_finish']:
+                    pred_finish_str = self.predictor.format_time(skater_info['predicted_finish'])
+                    if leader_ref:
+                        pred_diff = self._get_pred_time_difference(skater_info['predicted_finish'], leader_ref)
+                        if pred_diff:
+                            pred_finish_str += f" {pred_diff}"
+                else:
                     pred_finish_str = "N/A"
                 
-                print(f"{name:<20} {laps:<8} {total_time_str:<25} {pred_finish_str:<25}")
+                print(f"{name:<20} {laps:<8} {lap_time_str:<22} {total_time_str:<22} {pred_finish_str:<22}")
         
         # Show comparison if there's a leader
         if len(sorted_skaters) >= 2 and sorted_skaters[0]['laps_completed'] > 0:
@@ -138,6 +155,30 @@ class BaseRaceUI:
             return f"{GREEN}-{abs(diff):.2f}s{RESET}"
         else:
             return f"{RED}+{diff:.2f}s{RESET}"
+    
+    def _get_individual_lap_difference(self, current_lap_time, leader_lap_time) -> Optional[str]:
+        """
+        Get the difference between current lap time and leader's lap time for that lap.
+        
+        Args:
+            current_lap_time: Current lap time in seconds
+            leader_lap_time: Leader's lap time for the same lap in seconds
+            
+        Returns:
+            Colored string like " (-0.2s)" or None
+        """
+        diff = current_lap_time - leader_lap_time
+        
+        GREEN = '\033[92m'
+        RED = '\033[91m'
+        RESET = '\033[0m'
+        
+        if abs(diff) < 0.01:
+            return ""
+        elif diff < 0:
+            return f"{GREEN}(-{abs(diff):.2f}s){RESET}"
+        else:
+            return f"{RED}(+{diff:.2f}s){RESET}"
     
     def _get_lap_time_difference(self, current_total_time, leader_ref, laps_completed) -> Optional[str]:
         """
