@@ -43,7 +43,8 @@ class Competition:
             skater_data: List of (skater_name, finish_time, lap_times) tuples, sorted by finish time
         """
         date = datetime.now().isoformat()
-        
+        created = []
+
         for position, (skater_name, finish_time, lap_times) in enumerate(skater_data, start=1):
             result = RaceResult(
                 skater_name=skater_name,
@@ -54,6 +55,10 @@ class Competition:
                 position=position
             )
             self.results.append(result)
+            created.append(result)
+
+        # Return the race date and list of created RaceResult objects for callers
+        return date, created
     
     def get_leaderboard(self, race_distance: Optional[str] = None) -> List[Dict]:
         """
