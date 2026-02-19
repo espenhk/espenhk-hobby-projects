@@ -1,6 +1,2 @@
-# Competition data
-data/competitions/*.json
-data/test_*.json
-
 # VS Code settings
 .vscode/
