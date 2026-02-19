@@ -34,29 +34,24 @@ class RaceCLI:
     
     def display_leaderboard(self, race_distance: Optional[str] = None):
         """Display competition leaderboard."""
-        print("\n" + "=" * 70)
-        print("📊 LEADERBOARD")
+        print("\n📊 LEADERBOARD")
         if race_distance:
             print(f"Distance: {race_distance}")
-        print("=" * 70)
         
         leaderboard = self.competition.get_leaderboard(race_distance)
         
         if not leaderboard:
             print("No races completed yet.")
-            print("=" * 70)
             return
         
         # Show current leader
         leader = leaderboard[0]
-        print(f"\n👑 CURRENT LEADER: {leader['name']}")
+        print(f"👑 CURRENT LEADER: {leader['name']}")
         print(f"   Best Time: {self.predictor.format_time(leader['best_time'])}")
         print(f"   Wins: {leader['wins']} / {leader['races_completed']} races")
-        print()
         
         # Show full leaderboard
-        print("-" * 70)
-        print(f"{'RANK':<6} {'SKATER':<20} {'BEST TIME':<15} {'AVG TIME':<15} {'RACES':<8}")
+        print(f"\n{'RANK':<6} {'SKATER':<20} {'BEST TIME':<15} {'AVG TIME':<15} {'RACES':<8}")
         print("-" * 70)
         
         for rank, stats in enumerate(leaderboard, 1):
@@ -66,8 +61,6 @@ class RaceCLI:
             
             emoji = "👑" if rank == 1 else "🥈" if rank == 2 else "🥉" if rank == 3 else "  "
             print(f"{emoji} {rank:<3} {stats['name']:<20} {best_time:<15} {avg_time:<15} {races:<8}")
-        
-        print("=" * 70)
     
     def setup_race(self) -> Race:
         """
@@ -206,35 +199,30 @@ class RaceCLI:
         if not self.race:
             return
         
-        print("\n" + "=" * 70)
-        print(f"RACE STATUS - {self.race.preset.name} ({self.race.total_laps} Laps)")
-        print("=" * 70)
+        print(f"\nRACE STATUS - {self.race.preset.name} ({self.race.total_laps} Laps)")
         
         # Display skater ID mapping
         if self.skater_map:
-            print("\n💡 Quick Input: ", end="")
+            print("💡 Quick Input: ", end="")
             print(" | ".join([f"{id}={name}" for id, name in sorted(self.skater_map.items())]))
-            print()
         
         # Get leader reference from competition history
         leader_ref = self.competition.get_leader_reference(self.race.preset.name)
         if leader_ref:
             print(f"📊 Leader Reference: {leader_ref['name']} - {self.predictor.format_time(leader_ref['finish_time'])}")
-            print()
         
         status = self.race.get_race_status()
         
         # Display leader info
         if status['leader']:
             leader_time = self.predictor.format_time(status['leader_time'])
-            print(f"\n🥇 Current Leader: {status['leader']} ({leader_time})")
+            print(f"🥇 Current Leader: {status['leader']} ({leader_time})")
         
         if status['predicted_winner'] and status['predicted_winner'] != status['leader']:
             print(f"📊 Predicted Winner: {status['predicted_winner']}")
         
-        print("\n" + "-" * 70)
-        print(f"{'SKATER':<20} {'LAPS':<8} {'TIME':<15} {'AVG LAP':<15} {'PRED FINISH':<15}")
-        print("-" * 70)
+        print(f"\n{'SKATER':<20} {'LAPS':<8} {'TIME':<15} {'AVG LAP':<15} {'PRED FINISH':<15} {'VS LEADER':<20}")
+        print("-" * 105)
         
         # Sort skaters by current time
         sorted_skaters = sorted(status['skaters'], 
@@ -258,11 +246,9 @@ class RaceCLI:
                     skater = self.race.get_skater_by_name(name)
                     comparison = self._compare_with_leader(skater, leader_ref)
                     if comparison:
-                        vs_leader = f" ({comparison})"
+                        vs_leader = comparison
                 
-                print(f"{name:<20} {laps:<8} {total_time:<15} {avg_lap:<15} {pred_finish:<15}")
-                if vs_leader:
-                    print(f"{'':>20} vs Leader: {vs_leader}")
+                print(f"{name:<20} {laps:<8} {total_time:<15} {avg_lap:<15} {pred_finish:<15} {vs_leader:<20}")
         
         # Show comparison if there's a leader
         if len(sorted_skaters) >= 2 and sorted_skaters[0]['laps_completed'] > 0:
@@ -270,10 +256,7 @@ class RaceCLI:
                 self.race.get_skater_by_name(sorted_skaters[0]['name']),
                 self.race.get_skater_by_name(sorted_skaters[1]['name'])
             )
-            print("\n" + "-" * 70)
-            print(f"⏱️  {description}")
-        
-        print("=" * 70)
+            print(f"\n⏱️  {description}")
     
     def _compare_with_leader(self, skater, leader_ref) -> Optional[str]:
         """
@@ -284,7 +267,7 @@ class RaceCLI:
             leader_ref: Leader reference dict with lap_times
             
         Returns:
-            Comparison string or None
+            Colored comparison string or None
         """
         laps_completed = skater.get_laps_completed()
         
@@ -297,17 +280,21 @@ class RaceCLI:
         
         diff = current_time - leader_time_at_lap
         
+        # ANSI color codes: green for ahead, red for behind
+        GREEN = '\033[92m'
+        RED = '\033[91m'
+        RESET = '\033[0m'
+        
         if abs(diff) < 0.01:
             return "even"
         elif diff < 0:
-            return f"ahead by {abs(diff):.2f}s"
+            return f"{GREEN}-{abs(diff):.2f}s{RESET}"
         else:
-            return f"behind by {diff:.2f}s"
+            return f"{RED}+{diff:.2f}s{RESET}"
     
     def input_lap_time(self):
         """Handle lap time input."""
-        print("\n" + "-" * 70)
-        print("INPUT LAP TIME")
+        print("\nINPUT LAP TIME")
         print("-" * 70)
         print("Commands: 'status' = show status, 'quit' = exit")
         print("Format: '1 15.00' or '15.00 31.2' (both skaters)")
@@ -457,11 +444,8 @@ class RaceCLI:
         if self.race.is_race_finished():
             self.clear_screen()
             self.print_header()
-            print("\n" + "=" * 70)
-            print(" " * 25 + "🏆 RACE COMPLETE! 🏆")
-            print("=" * 70)
+            print("\n🏆 RACE COMPLETE! 🏆")
             self.display_race_status()
-            print("\n" + "=" * 70)
             
             # Show final results
             status = self.race.get_race_status()
@@ -477,8 +461,6 @@ class RaceCLI:
                 second_time = sorted_skaters[1]['total_time']
                 margin = second_time - winner_time
                 print(f"\n  Winning margin: {self.predictor.format_time(margin)}")
-            
-            print("=" * 70)
             
             # Save results to competition
             race_distance = self.race.preset.name
