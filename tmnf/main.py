@@ -1,34 +1,36 @@
-from tminterface.client import Client
-from tminterface.interface import TMInterface
 import time
 
-class FullGasClient(Client):
+from tminterface.client import Client
+from tminterface.interface import TMInterface
+
+from utils import StateData, steer_percent
+
+
+class BackflipClient(Client):
+    def __init__(self, speed: float = 1.0):
+        super().__init__()
+        self.speed = speed
+
     def on_registered(self, iface: TMInterface):
         print("Connected to TMInterface!")
-        iface.execute_command("set speed 1")  # normal speed
+        iface.execute_command(f"set speed {self.speed}")
 
     def on_run_step(self, iface: TMInterface, _time: int):
-        # Called every simulation step while a run is active
         state = iface.get_simulation_state()
+        data = StateData(state)
 
-        # Print some telemetry
-        pos = state.dyna.current_state.position      # type: ignore[attr-defined]  # numpy [x, y, z]
-        speed = state.dyna.current_state.linear_speed  # type: ignore[attr-defined]  # numpy [x, y, z]
-        print(f"Pos: ({pos[0]:.1f}, {pos[1]:.1f}, {pos[2]:.1f})  "
-              f"Vel: ({speed[0]:.1f}, {speed[1]:.1f}, {speed[2]:.1f})")
+        print(data)
+        print()
 
-        # Send controls: full gas, no brake, no steering
         iface.set_input_state(
-            accelerate=True,
-            brake=False,
-            left=False,
-            right=False,
-            steer=0  # -65536 = full left, 65536 = full right, 0 = straight
+            accelerate=False,
+            brake=True,
+            steer=steer_percent(-30),  # slight left to induce tumble
         )
 
 
 def main():
-    client = FullGasClient()
+    client = BackflipClient(speed=0.1)
     iface = TMInterface()
 
     print("Waiting for TMInterface connection...")
