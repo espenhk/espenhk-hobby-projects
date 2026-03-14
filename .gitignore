@@ -208,3 +208,5 @@ __marimo__/
 
 # Claude files
 .claude/
+
+tmnf/replays/
