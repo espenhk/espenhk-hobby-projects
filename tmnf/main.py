@@ -97,8 +97,9 @@ class InstructionClient(Client):
 
 
 def main():
-    SPEED = 0.5
-    client = InstructionClient("runs/example_run.txt", centerline_file="runs/centerline.npy", speed=SPEED)
+    SPEED = 1.0
+    client = InstructionClient("runs/example_run.txt", centerline_file="tracks/a03_centerline.npy", speed=SPEED)
+    #client = InstructionClient("runs/example_run.txt", speed=SPEED)
     iface = TMInterface()
 
     print("Waiting for TMInterface connection...")

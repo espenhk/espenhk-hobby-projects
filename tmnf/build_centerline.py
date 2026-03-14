@@ -21,9 +21,9 @@ def extract_positions(gbx_path: str) -> np.ndarray:
     if ghost is None:
         raise ValueError(f"No CTN_GHOST found in {gbx_path!r}. Is this a ghost replay?")
 
-    samples = ghost.sample_data
+    samples = ghost.records
     if not samples:
-        raise ValueError("Ghost has no sample_data entries.")
+        raise ValueError("Ghost has no records entries.")
 
     positions = np.array(
         [[s.position.x, s.position.y, s.position.z] for s in samples],
