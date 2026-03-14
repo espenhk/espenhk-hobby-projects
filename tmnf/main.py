@@ -5,6 +5,7 @@ from tminterface.client import Client
 from tminterface.interface import TMInterface
 
 from instructions import InputState, apply_action, parse_instructions
+from track import Centerline
 from utils import StateData
 
 
@@ -22,10 +23,11 @@ class Phase(Enum):
 
 
 class InstructionClient(Client):
-    def __init__(self, instruction_file: str, speed: float = 1.0):
+    def __init__(self, instruction_file: str, centerline_file: str | None = None, speed: float = 1.0):
         super().__init__()
         self.speed = speed
         self.instructions = parse_instructions(instruction_file)
+        self.centerline = Centerline(centerline_file) if centerline_file else None
         self._phase = Phase.BRAKING_START
         self._phase_start_ms: int = 0
         self._next_idx: int = 0
@@ -37,7 +39,7 @@ class InstructionClient(Client):
 
     def on_run_step(self, iface: TMInterface, _time: int):
         state = iface.get_simulation_state()
-        data = StateData(state)
+        data = StateData(state, centerline=self.centerline)
         speed = data.velocity.magnitude()
 
         match self._phase:
@@ -95,7 +97,8 @@ class InstructionClient(Client):
 
 
 def main():
-    client = InstructionClient("runs/example_run.txt", speed=2.0)
+    SPEED = 0.5
+    client = InstructionClient("runs/example_run.txt", centerline_file="runs/centerline.npy", speed=SPEED)
     iface = TMInterface()
 
     print("Waiting for TMInterface connection...")

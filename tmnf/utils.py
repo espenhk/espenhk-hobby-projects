@@ -57,7 +57,7 @@ class WheelState:
 
 
 class StateData:
-    def __init__(self, state):
+    def __init__(self, state, centerline=None):
         dyna = state.dyna.current_state  # type: ignore[attr-defined]
         mobil = state.scene_mobil        # type: ignore[attr-defined]
         wheels = state.simulation_wheels # type: ignore[attr-defined]
@@ -78,9 +78,26 @@ class StateData:
             for i in range(4)
         ]
 
+        self.track_progress = None
+        self.lateral_offset = None
+        self.vertical_offset = None
+        if centerline is not None:
+            pos = get_position(state)
+            self.track_progress, self.lateral_offset, self.vertical_offset = centerline.project(pos)
+
     def __str__(self) -> str:
         contact_str = " ".join(str(int(w.contact)) for w in self.wheels)
         sliding_str = " ".join(str(int(w.sliding)) for w in self.wheels)
+
+        track_str = ""
+        if self.track_progress is not None:
+            lat_side = "left" if self.lateral_offset < 0 else "right"
+            track_str = (
+                f"Track progress : {self.track_progress:7.4f}  ({self.track_progress * 100:.1f}%)\n"
+                f"Lateral offset : {self.lateral_offset:7.2f} m  ({lat_side})\n"
+                f"Vertical offset: {self.vertical_offset:7.2f} m\n\n"
+            )
+
         return (
             f"========================================================\n"
             f"Speed       : {self.velocity.magnitude():7.2f} m/s  \n\n"
@@ -95,6 +112,7 @@ class StateData:
             f"Ang.Vel. (Z): {self.angular_velocity.z:7.2f}\n\n"
             f"Gear        :  {self.gear}\n"
             f"TurningRate : {self.turning_rate:7.2f}\n\n"
+            f"{track_str}"
             f"Wh. contact : {contact_str}\n"
             f"Wh. sliding : {sliding_str}\n"
             f"========================================================\n"
