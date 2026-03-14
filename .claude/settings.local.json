@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip show:*)",
+      "Bash(python -c \"import tminterface; print\\(tminterface.__file__\\)\")",
+      "Bash(python -c \"from tminterface.client import Client; import inspect; print\\(inspect.getsource\\(Client\\)\\)\")",
+      "Bash(python -c \"from tminterface.interface import TMInterface; import inspect; print\\(inspect.getsource\\(TMInterface\\)\\)\")",
+      "Bash(python -c \"from tminterface.structs import SimStateData; import inspect; print\\(inspect.getsource\\(SimStateData\\)\\)\")",
+      "Bash(python -c \"from tminterface.interface import TMInterface; import inspect; src = inspect.getsource\\(TMInterface\\); print\\(src\\)\")",
+      "Bash(python -c \"from tminterface.structs import HmsDynaStruct, Vec3; import inspect; print\\(inspect.getsource\\(HmsDynaStruct\\)\\)\")",
+      "Bash(python -c \"from tminterface.interface import TMInterface; import inspect; src = inspect.getsource\\(TMInterface\\); lines = src.split\\(''\\\\n''\\); [print\\(l\\) for l in lines if ''set_input_state'' in l or ''def set_input'' in l]\")",
+      "Bash(python -c \"from tminterface.structs import HmsDynaStruct; import inspect; print\\(inspect.getsource\\(HmsDynaStruct\\)\\)\")",
+      "Bash(python -c \"from tminterface.interface import TMInterface; import inspect; src = inspect.getsource\\(TMInterface\\); idx = src.find\\(''set_input_state''\\); print\\(src[idx:idx+800]\\)\")",
+      "Bash(python -c \"from tminterface.structs import HmsDynaStateStruct; import inspect; print\\(inspect.getsource\\(HmsDynaStateStruct\\)\\)\")",
+      "Bash(python -c \"from tminterface.interface import TMInterface; import inspect; src = inspect.getsource\\(TMInterface\\); idx = src.find\\(''def set_input_state''\\); print\\(src[idx:idx+1500]\\)\")"
+    ]
+  }
+}

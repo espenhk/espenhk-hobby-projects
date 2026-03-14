@@ -1,4 +1,9 @@
-camelot-py[cv]==0.11.0
-pdfplumber>=0.11
+# common
 pandas>=2.0
+
+# skate
+pdfplumber>=0.11
 PyPDF2>=3.0.0
+
+# tmnf
+tminterface
