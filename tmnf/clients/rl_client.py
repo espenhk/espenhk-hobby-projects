@@ -74,10 +74,12 @@ class StepState:
 class RLClient(Client):
     """TMInterface client used by TMNFEnv during RL training."""
 
-    def __init__(self, centerline_file: str, speed: float = 10.0):
+    def __init__(self, centerline_file: str, speed: float = 10.0,
+                 auto_respawn_on_finish: bool = False):
         super().__init__()
         self.speed = speed
         self.centerline = Centerline(centerline_file)
+        self._auto_respawn_on_finish = auto_respawn_on_finish
 
         # Shared state — written by RL thread, read by game thread
         self._action_idx: int = 7   # default: accel + straight
@@ -91,6 +93,11 @@ class RLClient(Client):
         self._phase = Phase.BRAKING_START
         self._registered_event = threading.Event()
         self._stop_event = threading.Event()
+
+        # Set by game thread when a lap completes (auto-respawn path only).
+        # The game thread acts on it the following tick, so the finish step
+        # is delivered to the RL thread before the respawn is triggered.
+        self._finish_respawn_pending: bool = False
 
     # ------------------------------------------------------------------
     # RL-thread API
@@ -172,6 +179,15 @@ class RLClient(Client):
                     self._episode_ready.set()
 
             case Phase.RUNNING:
+                # Pending auto-respawn from the previous tick's lap completion:
+                # act on it here so the finish step was already delivered first.
+                if self._finish_respawn_pending:
+                    self._finish_respawn_pending = False
+                    self._episode_ready.clear()
+                    iface.respawn()
+                    self._phase = Phase.BRAKING_START
+                    return
+
                 with self._action_lock:
                     action_idx = self._action_idx
                 accelerate, brake, steer_pct, _ = ACTIONS[action_idx]
@@ -181,12 +197,16 @@ class RLClient(Client):
                     steer=int(steer_pct / 100 * 65536),
                 )
 
-                done = (
-                    data.track_progress is not None and data.track_progress >= 1.0
-                ) or (
-                    data.lateral_offset is not None
-                    and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M
-                )
+                finished  = data.track_progress is not None and data.track_progress >= 1.0
+                hard_crash = (data.lateral_offset is not None
+                              and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M)
+
+                if finished and self._auto_respawn_on_finish:
+                    # Deliver the finish step with done=False; respawn next tick.
+                    self._finish_respawn_pending = True
+                    done = False
+                else:
+                    done = finished or hard_crash
 
                 step_state = StepState(
                     state_data=data,

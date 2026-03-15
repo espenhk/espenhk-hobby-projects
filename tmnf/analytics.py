@@ -61,6 +61,9 @@ class GreedySimResult:
     throttle_counts: list  # [brake_steps, coast_steps, accel_steps]
     total_steps: int
     trace: RunTrace | None = None
+    weights: dict | None = None  # candidate.to_cfg() — steer/throttle weights for this sim
+    final_track_progress: float = 0.0   # track_progress at episode end [0, 1)
+    laps_completed: int = 0             # full laps finished (auto-respawn); 0 normally
 
 
 @dataclass
@@ -414,6 +417,47 @@ def plot_weight_heatmap(data: ExperimentData, results_dir: str) -> None:
     _save(fig, os.path.join(results_dir, "policy_weights_heatmap.png"))
 
 
+def plot_weight_evolution(data: ExperimentData, results_dir: str) -> None:
+    """Line plot of every steer/throttle weight across greedy simulations.
+
+    Each feature gets one line per sub-plot (steer top, throttle bottom).
+    Iterations where the policy improved are marked with a vertical grey band.
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from policies import WeightedLinearPolicy
+
+    sims = [s for s in data.greedy_sims if s.weights is not None]
+    if len(sims) < 2:
+        return
+
+    obs_names = WeightedLinearPolicy.OBS_NAMES
+    xs = [s.sim for s in sims]
+    improvement_xs = [s.sim for s in sims if s.improved]
+
+    steer_matrix    = np.array([[s.weights["steer_weights"][n]    for n in obs_names] for s in sims])
+    throttle_matrix = np.array([[s.weights["throttle_weights"][n] for n in obs_names] for s in sims])
+
+    fig, axes = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+    cmap = plt.cm.get_cmap("tab20", len(obs_names))
+
+    for ax, matrix, title in zip(axes, [steer_matrix, throttle_matrix], ["Steer weights", "Throttle weights"]):
+        for ix in improvement_xs:
+            ax.axvline(ix, color="grey", alpha=0.25, linewidth=1)
+        for i, name in enumerate(obs_names):
+            ax.plot(xs, matrix[:, i], label=name, color=cmap(i), linewidth=0.9, alpha=0.85)
+        ax.axhline(0, color="black", linewidth=0.5, linestyle="--")
+        ax.set_ylabel("Weight value")
+        ax.set_title(title)
+        ax.legend(loc="upper right", fontsize=6, ncol=3, framealpha=0.6)
+
+    axes[-1].set_xlabel("Simulation #")
+    fig.suptitle(f"{data.experiment_name} — Weight evolution (greedy phase)\n"
+                 "Grey lines = improvements")
+    fig.tight_layout()
+    _save(fig, os.path.join(results_dir, "greedy_weight_evolution.png"))
+
+
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
@@ -584,6 +628,55 @@ def _summary_md(data: ExperimentData) -> str:
     return "".join(lines) + "\n"
 
 
+def _effective_progress(s: GreedySimResult) -> float:
+    """laps_completed + final_track_progress — continuous progress metric."""
+    return s.laps_completed + s.final_track_progress
+
+
+def plot_greedy_progress(data: ExperimentData, results_dir: str) -> None:
+    """Scatter + best-so-far line of effective track progress per greedy sim.
+
+    Effective progress = laps_completed + final_track_progress, so finishing
+    one full lap and then reaching 50% of lap 2 = 1.5.
+    """
+    import matplotlib.pyplot as plt
+
+    sims = data.greedy_sims
+    xs   = [s.sim for s in sims]
+    ys   = [_effective_progress(s) for s in sims]
+
+    best_so_far = []
+    running_best = 0.0
+    for y in ys:
+        if y > running_best:
+            running_best = y
+        best_so_far.append(running_best)
+
+    improvement_xs = [s.sim for s in sims if s.improved]
+    improvement_ys = [_effective_progress(s) for s in sims if s.improved]
+
+    fig, ax = plt.subplots(figsize=(max(8, len(xs) * 0.15), 5))
+    ax.scatter(xs, ys, color="#95a5a6", s=18, alpha=0.7, zorder=2, label="candidate progress")
+    ax.step(xs, best_so_far, where="post", color="#e67e22",
+            linewidth=2.0, zorder=3, label="best so far")
+    ax.scatter(improvement_xs, improvement_ys, color="#27ae60",
+               s=60, zorder=4, marker="^", label="improvement")
+
+    # Reference lines at each full lap
+    max_prog = max(ys) if ys else 1.0
+    for lap in range(1, int(max_prog) + 2):
+        if lap <= max_prog + 0.1:
+            ax.axhline(lap, color="#bdc3c7", linestyle="--", linewidth=0.8, zorder=1)
+            ax.text(xs[-1] + 0.3, lap, f"lap {lap}", va="center", fontsize=7, color="#7f8c8d")
+
+    ax.set_title(f"{data.experiment_name} — Greedy Phase: Track Progress per Sim")
+    ax.set_xlabel("Simulation")
+    ax.set_ylabel("Effective progress (laps + fraction)")
+    ax.legend(fontsize=9)
+    fig.tight_layout()
+    _save(fig, os.path.join(results_dir, "greedy_progress.png"))
+
+
 def save_experiment_results(data: ExperimentData, results_dir: str) -> None:
     """Generate all plots and write a single results.md report to *results_dir*."""
     os.makedirs(results_dir, exist_ok=True)
@@ -608,10 +701,14 @@ def save_experiment_results(data: ExperimentData, results_dir: str) -> None:
 
     if data.greedy_sims:
         plot_greedy_rewards(data, results_dir)
+        plot_greedy_progress(data, results_dir)
         plot_greedy_best_run(data, results_dir)
+        plot_weight_evolution(data, results_dir)
         sections.append(_greedy_table_md(data))
         sections.append("\n![Greedy rewards](greedy_rewards.png)\n\n")
+        sections.append("![Greedy progress](greedy_progress.png)\n\n")
         sections.append("![Greedy best run](greedy_best_run.png)\n\n")
+        sections.append("![Weight evolution](greedy_weight_evolution.png)\n\n")
 
     plot_greedy_action_dist(data, results_dir)
     plot_reward_trajectory(data, results_dir)
@@ -629,3 +726,272 @@ def save_experiment_results(data: ExperimentData, results_dir: str) -> None:
 
     n = len(os.listdir(results_dir))
     print(f"  Saved {n} file(s) to {results_dir}/ (report: results.md)")
+
+
+# ---------------------------------------------------------------------------
+# Grid search summary
+# ---------------------------------------------------------------------------
+
+def _gs_stats(data: ExperimentData) -> dict:
+    """Derive key summary statistics from one ExperimentData."""
+    sims = data.greedy_sims
+    if not sims:
+        return {
+            "best_reward": float("-inf"), "n_improvements": 0,
+            "first_improvement_sim": None, "accel_pct": None,
+            "greedy_runtime_s": data.timings.get("greedy_s"),
+        }
+    best_reward = max(s.reward for s in sims)
+    n_improvements = sum(1 for s in sims if s.improved)
+    improved_sims = [s.sim for s in sims if s.improved]
+    first_improvement_sim = improved_sims[0] if improved_sims else None
+
+    best_sim = max(sims, key=lambda s: s.reward)
+    b, c, a = best_sim.throttle_counts
+    total = (b + c + a) or 1
+    accel_pct = 100 * a / total
+
+    return {
+        "best_reward": best_reward,
+        "n_improvements": n_improvements,
+        "first_improvement_sim": first_improvement_sim,
+        "accel_pct": accel_pct,
+        "greedy_runtime_s": data.timings.get("greedy_s"),
+    }
+
+
+def plot_gs_comparison_rewards(
+    runs: list,   # list of (name, stats_dict)
+    summary_dir: str,
+) -> None:
+    """Horizontal bar chart of best greedy reward per experiment, sorted descending."""
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    import numpy as np
+
+    runs_sorted = sorted(runs, key=lambda x: x[1]["best_reward"])
+    names   = [r[0] for r in runs_sorted]
+    rewards = [r[1]["best_reward"] for r in runs_sorted]
+
+    n = len(names)
+    colors = cm.RdYlGn(np.linspace(0.15, 0.85, n))
+
+    fig, ax = plt.subplots(figsize=(10, max(4, n * 0.45)))
+    bars = ax.barh(names, rewards, color=colors, edgecolor="white", linewidth=0.5)
+
+    for bar, r in zip(bars, rewards):
+        ax.text(r, bar.get_y() + bar.get_height() / 2,
+                f"  {r:+.1f}", va="center", fontsize=8)
+
+    ax.set_xlabel("Best Greedy Reward")
+    ax.set_title("Grid Search — Best Reward per Experiment")
+    ax.tick_params(axis="y", labelsize=7)
+    fig.tight_layout()
+    _save(fig, os.path.join(summary_dir, "comparison_rewards.png"))
+
+
+def plot_gs_comparison_paths(
+    runs: list,   # list of (name, ExperimentData)
+    summary_dir: str,
+) -> None:
+    """All experiments' best-run paths overlaid; coloured green→red by reward rank."""
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    import numpy as np
+
+    # Filter to runs that have a usable trace in the best greedy sim
+    traced = []
+    for name, data in runs:
+        if not data.greedy_sims:
+            continue
+        best_sim = max(data.greedy_sims, key=lambda s: s.reward)
+        if best_sim.trace and best_sim.trace.pos_x:
+            traced.append((name, best_sim.reward, best_sim.trace))
+
+    if not traced:
+        return
+
+    traced.sort(key=lambda x: x[1])  # ascending reward → red first, green on top
+    n = len(traced)
+    colors = cm.RdYlGn(np.linspace(0.15, 0.85, n))
+
+    fig, ax = plt.subplots(figsize=(9, 9))
+    for (name, reward, trace), color in zip(traced, colors):
+        ax.plot(trace.pos_x, trace.pos_z, color=color, linewidth=1.0,
+                label=f"{name}  ({reward:+.0f})", alpha=0.8)
+        ax.plot(trace.pos_x[0], trace.pos_z[0], "o", color=color, markersize=4)
+
+    ax.set_title("Grid Search — Best-Run Paths (green = higher reward)")
+    ax.set_xlabel("World X")
+    ax.set_ylabel("World Z")
+    ax.set_aspect("equal", adjustable="datalim")
+    ax.legend(fontsize=6, loc="best", framealpha=0.6)
+    fig.tight_layout()
+    _save(fig, os.path.join(summary_dir, "comparison_paths.png"))
+
+
+def plot_gs_comparison_progress(
+    runs: list,   # list of (name, ExperimentData)
+    summary_dir: str,
+) -> None:
+    """Best-so-far effective progress vs simulation number, one line per experiment.
+
+    Shows how quickly and how far each configuration's policy learned to drive.
+    Coloured green→red by final best progress (green = furthest).
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    import numpy as np
+
+    # Compute best-so-far progress series per experiment
+    series = []
+    for name, data in runs:
+        if not data.greedy_sims:
+            continue
+        xs = [s.sim for s in data.greedy_sims]
+        running_best = 0.0
+        ys = []
+        for s in data.greedy_sims:
+            p = _effective_progress(s)
+            if p > running_best:
+                running_best = p
+            ys.append(running_best)
+        series.append((name, xs, ys, running_best))
+
+    if not series:
+        return
+
+    # Sort by final best progress so legend is ranked
+    series.sort(key=lambda x: -x[3])
+    n = len(series)
+    colors = cm.RdYlGn(np.linspace(0.15, 0.85, n))
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+    for (name, xs, ys, final_best), color in zip(series, colors):
+        ax.step(xs, ys, where="post", color=color, linewidth=1.4, alpha=0.85,
+                label=f"{name}  ({final_best:.2f})")
+
+    # Reference lines at full laps
+    max_prog = max(s[3] for s in series) if series else 1.0
+    for lap in range(1, int(max_prog) + 2):
+        if lap <= max_prog + 0.1:
+            ax.axhline(lap, color="#bdc3c7", linestyle="--", linewidth=0.7, zorder=1)
+            ax.text(ax.get_xlim()[1] if ax.get_xlim()[1] > 1 else 1,
+                    lap, f" lap {lap}", va="center", fontsize=7, color="#7f8c8d")
+
+    ax.set_title("Grid Search — Best-So-Far Track Progress per Simulation\n"
+                 "(green = further; line = best seen up to that sim)")
+    ax.set_xlabel("Simulation #")
+    ax.set_ylabel("Effective progress (laps + fraction)")
+    ax.legend(fontsize=6, loc="upper left", framealpha=0.7,
+              ncol=max(1, n // 12))
+    fig.tight_layout()
+    _save(fig, os.path.join(summary_dir, "comparison_progress.png"))
+
+
+def save_grid_summary(
+    runs: list,         # list of (name, ExperimentData)
+    varied_keys: list,  # which params were swept (for per-experiment headers)
+    summary_dir: str,
+    base_name: str,
+) -> None:
+    """Generate a cross-experiment summary report and plots in *summary_dir*.
+
+    Produces:
+        summary.md                  — ranked table + per-experiment sections
+        comparison_rewards.png      — horizontal bar chart of best rewards
+        comparison_paths.png        — all best-run paths overlaid
+    """
+    os.makedirs(summary_dir, exist_ok=True)
+
+    # Compute stats for every run
+    stats = [(name, _gs_stats(data)) for name, data in runs]
+    ranked = sorted(stats, key=lambda x: -x[1]["best_reward"])
+
+    # --- Plots ---
+    plot_gs_comparison_rewards(
+        [(name, s) for name, s in ranked],
+        summary_dir,
+    )
+    plot_gs_comparison_paths(runs, summary_dir)
+    plot_gs_comparison_progress(runs, summary_dir)
+
+    # --- Markdown ---
+    lines = [
+        f"# Grid Search Summary: {base_name}\n\n",
+        f"{len(runs)} experiments, ranked by best greedy reward.\n\n",
+        "![Reward comparison](comparison_rewards.png)\n\n",
+        "![Progress over training](comparison_progress.png)\n\n",
+        "![Path comparison](comparison_paths.png)\n\n",
+    ]
+
+    # Rankings table
+    lines += [
+        "## Rankings\n\n",
+        "| Rank | Experiment | Best Reward | Improvements | First Improv. Sim | Accel % | Greedy Time |\n",
+        "|------|-----------|-------------|--------------|-------------------|---------|-------------|\n",
+    ]
+    for rank, (name, s) in enumerate(ranked, 1):
+        fi  = str(s["first_improvement_sim"]) if s["first_improvement_sim"] is not None else "—"
+        acc = f"{s['accel_pct']:.0f}%" if s["accel_pct"] is not None else "—"
+        rt  = _fmt_duration(s["greedy_runtime_s"]) if s["greedy_runtime_s"] else "—"
+        lines.append(
+            f"| {rank} | {name} | {s['best_reward']:+.1f} | {s['n_improvements']} "
+            f"| {fi} | {acc} | {rt} |\n"
+        )
+    lines.append("\n")
+
+    # Per-experiment sections (in rank order)
+    for rank, (name, data) in enumerate(
+        sorted(runs, key=lambda x: -_gs_stats(x[1])["best_reward"]), 1
+    ):
+        s = _gs_stats(data)
+        results_rel = f"../{name}/results"  # relative path from summary_dir
+
+        lines.append(f"---\n\n## {rank}. {name}\n\n**Best reward: {s['best_reward']:+.1f}**\n\n")
+
+        # Varied-param values for this experiment
+        if varied_keys and data.training_params:
+            import yaml as _yaml
+            reward_cfg = {}
+            if os.path.exists(data.reward_config_file):
+                with open(data.reward_config_file) as f:
+                    reward_cfg = _yaml.safe_load(f) or {}
+            all_params = {**data.training_params, **reward_cfg}
+
+            lines.append("| Param | Value |\n|---|---|\n")
+            for k in varied_keys:
+                v = all_params.get(k, "?")
+                lines.append(f"| `{k}` | {v} |\n")
+            lines.append("\n")
+
+        # Key stats
+        fi  = str(s["first_improvement_sim"]) if s["first_improvement_sim"] is not None else "—"
+        acc = f"{s['accel_pct']:.1f}%" if s["accel_pct"] is not None else "—"
+        lines += [
+            "| Stat | Value |\n|---|---|\n",
+            f"| Greedy improvements | {s['n_improvements']} |\n",
+            f"| First improvement (sim) | {fi} |\n",
+            f"| Accel % of best run | {acc} |\n",
+        ]
+        if s["greedy_runtime_s"]:
+            lines.append(f"| Greedy runtime | {_fmt_duration(s['greedy_runtime_s'])} |\n")
+        lines.append("\n")
+
+        # Images — link to per-experiment results
+        best_run_img = f"{results_rel}/greedy_best_run.png"
+        weight_evo_img = f"{results_rel}/greedy_weight_evolution.png"
+        reward_traj_img = f"{results_rel}/reward_trajectory.png"
+
+        lines += [
+            f"![Best run path + throttle]({best_run_img})\n\n",
+            f"![Weight evolution]({weight_evo_img})\n\n",
+            f"![Reward trajectory]({reward_traj_img})\n\n",
+        ]
+
+    report_path = os.path.join(summary_dir, "summary.md")
+    with open(report_path, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+
+    n = len(os.listdir(summary_dir))
+    print(f"  Saved {n} file(s) to {summary_dir}/ (report: summary.md)")

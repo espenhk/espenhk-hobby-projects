@@ -166,10 +166,10 @@ def main():
         print(f"  {name}")
     print()
 
-    from analytics import save_experiment_results
+    from analytics import save_experiment_results, save_grid_summary
     from main import train_rl
 
-    results_summary = []
+    all_runs = []   # list of (name, ExperimentData) for the summary
 
     for i, (combo, name) in enumerate(zip(combos, names), 1):
         t = combo["training_params"]
@@ -205,22 +205,31 @@ def main():
             cold_start_sims=t["cold_sims"],
             training_params=t,
             no_interrupt=args.no_interrupt,
+            n_lidar_rays=t.get("n_lidar_rays", 0),
         )
 
         save_experiment_results(data, results_dir=f"{experiment_dir}/results")
+        all_runs.append((name, data))
 
         best = max((s.reward for s in data.greedy_sims), default=float("-inf"))
-        results_summary.append((name, best))
         print(f"\n  [{i}/{n}] {name}  best_reward={best:+.1f}\n")
 
-    # Final summary table
+    # Final summary table (console)
     print(f"\n{'='*60}")
     print(f"  Grid search complete — {n} run(s)")
     print(f"  {'Experiment':<50}  {'Best Reward':>12}")
     print(f"  {'-'*64}")
-    for exp_name, best in sorted(results_summary, key=lambda x: -x[1]):
+    for exp_name, exp_data in sorted(
+        all_runs, key=lambda x: -max((s.reward for s in x[1].greedy_sims), default=float("-inf"))
+    ):
+        best = max((s.reward for s in exp_data.greedy_sims), default=float("-inf"))
         print(f"  {exp_name:<50}  {best:>+12.1f}")
     print(f"{'='*60}\n")
+
+    # Cross-experiment summary report
+    summary_dir = f"experiments/{base_name}__summary"
+    save_grid_summary(all_runs, varied_keys, summary_dir, base_name)
+    print(f"  Summary report: {summary_dir}/summary.md")
 
 
 if __name__ == "__main__":
