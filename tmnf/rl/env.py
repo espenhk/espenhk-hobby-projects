@@ -54,7 +54,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from tminterface.interface import TMInterface
 
-from clients.rl_client import RLClient, N_ACTIONS
+from clients.rl_client import ACTIONS, RLClient, N_ACTIONS
 from rl.reward import RewardConfig, RewardCalculator
 
 
@@ -106,12 +106,19 @@ class TMNFEnv(gym.Env):
         self._client = RLClient(centerline_file, speed=speed)
         self._iface = TMInterface()
 
-        print("Waiting for TMInterface connection...")
-        self._iface.register(self._client)
-
-        # Keepalive: TMInterface's internal callbacks need the process to stay alive.
+        # The keepalive thread owns register() so the message-pump is already
+        # running when the game sends S_ON_REGISTERED.  Calling register() on the
+        # main thread first and then starting the pump is the race condition that
+        # causes the 2000 ms timeout.
         self._keepalive = threading.Thread(target=self._run_iface_loop, daemon=True)
         self._keepalive.start()
+
+        print("Waiting for TMInterface connection...")
+        if not self._client.wait_registered(timeout=15.0):
+            raise RuntimeError(
+                "TMInterface did not connect within 15 s — is the game running?"
+            )
+        print("Connected.")
 
         # Episode tracking
         self._prev_state = None
@@ -148,11 +155,14 @@ class TMNFEnv(gym.Env):
         finished = data.track_progress is not None and data.track_progress >= 1.0
         self._elapsed_s = time.monotonic() - self._episode_start_s
 
+        accelerating = ACTIONS[action][0]  # first element is the accelerate bool
+
         reward = self._reward_calc.compute(
             prev=self._prev_state,
             curr=data,
             finished=finished,
             elapsed_s=self._elapsed_s,
+            accelerating=accelerating,
         )
 
         terminated = finished or (
@@ -176,6 +186,7 @@ class TMNFEnv(gym.Env):
         return obs, reward, terminated, truncated, info
 
     def close(self) -> None:
+        self._client.stop()
         self._iface.close()
 
     # ------------------------------------------------------------------
@@ -206,6 +217,8 @@ class TMNFEnv(gym.Env):
         )
 
     def _run_iface_loop(self) -> None:
-        """Keepalive thread: keeps iface running while training."""
+        """Keepalive thread: owns register() so the message pump is live before
+        the game sends S_ON_REGISTERED, eliminating the 2000 ms timeout race."""
+        self._iface.register(self._client)
         while self._iface.running:
             time.sleep(0)

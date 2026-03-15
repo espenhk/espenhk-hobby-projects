@@ -48,6 +48,8 @@ def _run_episode(env, policy, obs) -> tuple[float, dict]:
     total_reward = 0.0
     steps = 0
     info = {}
+    throttle_counts = [0, 0, 0]   # brake / coast / accel
+    turning_steps   = 0            # any action with steer != straight (action % 3 != 1)
 
     while True:
         action = policy(obs)
@@ -55,7 +57,11 @@ def _run_episode(env, policy, obs) -> tuple[float, dict]:
         total_reward += reward
         steps += 1
 
-        if steps % 50 == 0: # print every X steps
+        throttle_counts[action // 3] += 1
+        if action % 3 != 1:
+            turning_steps += 1
+
+        if steps % 200 == 0:
             print(
                 f"    action={get_action_description(action):15s}"
                 f"  step={steps:4d}  progress={info['track_progress']:.3f}"
@@ -74,9 +80,18 @@ def _run_episode(env, policy, obs) -> tuple[float, dict]:
                 f"steps={steps}  progress={info['track_progress']:.3f}"
                 f"  total_reward={total_reward:.1f}"
             )
+            _print_action_stats(throttle_counts, turning_steps, steps)
             break
 
     return total_reward, info
+
+
+def _print_action_stats(throttle_counts: list, turning_steps: int, steps: int) -> None:
+    b, c, a = throttle_counts
+    print(
+        f"    throttle — brake: {100*b/steps:4.1f}%  coast: {100*c/steps:4.1f}%  accel: {100*a/steps:4.1f}%"
+        f"    steer — straight: {100*(steps-turning_steps)/steps:4.1f}%  turning: {100*turning_steps/steps:4.1f}%"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -185,8 +200,8 @@ def train_rl(
 # ---------------------------------------------------------------------------
 
 def main():
-    SPEED             = 5.0 # looks like 10.0 is max
-    IN_GAME_EPISODE_S = 20.0
+    SPEED             = 10.0 # looks like 10.0 is max
+    IN_GAME_EPISODE_S = 30.0
     WEIGHTS_FILE      = "policy_weights.yaml"
     N_SIMS            = 100
 
@@ -195,7 +210,7 @@ def main():
         n_sims=N_SIMS,
         in_game_episode_s=IN_GAME_EPISODE_S,
         weights_file=WEIGHTS_FILE,
-        mutation_scale=0.1,
+        mutation_scale=0.02,
     )
 
 

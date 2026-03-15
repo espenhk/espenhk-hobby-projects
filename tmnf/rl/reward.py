@@ -46,6 +46,11 @@ class RewardConfig:
     finish_time_weight: float = -0.1
     par_time_s: float = 60.0
 
+    # --- Acceleration bonus ---
+    # Small flat reward every step the throttle is pressed.
+    # Prevents the policy from preferring coast actions when they produce similar progress.
+    accel_bonus: float = 0.10
+
     # --- Airborne penalty ---
     # Applied when the car has ≤1 wheel in contact AND vertical_offset ≤ 0.
     # vertical_offset > 0 means the car is above the centerline — that's a jump, no penalty.
@@ -75,6 +80,7 @@ class RewardCalculator:
         curr: StateData,
         finished: bool,
         elapsed_s: float,
+        accelerating: bool = False,
     ) -> float:
         cfg = self.config
         reward = 0.0
@@ -90,6 +96,10 @@ class RewardCalculator:
 
         # Speed: small reward for going fast.
         reward += cfg.speed_weight * curr.velocity.magnitude()
+
+        # Acceleration bonus: nudge the policy away from coasting.
+        if accelerating:
+            reward += cfg.accel_bonus
 
         # Time cost: constant small penalty per tick.
         reward += cfg.step_penalty

@@ -101,6 +101,27 @@ class WeightedLinearPolicy:
         "angular_vel_z",
     ]
 
+    # Typical magnitude of each obs feature. obs is divided by these before the
+    # dot product so every weight operates on a ~[-1, 1] input, making mutation
+    # steps comparable across features regardless of raw unit scale.
+    OBS_SCALES = np.array([
+        50.0,    # speed_ms         — typical ~50 m/s at race pace
+        5.0,     # lateral_offset_m — crash threshold 25 m, normal range ±2–3 m
+        2.0,     # vertical_offset_m
+        3.14159, # yaw_error_rad    — full range is [-π, π]
+        0.3,     # pitch_rad
+        0.3,     # roll_rad
+        1.0,     # track_progress   — already [0, 1]
+        65536.0, # turning_rate     — raw TMInterface steer value, ±65536
+        1.0,     # wheel_0_contact  — already {0, 1}
+        1.0,     # wheel_1_contact
+        1.0,     # wheel_2_contact
+        1.0,     # wheel_3_contact
+        5.0,     # angular_vel_x    — rad/s, typical peak ±5
+        5.0,     # angular_vel_y
+        5.0,     # angular_vel_z
+    ], dtype=np.float32)
+
     def __init__(self, weights_file: str):
         self._weights_file = weights_file
         cfg = self._load_or_init()
@@ -149,8 +170,9 @@ class WeightedLinearPolicy:
     # ------------------------------------------------------------------
 
     def __call__(self, obs) -> int:
-        steer_score    = float(np.dot(self._steer_w,    obs))
-        throttle_score = float(np.dot(self._throttle_w, obs))
+        norm_obs       = obs / self.OBS_SCALES
+        steer_score    = float(np.dot(self._steer_w,    norm_obs))
+        throttle_score = float(np.dot(self._throttle_w, norm_obs))
 
         if steer_score < -self._steer_t:
             steer_idx = 0

@@ -89,10 +89,21 @@ class RLClient(Client):
         self._episode_ready = threading.Event()
 
         self._phase = Phase.BRAKING_START
+        self._registered_event = threading.Event()
+        self._stop_event = threading.Event()
 
     # ------------------------------------------------------------------
     # RL-thread API
     # ------------------------------------------------------------------
+
+    def wait_registered(self, timeout: float = 15.0) -> bool:
+        """Block until on_registered fires (or timeout). Returns True on success."""
+        return self._registered_event.wait(timeout=timeout)
+
+    def stop(self) -> None:
+        """Unblock any waiting RL-thread calls so the process can exit cleanly."""
+        self._stop_event.set()
+        self._episode_ready.set()   # unblock wait_episode_ready
 
     def set_action(self, action_idx: int) -> None:
         """Set the next action. Thread-safe."""
@@ -101,7 +112,12 @@ class RLClient(Client):
 
     def get_step_state(self) -> StepState:
         """Block until the game thread delivers the next state."""
-        return self._state_queue.get()
+        while not self._stop_event.is_set():
+            try:
+                return self._state_queue.get(timeout=1.0)
+            except queue.Empty:
+                continue
+        raise RuntimeError("RLClient stopped while waiting for step state")
 
     def request_respawn(self) -> None:
         """Signal the game thread to respawn the car. Call before wait_episode_ready()."""
@@ -113,9 +129,13 @@ class RLClient(Client):
         Block until the car has stopped after respawn (BRAKING_START → RUNNING).
         Returns the first state of the new episode.
         """
-        self._episode_ready.wait()
+        while not self._stop_event.is_set():
+            if self._episode_ready.wait(timeout=1.0):
+                break
+        if self._stop_event.is_set():
+            raise RuntimeError("RLClient stopped while waiting for episode ready")
         self._episode_ready.clear()
-        return self._state_queue.get()
+        return self._state_queue.get(timeout=5.0)
 
     # ------------------------------------------------------------------
     # TMInterface callbacks — called by the game thread
@@ -124,6 +144,7 @@ class RLClient(Client):
     def on_registered(self, iface: TMInterface) -> None:
         print(f"Connected. RLClient running at {self.speed}x speed.")
         iface.execute_command(f"set speed {self.speed}")
+        self._registered_event.set()
 
     def on_run_step(self, iface: TMInterface, _time: int) -> None:
         # Handle a pending respawn request from the RL thread.
