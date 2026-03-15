@@ -66,18 +66,20 @@ def _run_probes(env, probe_in_game_s: float, speed: float) -> float:
     print(f"\n  No weights file found — running {N_ACTIONS} probe episodes "
           f"({probe_in_game_s}s each) to establish a baseline.\n")
 
-    results = []
-    for action in range(N_ACTIONS):
-        print(f"  Probe {action + 1}/{N_ACTIONS}: {ACTIONS[action][3]}")
+    results = {}  # action_idx -> reward
+    for i, action in enumerate(ACTIONS):
+        print(f"  Probe {i + 1}/{N_ACTIONS}: {ACTIONS[i][3]}")
+        if "coast" in action[3]:  # skip coast probes
+            continue
         obs, _ = env.reset()
-        reward, _ = _run_episode(env, _ConstantPolicy(action), obs)
-        results.append(reward)
+        reward, _ = _run_episode(env, _ConstantPolicy(i), obs)
+        results[i] = reward
 
     env._max_episode_time_s = saved_limit
 
-    best_idx = max(range(N_ACTIONS), key=lambda i: results[i])
+    best_idx = max(results, key=lambda i: results[i])
     print(f"\n  Probe results:")
-    for i, r in enumerate(results):
+    for i, r in results.items():
         marker = " <-- best" if i == best_idx else ""
         print(f"    action {i} ({ACTIONS[i][3]:15s})  reward={r:+.1f}{marker}")
     print(f"\n  Using probe best ({results[best_idx]:+.1f}) as initial reward floor.\n")
@@ -349,11 +351,11 @@ def main():
 
     SPEED             = 10.0        # game speed multiplier (10.0 is the TMInterface max)
     IN_GAME_EPISODE_S = 3.0 + 10.0  # in-game seconds per episode (braking phase + driving)
-    N_SIMS            = 100         # greedy hill-climb simulations after cold-start
-    MUTATION_SCALE    = 0.1         # std-dev of Gaussian noise applied to normalised weights each mutation
+    N_SIMS            = 50          # greedy hill-climb simulations after cold-start
+    MUTATION_SCALE    = 0.2         # std-dev of Gaussian noise applied to normalised weights each mutation
     PROBE_S           = 8.0         # in-game seconds for each of the 9 single-action probe runs
-    COLD_RESTARTS     = 5           # max random restarts during cold-start search
-    COLD_SIMS         = 10          # hill-climb sims per cold-start restart
+    COLD_RESTARTS     = 10           # max random restarts during cold-start search
+    COLD_SIMS         = 3           # hill-climb sims per cold-start restart
 
     train_rl(
         speed=SPEED,
