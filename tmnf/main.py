@@ -30,7 +30,7 @@ def run_adaptive(speed):
 # Env factory (shared setup)
 # ---------------------------------------------------------------------------
 
-def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str):
+def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0):
     from rl.env import TMNFEnv
     from rl.reward import RewardConfig
 
@@ -39,6 +39,7 @@ def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str):
         speed=speed,
         reward_config=RewardConfig.from_yaml(reward_config_file),
         max_episode_time_s=in_game_episode_s / speed,
+        n_lidar_rays=n_lidar_rays,
     )
 
 
@@ -97,7 +98,7 @@ def _run_probes(env, probe_in_game_s: float, speed: float):
 # ---------------------------------------------------------------------------
 
 _TRACE_SAMPLE_EVERY = 10  # record position every N steps
-_WARMUP_STEPS = 100       # 1 in-game second of forced straight acceleration at episode start
+_WARMUP_STEPS = 150       # 1 in-game second of forced straight acceleration at episode start
 _WARMUP_ACTION = 7        # action 7: accelerate + straight
 
 def _run_episode(env, policy, obs):
@@ -142,9 +143,11 @@ def _run_episode(env, policy, obs):
                 "truncated" if truncated          else
                 "crashed"
             )
+            laps = info.get("laps_completed", 0)
+            lap_str = f"  laps={laps}" if laps > 0 else ""
             print(
                 f"    Done ({reason}) — "
-                f"steps={steps}  progress={info['track_progress']:.3f}"
+                f"steps={steps}  progress={info['track_progress']:.3f}{lap_str}"
                 f"  total_reward={total_reward:.1f}"
             )
             #_print_action_stats(throttle_counts, turning_steps, steps)
@@ -199,6 +202,7 @@ def _cold_start_search(
     mutation_scale: float,
     n_restarts: int = 5,
     sims_per_restart: int = 10,
+    n_lidar_rays: int = 0,
 ) -> tuple:
     """
     Try up to n_restarts random policy initializations.
@@ -225,13 +229,14 @@ def _cold_start_search(
         # Generate a fresh random policy in memory — do NOT touch weights_file here
         # so the best result from previous restarts is always preserved on disk.
         rng = np.random.default_rng()
+        obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
         random_cfg = {
             "steer_threshold":    0.5,
             "throttle_threshold": 0.5,
-            "steer_weights":    {n: float(rng.standard_normal()) for n in WeightedLinearPolicy.OBS_NAMES},
-            "throttle_weights": {n: float(rng.standard_normal()) for n in WeightedLinearPolicy.OBS_NAMES},
+            "steer_weights":    {n: float(rng.standard_normal()) for n in obs_names},
+            "throttle_weights": {n: float(rng.standard_normal()) for n in obs_names},
         }
-        local_best_policy = WeightedLinearPolicy.from_cfg(random_cfg)
+        local_best_policy = WeightedLinearPolicy.from_cfg(random_cfg, n_lidar_rays=n_lidar_rays)
         local_best_reward = float("-inf")
         sim_results = []
 
@@ -299,6 +304,7 @@ def train_rl(
     cold_start_sims: int = 10,
     training_params: dict | None = None,
     no_interrupt: bool = False,
+    n_lidar_rays: int = 0,
 ):
     """
     Hill-climb the WeightedLinearPolicy weights via random mutation.
@@ -324,7 +330,7 @@ def train_rl(
             input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
 
     print("Connecting to game...")
-    env = _make_env(speed, in_game_episode_s, reward_config_file)
+    env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays)
 
     probe_results = []
     cold_start_data = []
@@ -341,10 +347,11 @@ def train_rl(
         best_policy, best_reward, cold_start_data = _cold_start_search(
             env, probe_best, weights_file, mutation_scale,
             n_restarts=cold_start_restarts, sims_per_restart=cold_start_sims,
+            n_lidar_rays=n_lidar_rays,
         )
         t_after_cold = datetime.datetime.now()
     else:
-        best_policy = WeightedLinearPolicy(weights_file)
+        best_policy = WeightedLinearPolicy(weights_file, n_lidar_rays=n_lidar_rays)
         best_reward = float("-inf")
 
     greedy_sims: list[GreedySimResult] = []
@@ -365,7 +372,7 @@ def train_rl(
 
             print(f"--- Sim {sim}/{n_sims} --- (respawning)")
             obs, _ = env.reset()
-            reward, _, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
+            reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
 
             improved = reward > best_reward
             if improved:
@@ -382,6 +389,9 @@ def train_rl(
                 sim=sim, reward=reward, improved=improved,
                 throttle_counts=list(throttle_counts), total_steps=total_steps,
                 trace=trace,
+                weights=candidate.to_cfg(),
+                final_track_progress=info.get("track_progress", 0.0),
+                laps_completed=info.get("laps_completed", 0),
             ))
 
     except KeyboardInterrupt:
@@ -465,6 +475,7 @@ def main():
         cold_start_sims=p["cold_sims"],
         training_params=p,
         no_interrupt=args.no_interrupt,
+        n_lidar_rays=p.get("n_lidar_rays", 0),
     )
 
     from analytics import save_experiment_results

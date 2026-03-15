@@ -1,8 +1,8 @@
 """
 TMNFEnv — Gymnasium environment wrapping TMInterface for RL training.
 
-Observation space (15 floats, dtype float32)
---------------------------------------------
+Observation space (15 + n_lidar_rays floats, dtype float32)
+------------------------------------------------------------
   [0]  speed_ms          — vehicle speed in m/s
   [1]  lateral_offset_m  — metres from centreline (neg=left, pos=right)
   [2]  vertical_offset_m — metres above (+) / below (-) centreline
@@ -18,6 +18,8 @@ Observation space (15 floats, dtype float32)
   [12] angular_vel_x     — roll rate  (rad/s)
   [13] angular_vel_y     — yaw rate   (rad/s)
   [14] angular_vel_z     — pitch rate (rad/s)
+  [15+] lidar_i          — LIDAR wall distances, ~[0, 1], left-to-right across
+                           the car's forward view (only present if n_lidar_rays > 0)
 
 Action space
 ------------
@@ -58,7 +60,7 @@ from clients.rl_client import ACTIONS, RLClient, N_ACTIONS
 from rl.reward import RewardConfig, RewardCalculator
 
 
-_OBS_DIM = 15
+_BASE_OBS_DIM = 15
 _DEFAULT_REWARD_CONFIG = os.path.join(os.path.dirname(__file__), "..", "config", "reward_config.yaml")
 
 
@@ -86,24 +88,36 @@ class TMNFEnv(gym.Env):
         speed: float = 10.0,
         reward_config: RewardConfig | None = None,
         max_episode_time_s: float = 120.0,
+        n_lidar_rays: int = 0,
+        auto_respawn_on_finish: bool = True,
     ):
         super().__init__()
 
         self._reward_config = reward_config or RewardConfig.from_yaml(_DEFAULT_REWARD_CONFIG)
         self._reward_calc = RewardCalculator(self._reward_config)
         self._max_episode_time_s = max_episode_time_s
+        self._auto_respawn_on_finish = auto_respawn_on_finish
 
-        # Observation: 15 floats, unbounded (SB3's VecNormalize can normalise online)
+        # Optional LIDAR sensor (screenshot-based wall distances)
+        if n_lidar_rays > 0:
+            from lidar import LidarSensor
+            self._lidar: LidarSensor | None = LidarSensor(n_lidar_rays)
+        else:
+            self._lidar = None
+
+        obs_dim = _BASE_OBS_DIM + n_lidar_rays
+        # Observation: unbounded (SB3's VecNormalize can normalise online)
         self.observation_space = spaces.Box(
             low=-np.inf,
             high=np.inf,
-            shape=(_OBS_DIM,),
+            shape=(obs_dim,),
             dtype=np.float32,
         )
         self.action_space = spaces.Discrete(N_ACTIONS)
 
         # Set up TMInterface
-        self._client = RLClient(centerline_file, speed=speed)
+        self._client = RLClient(centerline_file, speed=speed,
+                                auto_respawn_on_finish=auto_respawn_on_finish)
         self._iface = TMInterface()
 
         # The keepalive thread owns register() so the message-pump is already
@@ -124,6 +138,7 @@ class TMNFEnv(gym.Env):
         self._prev_state = None
         self._elapsed_s: float = 0.0
         self._episode_start_s: float = 0.0
+        self._laps_completed: int = 0
 
     # ------------------------------------------------------------------
     # Gymnasium interface
@@ -143,6 +158,7 @@ class TMNFEnv(gym.Env):
         self._prev_state = init_step.state_data
         self._elapsed_s = 0.0
         self._episode_start_s = time.monotonic()
+        self._laps_completed = 0
 
         obs = self._make_obs(init_step)
         return obs, {}
@@ -153,6 +169,8 @@ class TMNFEnv(gym.Env):
 
         data = step.state_data
         finished = data.track_progress is not None and data.track_progress >= 1.0
+        crashed  = (data.lateral_offset is not None
+                    and abs(data.lateral_offset) > self._reward_config.crash_threshold_m)
         self._elapsed_s = time.monotonic() - self._episode_start_s
 
         accelerating = ACTIONS[action][0]  # first element is the accelerate bool
@@ -165,14 +183,29 @@ class TMNFEnv(gym.Env):
             accelerating=accelerating,
         )
 
-        terminated = finished or (
-            data.lateral_offset is not None
-            and abs(data.lateral_offset) > self._reward_config.crash_threshold_m
-        )
+        time_over = self._elapsed_s > self._max_episode_time_s
+
+        # Auto-respawn on finish: the game thread has already queued a respawn;
+        # wait for the car to stop at the new spawn, then continue the episode.
+        if finished and self._auto_respawn_on_finish and not time_over:
+            self._laps_completed += 1
+            init_step = self._client.wait_episode_ready()
+            self._prev_state = init_step.state_data
+            obs = self._make_obs(init_step)
+            info = {
+                "track_progress": 0.0,
+                "lateral_offset": 0.0,
+                "finished": True,
+                "laps_completed": self._laps_completed,
+                "elapsed_s": self._elapsed_s,
+                "pos_x": init_step.state_data.position.x,
+                "pos_z": init_step.state_data.position.z,
+            }
+            return obs, reward, False, False, info
+
+        terminated = finished or crashed
         # step.done signals a hard crash (>50 m off, handled by client safety net)
-        truncated = step.done and not terminated or (
-            self._elapsed_s > self._max_episode_time_s
-        )
+        truncated = (step.done and not terminated) or time_over
 
         self._prev_state = data
         obs = self._make_obs(step)
@@ -180,6 +213,7 @@ class TMNFEnv(gym.Env):
             "track_progress": data.track_progress or 0.0,
             "lateral_offset": data.lateral_offset or 0.0,
             "finished": finished,
+            "laps_completed": self._laps_completed,
             "elapsed_s": self._elapsed_s,
             "pos_x": data.position.x,
             "pos_z": data.position.z,
@@ -197,7 +231,7 @@ class TMNFEnv(gym.Env):
 
     def _make_obs(self, step) -> np.ndarray:
         d = step.state_data
-        return np.array(
+        state = np.array(
             [
                 d.velocity.magnitude(),                    # [0] speed m/s
                 d.lateral_offset or 0.0,                   # [1] lateral offset m
@@ -217,6 +251,9 @@ class TMNFEnv(gym.Env):
             ],
             dtype=np.float32,
         )
+        if self._lidar is not None:
+            state = np.concatenate([state, self._lidar.get_distances()])
+        return state
 
     def _run_iface_loop(self) -> None:
         """Keepalive thread: owns register() so the message pump is live before

@@ -122,17 +122,29 @@ class WeightedLinearPolicy:
         5.0,     # angular_vel_z
     ], dtype=np.float32)
 
-    def __init__(self, weights_file: str):
+    @classmethod
+    def get_obs_names(cls, n_lidar_rays: int = 0) -> list[str]:
+        """Return the full observation name list for *n_lidar_rays* LIDAR rays."""
+        return cls.OBS_NAMES + [f"lidar_{i}" for i in range(n_lidar_rays)]
+
+    @classmethod
+    def get_obs_scales(cls, n_lidar_rays: int = 0) -> np.ndarray:
+        """Return the full scale vector. LIDAR values are already ~[0,1] so scale=1."""
+        return np.concatenate([cls.OBS_SCALES, np.ones(n_lidar_rays, dtype=np.float32)])
+
+    def __init__(self, weights_file: str, n_lidar_rays: int = 0):
         self._weights_file = weights_file
+        self._n_lidar_rays = n_lidar_rays
         cfg = self._load_or_init()
         self._apply_cfg(cfg)
         print(f"[WeightedLinearPolicy] loaded weights from {weights_file}")
 
     @classmethod
-    def from_cfg(cls, cfg: dict) -> "WeightedLinearPolicy":
+    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> "WeightedLinearPolicy":
         """Create a policy from a weights dict (not backed by a file)."""
         obj = object.__new__(cls)
         obj._weights_file = None
+        obj._n_lidar_rays = n_lidar_rays
         obj._apply_cfg(cfg)
         return obj
 
@@ -141,11 +153,12 @@ class WeightedLinearPolicy:
     # ------------------------------------------------------------------
 
     def to_cfg(self) -> dict:
+        names = self.get_obs_names(self._n_lidar_rays)
         return {
             "steer_threshold":    float(self._steer_t),
             "throttle_threshold": float(self._throttle_t),
-            "steer_weights":    {n: float(self._steer_w[i])    for i, n in enumerate(self.OBS_NAMES)},
-            "throttle_weights": {n: float(self._throttle_w[i]) for i, n in enumerate(self.OBS_NAMES)},
+            "steer_weights":    {n: float(self._steer_w[i])    for i, n in enumerate(names)},
+            "throttle_weights": {n: float(self._throttle_w[i]) for i, n in enumerate(names)},
         }
 
     def save(self, path: str) -> None:
@@ -163,14 +176,14 @@ class WeightedLinearPolicy:
         for group in ("steer_weights", "throttle_weights"):
             for k in cfg[group]:
                 cfg[group][k] += float(rng.normal(0.0, scale))
-        return WeightedLinearPolicy.from_cfg(cfg)
+        return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
     # ------------------------------------------------------------------
     # Callable interface
     # ------------------------------------------------------------------
 
     def __call__(self, obs) -> int:
-        norm_obs       = obs / self.OBS_SCALES
+        norm_obs       = obs / self.get_obs_scales(self._n_lidar_rays)
         steer_score    = float(np.dot(self._steer_w,    norm_obs))
         throttle_score = float(np.dot(self._throttle_w, norm_obs))
 
@@ -195,22 +208,36 @@ class WeightedLinearPolicy:
     # ------------------------------------------------------------------
 
     def _apply_cfg(self, cfg: dict) -> None:
-        self._steer_w    = np.array([cfg["steer_weights"][n]    for n in self.OBS_NAMES], dtype=np.float32)
-        self._throttle_w = np.array([cfg["throttle_weights"][n] for n in self.OBS_NAMES], dtype=np.float32)
+        names = self.get_obs_names(self._n_lidar_rays)
+        self._steer_w    = np.array([cfg["steer_weights"][n]    for n in names], dtype=np.float32)
+        self._throttle_w = np.array([cfg["throttle_weights"][n] for n in names], dtype=np.float32)
         self._steer_t    = float(cfg["steer_threshold"])
         self._throttle_t = float(cfg["throttle_threshold"])
 
     def _load_or_init(self) -> dict:
+        names = self.get_obs_names(self._n_lidar_rays)
         if os.path.exists(self._weights_file):
             with open(self._weights_file) as f:
-                return yaml.safe_load(f)
+                cfg = yaml.safe_load(f)
+            # Migrate: fill in any missing LIDAR keys with 0.0 (neutral starting point)
+            migrated = False
+            for group in ("steer_weights", "throttle_weights"):
+                for n in names:
+                    if n not in cfg[group]:
+                        cfg[group][n] = 0.0
+                        migrated = True
+            if migrated:
+                with open(self._weights_file, "w") as f:
+                    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+                print(f"[WeightedLinearPolicy] migrated weights file with new LIDAR keys → {self._weights_file}")
+            return cfg
 
         rng = np.random.default_rng()
         cfg = {
             "steer_threshold":    0.5,
             "throttle_threshold": 0.5,
-            "steer_weights":    {n: float(rng.standard_normal()) for n in self.OBS_NAMES},
-            "throttle_weights": {n: float(rng.standard_normal()) for n in self.OBS_NAMES},
+            "steer_weights":    {n: float(rng.standard_normal()) for n in names},
+            "throttle_weights": {n: float(rng.standard_normal()) for n in names},
         }
         with open(self._weights_file, "w") as f:
             yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
