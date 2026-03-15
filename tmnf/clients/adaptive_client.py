@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 from tminterface.client import Client
 from tminterface.interface import TMInterface
 
@@ -8,15 +9,51 @@ from track import Centerline
 from utils import StateData, get_position
 
 
-SPEED_MIN_KMH = 20.0
-SPEED_MAX_KMH = 40.0
+SPEED_MIN_KMH = 80.0
+SPEED_MAX_KMH = 200.0
+
+_UP = np.array([0.0, 1.0, 0.0])
 
 
 class AdaptiveClient(Client):
-    """Follows the centerline using real-time state: steers toward track center, manages speed."""
+    """
+    Follows the centerline using real-time state: steers toward track center, manages speed.
 
-    LATERAL_GAIN = 10.0   # steer % per metre off-center
-    HEADING_GAIN = 40.0  # steer % per radian of heading error
+    Steering is the sum of three terms:
+
+    P — position error (LATERAL_GAIN)
+        Pulls the car back to center proportional to how far off it is.
+        No memory, no foresight — only knows where the car is right now.
+
+    D — lateral velocity (DERIVATIVE_GAIN)
+        Opposes sideways motion. When the car is already correcting and moving
+        back toward center, D produces a counter-steer to prevent overshoot.
+        It doesn't care about position, only rate of drift.
+
+    Heading (HEADING_GAIN)
+        Aligns the car's nose with the track's forward direction. Ignores
+        position entirely — a car on the centerline but pointing diagonally
+        still gets a correction. Makes the car anticipate curves rather than
+        reacting to drift after the fact.
+
+    Tuning guide — symptom -> cause:
+        Car corrects slowly on straights                    -> P too low
+        Smooth sine-wave oscillation, consistent amplitude  -> P too high
+        Oscillation with growing amplitude                  -> D too low
+        Car sluggishly drifts, resists its own correction   -> D too high
+        Cuts corners / overshoots turns                     -> Heading too low
+        Constant twitching even when centered and aligned   -> Heading too high
+        Snaking on straights while centered                 -> Heading too high
+
+    Diagnostic tip: watch the car when it is already on the centerline.
+        Still oscillating -> P and D are fighting, not heading.
+        Drifting wide in turns -> heading.
+        Correcting but overshooting every time -> D too low relative to P.
+    """
+
+    LATERAL_GAIN    = 5.0   # steer % per metre off-center (P term)
+    DERIVATIVE_GAIN = 8.0   # steer % per m/s of lateral velocity (D term — damping)
+    HEADING_GAIN    = 5.0   # steer % per radian of heading error
 
     def __init__(self, centerline_file: str, speed: float = 1.0):
         super().__init__()
@@ -57,17 +94,30 @@ class AdaptiveClient(Client):
                 else:
                     accelerate = True  # always accelerate unless braking
 
-                # Steer toward centerline using lateral offset + heading error
+                # Steer toward centerline: PD on lateral position + heading alignment
                 pos = get_position(state)
                 track_fwd = self.centerline.forward_at(pos)
+
+                # Track right vector for projecting lateral velocity
+                track_right = np.cross(track_fwd, _UP)
+                track_right_len = np.linalg.norm(track_right)
+                if track_right_len > 1e-9:
+                    track_right /= track_right_len
+
+                # D term: lateral velocity (positive = moving right)
+                vel = np.array([data.velocity.x, data.velocity.y, data.velocity.z])
+                lateral_vel = float(np.dot(vel, track_right))
+
+                # Heading alignment: steer to match track forward direction
                 track_yaw = math.atan2(track_fwd[0], track_fwd[2])
                 car_yaw = data.rotation.yaw()
                 heading_err = _angle_diff(track_yaw, car_yaw)
 
                 lateral = data.lateral_offset or 0.0
                 steer_pct = (
-                    -lateral * self.LATERAL_GAIN
-                    + heading_err * self.HEADING_GAIN
+                    -lateral * self.LATERAL_GAIN        # P: correct position error
+                    - lateral_vel * self.DERIVATIVE_GAIN  # D: damp lateral motion
+                    + heading_err * self.HEADING_GAIN   # align to track direction
                 )
                 steer_pct = max(-100.0, min(100.0, steer_pct))
                 steer = int(steer_pct / 100.0 * 65536)
