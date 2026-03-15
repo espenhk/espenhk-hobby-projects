@@ -11,6 +11,16 @@ class Centerline:
         self._arc = np.concatenate([[0.0], np.cumsum(seg_lengths)])
         self._total_length = self._arc[-1]
 
+    def forward_at(self, pos: Vec3) -> np.ndarray:
+        """Return the unit forward direction of the track at the closest point to pos."""
+        p = np.array([pos.x, pos.y, pos.z], dtype=np.float64)
+        dists = np.linalg.norm(self._points - p, axis=1)
+        idx = int(np.argmin(dists))
+        idx = min(idx, len(self._points) - 2)
+        ab = self._points[idx + 1].astype(np.float64) - self._points[idx].astype(np.float64)
+        length = float(np.linalg.norm(ab))
+        return ab / length if length > 1e-9 else np.array([0.0, 0.0, 1.0])
+
     def project(self, pos: Vec3) -> tuple[float, float, float]:
         """
         Returns (progress, lateral_offset, vertical_offset).
