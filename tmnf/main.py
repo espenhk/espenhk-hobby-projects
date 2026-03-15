@@ -6,7 +6,7 @@ from clients import AdaptiveClient
 
 
 def main():
-    SPEED = 1.0
+    SPEED = 5.0
     #client = InstructionClient("runs/example_run.txt", centerline_file="tracks/a03_centerline.npy", speed=SPEED)
     #client = InstructionClient("runs/example_run.txt", speed=SPEED)
     client = AdaptiveClient("tracks/a03_centerline.npy", speed=SPEED)

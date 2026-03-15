@@ -9,8 +9,8 @@ from track import Centerline
 from utils import StateData, get_position
 
 
-SPEED_MIN_KMH = 80.0
-SPEED_MAX_KMH = 200.0
+SPEED_MIN_KMH = 150.0
+SPEED_MAX_KMH = 400.0
 
 _UP = np.array([0.0, 1.0, 0.0])
 
@@ -51,7 +51,7 @@ class AdaptiveClient(Client):
         Correcting but overshooting every time -> D too low relative to P.
     """
 
-    LATERAL_GAIN    = 5.0   # steer % per metre off-center (P term)
+    LATERAL_GAIN    = 16.0   # steer % per metre off-center (P term)
     DERIVATIVE_GAIN = 8.0   # steer % per m/s of lateral velocity (D term — damping)
     HEADING_GAIN    = 5.0   # steer % per radian of heading error
 
