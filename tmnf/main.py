@@ -167,7 +167,7 @@ def _print_action_stats(throttle_counts: list, turning_steps: int, steps: int) -
 # Watch mode: run indefinitely, resetting every in_game_episode_s seconds
 # ---------------------------------------------------------------------------
 
-def run_rl_policy(speed: float, policy, in_game_episode_s: float = 20.0, reward_config_file: str = "rl/reward_config.yaml"):
+def run_rl_policy(speed: float, policy, in_game_episode_s: float = 20.0, reward_config_file: str = "config/reward_config.yaml"):
     """
     Repeatedly drive the track with *policy*, resetting every
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
@@ -237,7 +237,7 @@ def _cold_start_search(
 
         for sim in range(1, sims_per_restart + 1):
             candidate = local_best_policy.mutated(scale=mutation_scale)
-            print(f"  Restart {restart} sim {sim}/{sims_per_restart} (respawning)")
+            print(f"  Restart {restart} sim {sim}/{sims_per_restart} (respawning)", end="", flush=True)
             obs, _ = env.reset()
             reward, _, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
 
@@ -291,8 +291,8 @@ def train_rl(
     speed: float,
     n_sims: int = 10,
     in_game_episode_s: float = 20.0,
-    weights_file: str = "policy_weights.yaml",
-    reward_config_file: str = "rl/reward_config.yaml",
+    weights_file: str = "config/policy_weights.yaml",
+    reward_config_file: str = "config/reward_config.yaml",
     mutation_scale: float = 0.1,
     probe_in_game_s: float = 8.0,
     cold_start_restarts: int = 5,
@@ -442,10 +442,10 @@ def main():
 
     os.makedirs(experiment_dir, exist_ok=True)
     if not os.path.exists(reward_cfg_file):
-        shutil.copy("rl/reward_config.yaml", reward_cfg_file)
+        shutil.copy("config/reward_config.yaml", reward_cfg_file)
         print(f"  Copied master reward config → {reward_cfg_file}")
     if not os.path.exists(training_params_file):
-        shutil.copy("training_params.yaml", training_params_file)
+        shutil.copy("config/training_params.yaml", training_params_file)
         print(f"  Copied master training params → {training_params_file}")
 
     import yaml

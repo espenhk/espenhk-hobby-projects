@@ -59,7 +59,7 @@ from rl.reward import RewardConfig, RewardCalculator
 
 
 _OBS_DIM = 15
-_DEFAULT_REWARD_CONFIG = os.path.join(os.path.dirname(__file__), "reward_config.yaml")
+_DEFAULT_REWARD_CONFIG = os.path.join(os.path.dirname(__file__), "..", "config", "reward_config.yaml")
 
 
 class TMNFEnv(gym.Env):
@@ -73,7 +73,7 @@ class TMNFEnv(gym.Env):
     speed:
         Game speed multiplier passed to TMInterface (e.g. 10.0 = 10× speed).
     reward_config:
-        RewardConfig instance.  If None, loaded from rl/reward_config.yaml.
+        RewardConfig instance.  If None, loaded from config/reward_config.yaml.
     max_episode_time_s:
         Wall-clock seconds (at 1× game speed) before the episode is truncated.
     """

@@ -11,7 +11,7 @@ Output:
 
 Tweaking tips
 -------------
-- Reward weights:    edit rl/reward_config.yaml, no code change needed.
+- Reward weights:    edit config/reward_config.yaml, no code change needed.
 - Game speed:        increase SPEED (physics may get unstable above ~20).
 - Training length:   increase TOTAL_TIMESTEPS.
 - Network size:      change net_arch below (default [64, 64]).
@@ -56,7 +56,7 @@ def main() -> None:
     os.makedirs(TB_LOG_DIR, exist_ok=True)
 
     reward_config = RewardConfig.from_yaml(
-        os.path.join(os.path.dirname(__file__), "reward_config.yaml")
+        os.path.join(os.path.dirname(__file__), "..", "config", "reward_config.yaml")
     )
 
     env = TMNFEnv(
