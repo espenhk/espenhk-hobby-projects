@@ -157,7 +157,7 @@ class RLClient(Client):
         # Handle a pending respawn request from the RL thread.
         if self._respawn_event.is_set():
             self._respawn_event.clear()
-            iface.respawn()
+            iface.execute_command("give_up")   # restart race from position zero
             self._phase = Phase.BRAKING_START
             return
 
@@ -184,7 +184,7 @@ class RLClient(Client):
                 if self._finish_respawn_pending:
                     self._finish_respawn_pending = False
                     self._episode_ready.clear()
-                    iface.respawn()
+                    iface.execute_command("give_up")   # restart race from position zero
                     self._phase = Phase.BRAKING_START
                     return
 

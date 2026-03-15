@@ -175,7 +175,7 @@ class WeightedLinearPolicy:
         cfg = self.to_cfg()
         for group in ("steer_weights", "throttle_weights"):
             for k in cfg[group]:
-                cfg[group][k] += float(rng.normal(0.0, scale))
+                cfg[group][k] += float(rng.normal(-scale, scale))
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
     # ------------------------------------------------------------------

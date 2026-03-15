@@ -305,6 +305,7 @@ def train_rl(
     training_params: dict | None = None,
     no_interrupt: bool = False,
     n_lidar_rays: int = 0,
+    re_initialize: bool = False,
 ):
     """
     Hill-climb the WeightedLinearPolicy weights via random mutation.
@@ -323,7 +324,7 @@ def train_rl(
     from analytics import ExperimentData, GreedySimResult
 
     t_start = datetime.datetime.now()
-    cold_start = not os.path.exists(weights_file)
+    cold_start = (not os.path.exists(weights_file)) and not re_initialize
 
     if cold_start:
         if not no_interrupt:
@@ -337,7 +338,20 @@ def train_rl(
     probe_best = None
     t_after_probe = t_after_cold = None
 
-    if cold_start:
+    if re_initialize:
+        import numpy as np
+        rng = np.random.default_rng()
+        obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
+        init_cfg = {
+            "steer_threshold":    0.5,
+            "throttle_threshold": 0.5,
+            "steer_weights":    {n: float(rng.uniform(0.001, 0.1)) for n in obs_names},
+            "throttle_weights": {n: float(rng.uniform(0.001, 0.1)) for n in obs_names},
+        }
+        best_policy = WeightedLinearPolicy.from_cfg(init_cfg, n_lidar_rays=n_lidar_rays)
+        best_reward = float("-inf")
+        print("  [--re-initialize] Starting from fresh random small-positive weights.")
+    elif cold_start:
         probe_best, probe_results = _run_probes(env, probe_in_game_s=probe_in_game_s, speed=speed)
         t_after_probe = datetime.datetime.now()
 
@@ -442,6 +456,9 @@ def main():
     parser.add_argument("experiment", help="Experiment name — files stored in experiments/<name>/")
     parser.add_argument("--no-interrupt", action="store_true",
                         help="Skip all 'Press Enter' prompts and run all phases automatically")
+    parser.add_argument("--re-initialize", action="store_true",
+                        help="Ignore any existing weights file and start from fresh random "
+                             "small-positive weights (0.001–0.1). Skips probe and cold-start phases.")
     args = parser.parse_args()
 
     experiment_dir  = f"experiments/{args.experiment}"
@@ -476,6 +493,7 @@ def main():
         training_params=p,
         no_interrupt=args.no_interrupt,
         n_lidar_rays=p.get("n_lidar_rays", 0),
+        re_initialize=args.re_initialize,
     )
 
     from analytics import save_experiment_results

@@ -145,6 +145,9 @@ def main():
     parser.add_argument("config", help="Path to grid search YAML config")
     parser.add_argument("--no-interrupt", action="store_true",
                         help="Skip all 'Press Enter' prompts (run fully automated)")
+    parser.add_argument("--re-initialize", action="store_true",
+                        help="Start each run from fresh random small-positive weights, "
+                             "ignoring any existing weights file. Skips probe and cold-start.")
     args = parser.parse_args()
 
     base_name, training_spec, reward_spec = _load_grid_config(args.config)
@@ -206,6 +209,7 @@ def main():
             training_params=t,
             no_interrupt=args.no_interrupt,
             n_lidar_rays=t.get("n_lidar_rays", 0),
+            re_initialize=args.re_initialize,
         )
 
         save_experiment_results(data, results_dir=f"{experiment_dir}/results")
