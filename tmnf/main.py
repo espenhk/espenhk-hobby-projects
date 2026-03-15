@@ -59,7 +59,8 @@ class _ConstantPolicy:
 # return the best reward as a baseline floor for hill-climbing.
 # ---------------------------------------------------------------------------
 
-def _run_probes(env, probe_in_game_s: float, speed: float) -> float:
+def _run_probes(env, probe_in_game_s: float, speed: float):
+    from analytics import ProbeResult
     saved_limit = env._max_episode_time_s
     env._max_episode_time_s = probe_in_game_s / speed
 
@@ -67,13 +68,15 @@ def _run_probes(env, probe_in_game_s: float, speed: float) -> float:
           f"({probe_in_game_s}s each) to establish a baseline.\n")
 
     results = {}  # action_idx -> reward
+    probe_results = []
     for i, action in enumerate(ACTIONS):
         print(f"  Probe {i + 1}/{N_ACTIONS}: {ACTIONS[i][3]}")
         if "coast" in action[3]:  # skip coast probes
             continue
         obs, _ = env.reset()
-        reward, _ = _run_episode(env, _ConstantPolicy(i), obs)
+        reward, _, throttle_counts, total_steps = _run_episode(env, _ConstantPolicy(i), obs)
         results[i] = reward
+        probe_results.append(ProbeResult(action_idx=i, action_name=ACTIONS[i][3], reward=reward))
 
     env._max_episode_time_s = saved_limit
 
@@ -86,15 +89,22 @@ def _run_probes(env, probe_in_game_s: float, speed: float) -> float:
 
     time.sleep(3)
 
-    return results[best_idx]
+    return results[best_idx], probe_results
 
 
 # ---------------------------------------------------------------------------
 # Single episode
 # ---------------------------------------------------------------------------
 
-def _run_episode(env, policy, obs) -> tuple[float, dict]:
-    """Run one episode from *obs* until terminated/truncated; return (total_reward, info)."""
+def _run_episode(env, policy, obs) -> tuple[float, dict, list, int]:
+    """Run one episode from *obs* until terminated/truncated.
+
+    Returns:
+        total_reward    — float
+        info            — final step info dict from env
+        throttle_counts — [brake_steps, coast_steps, accel_steps]
+        total_steps     — int
+    """
     total_reward = 0.0
     steps = 0
     info = {}
@@ -133,7 +143,7 @@ def _run_episode(env, policy, obs) -> tuple[float, dict]:
             _print_action_stats(throttle_counts, turning_steps, steps)
             break
 
-    return total_reward, info
+    return total_reward, info, throttle_counts, steps
 
 
 def _print_action_stats(throttle_counts: list, turning_steps: int, steps: int) -> None:
@@ -185,30 +195,47 @@ def _cold_start_search(
     Try up to n_restarts random policy initializations.
     Each restart runs sims_per_restart hill-climb sims.
     Stops early if a policy beats probe_best_reward.
-    Returns (best_policy, best_reward) across all restarts.
+    Returns (best_policy, best_reward, restart_results) across all restarts.
     """
+    from analytics import ColdStartSimResult, ColdStartRestartResult
+
     overall_best_policy = None
     overall_best_reward = float("-inf")
+    restart_results = []
 
     print(f"\n{'='*60}")
     print(f"  Cold-start search — up to {n_restarts} restarts × {sims_per_restart} sims")
     print(f"  Target to beat: {probe_best_reward:+.1f}  (best probe reward)")
     print(f"{'='*60}")
 
+    import numpy as np
+
     for restart in range(1, n_restarts + 1):
         print(f"\n  -- Restart {restart}/{n_restarts}: random init --")
 
-        if os.path.exists(weights_file):
-            os.remove(weights_file)
-        policy = WeightedLinearPolicy(weights_file)   # fresh random weights
-        local_best_policy = policy
+        # Generate a fresh random policy in memory — do NOT touch weights_file here
+        # so the best result from previous restarts is always preserved on disk.
+        rng = np.random.default_rng()
+        random_cfg = {
+            "steer_threshold":    0.5,
+            "throttle_threshold": 0.5,
+            "steer_weights":    {n: float(rng.standard_normal()) for n in WeightedLinearPolicy.OBS_NAMES},
+            "throttle_weights": {n: float(rng.standard_normal()) for n in WeightedLinearPolicy.OBS_NAMES},
+        }
+        local_best_policy = WeightedLinearPolicy.from_cfg(random_cfg)
         local_best_reward = float("-inf")
+        sim_results = []
 
         for sim in range(1, sims_per_restart + 1):
             candidate = local_best_policy.mutated(scale=mutation_scale)
             print(f"  Restart {restart} sim {sim}/{sims_per_restart} (respawning)")
             obs, _ = env.reset()
-            reward, _ = _run_episode(env, candidate, obs)
+            reward, _, throttle_counts, total_steps = _run_episode(env, candidate, obs)
+
+            sim_results.append(ColdStartSimResult(
+                sim=sim, reward=reward,
+                throttle_counts=list(throttle_counts), total_steps=total_steps,
+            ))
 
             if reward > local_best_reward:
                 local_best_reward = reward
@@ -222,17 +249,27 @@ def _cold_start_search(
         print(f"\n  Restart {restart} best: {local_best_reward:+.1f}  "
               f"({'beats' if beat else 'below'} probe floor {probe_best_reward:+.1f})")
 
+        restart_results.append(ColdStartRestartResult(
+            restart=restart, sims=sim_results,
+            best_reward=local_best_reward, beat_probe_floor=beat,
+        ))
+
+        # Save after every restart so the file always holds the best seen so far.
+        # An interruption between restarts will never lose completed work.
+        if overall_best_policy is not None:
+            overall_best_policy.save(weights_file)
+
         if beat:
             print("  Beat probe floor — ending cold-start early.")
             break
 
     if overall_best_policy is None:
-        # Shouldn't happen with n_restarts >= 1, but guard anyway
+        # Only reachable if n_restarts == 0; create a random fallback.
         overall_best_policy = WeightedLinearPolicy(weights_file)
-    overall_best_policy.save(weights_file)
+        overall_best_policy.save(weights_file)
     print(f"\n  Cold-start complete — best reward: {overall_best_reward:+.1f}  "
           f"Weights saved to {weights_file}")
-    return overall_best_policy, overall_best_reward
+    return overall_best_policy, overall_best_reward, restart_results
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +277,7 @@ def _cold_start_search(
 # ---------------------------------------------------------------------------
 
 def train_rl(
+    experiment_name: str,
     speed: float,
     n_sims: int = 10,
     in_game_episode_s: float = 20.0,
@@ -261,7 +299,10 @@ def train_rl(
 
     After *n_sims* simulations a summary is printed showing which policy
     (candidate vs best) won each round.
+    Returns an ExperimentData object with all collected metrics.
     """
+    from analytics import ExperimentData, GreedySimResult
+
     cold_start = not os.path.exists(weights_file)
 
     if cold_start:
@@ -271,12 +312,16 @@ def train_rl(
     print("Connecting to game...")
     env = _make_env(speed, in_game_episode_s, reward_config_file)
 
+    probe_results = []
+    cold_start_data = []
+    probe_best = None
+
     if cold_start:
-        probe_best = _run_probes(env, probe_in_game_s=probe_in_game_s, speed=speed)
+        probe_best, probe_results = _run_probes(env, probe_in_game_s=probe_in_game_s, speed=speed)
 
         input("\n  [COLD-START SEARCH]  Press Enter to start random-restart search...")
         time.sleep(3)
-        best_policy, best_reward = _cold_start_search(
+        best_policy, best_reward, cold_start_data = _cold_start_search(
             env, probe_best, weights_file, mutation_scale,
             n_restarts=cold_start_restarts, sims_per_restart=cold_start_sims,
         )
@@ -284,7 +329,7 @@ def train_rl(
         best_policy = WeightedLinearPolicy(weights_file)
         best_reward = float("-inf")
 
-    history: list[dict] = []
+    greedy_sims: list[GreedySimResult] = []
 
     print(f"\n{'='*60}")
     print(f"  Training — {n_sims} simulations, speed={speed}x, "
@@ -300,7 +345,7 @@ def train_rl(
 
             print(f"--- Sim {sim}/{n_sims} --- (respawning)")
             obs, _ = env.reset()
-            reward, _ = _run_episode(env, candidate, obs)
+            reward, _, throttle_counts, total_steps = _run_episode(env, candidate, obs)
 
             improved = reward > best_reward
             if improved:
@@ -313,7 +358,10 @@ def train_rl(
                 verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
 
             print(f"  >> {verdict}\n")
-            history.append({"sim": sim, "reward": reward, "improved": improved})
+            greedy_sims.append(GreedySimResult(
+                sim=sim, reward=reward, improved=improved,
+                throttle_counts=list(throttle_counts), total_steps=total_steps,
+            ))
 
     except KeyboardInterrupt:
         print("\nTraining interrupted.")
@@ -325,10 +373,19 @@ def train_rl(
     print(f"  Training complete — best total reward: {best_reward:+.1f}")
     print(f"  {'Sim':>4}  {'Reward':>8}  Result")
     print(f"  {'-'*30}")
-    for h in history:
-        tag = "NEW BEST" if h["improved"] else "        "
-        print(f"  {h['sim']:>4}  {h['reward']:>8.1f}  {tag}")
+    for s in greedy_sims:
+        tag = "NEW BEST" if s.improved else "        "
+        print(f"  {s.sim:>4}  {s.reward:>8.1f}  {tag}")
     print(f"{'='*60}\n")
+
+    return ExperimentData(
+        experiment_name=experiment_name,
+        probe_results=probe_results,
+        cold_start_restarts=cold_start_data,
+        greedy_sims=greedy_sims,
+        probe_floor=probe_best,
+        weights_file=weights_file,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -351,13 +408,14 @@ def main():
 
     SPEED             = 10.0        # game speed multiplier (10.0 is the TMInterface max)
     IN_GAME_EPISODE_S = 3.0 + 10.0  # in-game seconds per episode (braking phase + driving)
-    N_SIMS            = 50          # greedy hill-climb simulations after cold-start
-    MUTATION_SCALE    = 0.2         # std-dev of Gaussian noise applied to normalised weights each mutation
+    N_SIMS            = 200          # greedy hill-climb simulations after cold-start
+    MUTATION_SCALE    = 0.1         # std-dev of Gaussian noise applied to normalised weights each mutation
     PROBE_S           = 8.0         # in-game seconds for each of the 9 single-action probe runs
     COLD_RESTARTS     = 10           # max random restarts during cold-start search
     COLD_SIMS         = 3           # hill-climb sims per cold-start restart
 
-    train_rl(
+    data = train_rl(
+        experiment_name=args.experiment,
         speed=SPEED,
         n_sims=N_SIMS,
         in_game_episode_s=IN_GAME_EPISODE_S,
@@ -368,6 +426,9 @@ def main():
         cold_start_restarts=COLD_RESTARTS,
         cold_start_sims=COLD_SIMS,
     )
+
+    from analytics import save_experiment_results
+    save_experiment_results(data, results_dir=f"{experiment_dir}/results")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,32 @@
+# Reward configuration for TMNF RL training.
+# Edit these values freely — no code changes required.
+# See rl/reward.py for full documentation of each parameter.
+
+# --- Progress ---
+progress_weight: 1000.0
+
+# --- Centerline adherence ---
+# penalty = centerline_weight * |lateral_offset_m| ^ centerline_exp
+centerline_weight: -0.1
+centerline_exp: 2.0
+
+# --- Speed ---
+speed_weight: 0.05
+
+# --- Time cost ---
+step_penalty: -0.001
+
+# --- Finish rewards ---
+finish_bonus: 100.0
+finish_time_weight: -0.1   # negative: slower than par costs reward
+par_time_s: 60.0
+
+# --- Acceleration bonus ---
+# Flat reward per step when throttle is pressed — discourages coasting.
+accel_bonus: 1.0
+
+# --- Airborne penalty (below/beside centerline only) ---
+airborne_penalty: -1.0
+
+# --- Episode termination ---
+crash_threshold_m: 25.0
