@@ -1,0 +1,196 @@
+"""
+RLClient — TMInterface client designed for reinforcement learning.
+
+Threading model
+---------------
+TMInterface fires on_run_step() on its own internal thread.
+The RL training loop runs on the main (or another) thread.
+They communicate through:
+
+  action_idx   : the RL thread writes, the game thread reads (lock-protected)
+  _state_queue : the game thread writes one StepState per tick;
+                 the RL thread blocks on get() to receive it.
+  _respawn_event    : RL thread sets → game thread calls iface.respawn()
+  _episode_ready    : game thread sets → RL thread unblocks from reset()
+
+Because the game runs at high speed (e.g. 10×) and the policy evaluation
+takes some time, multiple game ticks may pass before the RL thread reads a
+state. _state_queue has maxsize=1 with a drain-before-put strategy so the
+RL thread always gets the *latest* state (no stale backlog).
+"""
+
+from __future__ import annotations
+
+import math
+import queue
+import threading
+from dataclasses import dataclass
+
+import numpy as np
+from tminterface.client import Client
+from tminterface.interface import TMInterface
+
+from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD
+from track import Centerline
+from utils import StateData, get_position
+
+
+_UP = np.array([0.0, 1.0, 0.0])
+
+# Hard-limit lateral offset before the client itself declares the episode done.
+# This is a safety net — the env's crash_threshold_m (default 10 m) triggers first.
+_HARD_CRASH_THRESHOLD_M = 50.0
+
+
+# ---------------------------------------------------------------------------
+# Discrete action table
+# Index → (accelerate, brake, steer_percent)
+# steer_percent is in [-100, 100]; converted to [-65536, 65536] when applied.
+# ---------------------------------------------------------------------------
+ACTIONS: list[tuple[bool, bool, int, str]] = [
+    (False, True,   -100, "brake LEFT"),  # 0: brake  + full left
+    (False, True,      0, "brake"),       # 1: brake  + straight
+    (False, True,    100, "brake RIGHT"), # 2: brake  + full right
+    (False, False, -100, "coast LEFT"),   # 3: coast  + full left
+    (False, False,    0, "coast"),        # 4: coast  + straight
+    (False, False,  100, "coast RIGHT"),  # 5: coast  + full right
+    (True,  False, -100, "accelerate LEFT"),   # 6: accel  + full left
+    (True,  False,    0, "accelerate"),        # 7: accel  + straight   ← default
+    (True,  False,  100, "accelerate right")   # 8: accel  + full right
+]
+N_ACTIONS = len(ACTIONS)
+
+def get_action_description(idx: int):
+    return ACTIONS[idx][3]
+
+@dataclass
+class StepState:
+    """Everything the env needs to compute observations and rewards."""
+    state_data: StateData
+    yaw_error: float   # signed radians: track heading minus car heading, in [-π, π]
+    done: bool         # True if game client detected a hard termination condition
+
+
+class RLClient(Client):
+    """TMInterface client used by TMNFEnv during RL training."""
+
+    def __init__(self, centerline_file: str, speed: float = 10.0):
+        super().__init__()
+        self.speed = speed
+        self.centerline = Centerline(centerline_file)
+
+        # Shared state — written by RL thread, read by game thread
+        self._action_idx: int = 7   # default: accel + straight
+        self._action_lock = threading.Lock()
+
+        # Shared state — written by game thread, read by RL thread
+        self._state_queue: queue.Queue[StepState] = queue.Queue(maxsize=1)
+        self._respawn_event = threading.Event()
+        self._episode_ready = threading.Event()
+
+        self._phase = Phase.BRAKING_START
+
+    # ------------------------------------------------------------------
+    # RL-thread API
+    # ------------------------------------------------------------------
+
+    def set_action(self, action_idx: int) -> None:
+        """Set the next action. Thread-safe."""
+        with self._action_lock:
+            self._action_idx = action_idx
+
+    def get_step_state(self) -> StepState:
+        """Block until the game thread delivers the next state."""
+        return self._state_queue.get()
+
+    def request_respawn(self) -> None:
+        """Signal the game thread to respawn the car. Call before wait_episode_ready()."""
+        self._episode_ready.clear()
+        self._respawn_event.set()
+
+    def wait_episode_ready(self) -> StepState:
+        """
+        Block until the car has stopped after respawn (BRAKING_START → RUNNING).
+        Returns the first state of the new episode.
+        """
+        self._episode_ready.wait()
+        self._episode_ready.clear()
+        return self._state_queue.get()
+
+    # ------------------------------------------------------------------
+    # TMInterface callbacks — called by the game thread
+    # ------------------------------------------------------------------
+
+    def on_registered(self, iface: TMInterface) -> None:
+        print(f"Connected. RLClient running at {self.speed}x speed.")
+        iface.execute_command(f"set speed {self.speed}")
+
+    def on_run_step(self, iface: TMInterface, _time: int) -> None:
+        # Handle a pending respawn request from the RL thread.
+        if self._respawn_event.is_set():
+            self._respawn_event.clear()
+            iface.respawn()
+            self._phase = Phase.BRAKING_START
+            return
+
+        state = iface.get_simulation_state()
+        data = StateData(state, centerline=self.centerline)
+        speed_ms = data.velocity.magnitude()
+
+        match self._phase:
+            case Phase.BRAKING_START:
+                iface.set_input_state(brake=True)
+                if speed_ms < VELOCITY_ZERO_THRESHOLD:
+                    self._phase = Phase.RUNNING
+                    step_state = StepState(
+                        state_data=data,
+                        yaw_error=self._compute_yaw_error(state, data),
+                        done=False,
+                    )
+                    self._drain_and_put(step_state)
+                    self._episode_ready.set()
+
+            case Phase.RUNNING:
+                with self._action_lock:
+                    action_idx = self._action_idx
+                accelerate, brake, steer_pct, _ = ACTIONS[action_idx]
+                iface.set_input_state(
+                    accelerate=accelerate,
+                    brake=brake,
+                    steer=int(steer_pct / 100 * 65536),
+                )
+
+                done = (
+                    data.track_progress is not None and data.track_progress >= 1.0
+                ) or (
+                    data.lateral_offset is not None
+                    and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M
+                )
+
+                step_state = StepState(
+                    state_data=data,
+                    yaw_error=self._compute_yaw_error(state, data),
+                    done=done,
+                )
+                self._drain_and_put(step_state)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _drain_and_put(self, step_state: StepState) -> None:
+        """Replace any unread state in the queue with the newest one."""
+        try:
+            self._state_queue.get_nowait()
+        except queue.Empty:
+            pass
+        self._state_queue.put(step_state)
+
+    def _compute_yaw_error(self, raw_state, data: StateData) -> float:
+        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
+        pos = get_position(raw_state)
+        track_fwd = self.centerline.forward_at(pos)
+        track_yaw = math.atan2(float(track_fwd[0]), float(track_fwd[2]))
+        car_yaw = data.rotation.yaw()
+        diff = (track_yaw - car_yaw + math.pi) % (2 * math.pi) - math.pi
+        return diff

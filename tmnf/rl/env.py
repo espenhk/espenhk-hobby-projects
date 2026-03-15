@@ -1,0 +1,211 @@
+"""
+TMNFEnv — Gymnasium environment wrapping TMInterface for RL training.
+
+Observation space (15 floats, dtype float32)
+--------------------------------------------
+  [0]  speed_ms          — vehicle speed in m/s
+  [1]  lateral_offset_m  — metres from centreline (neg=left, pos=right)
+  [2]  vertical_offset_m — metres above (+) / below (-) centreline
+  [3]  yaw_error_rad     — signed heading error vs track direction, [-π, π]
+  [4]  pitch_rad         — nose-up/down rotation
+  [5]  roll_rad          — tilt left/right
+  [6]  track_progress    — fraction of track completed, [0, 1]
+  [7]  turning_rate      — current steering angle reported by the game
+  [8]  wheel_0_contact   — 1.0 if front-left wheel has ground contact, else 0.0
+  [9]  wheel_1_contact   — front-right
+  [10] wheel_2_contact   — rear-left
+  [11] wheel_3_contact   — rear-right
+  [12] angular_vel_x     — roll rate  (rad/s)
+  [13] angular_vel_y     — yaw rate   (rad/s)
+  [14] angular_vel_z     — pitch rate (rad/s)
+
+Action space
+------------
+  Discrete(9) — see clients/rl_client.py ACTIONS table.
+  0-2: brake  + left/straight/right
+  3-5: coast  + left/straight/right
+  6-8: accel  + left/straight/right
+
+Episode lifecycle
+-----------------
+  reset() → respawn car → brake to stop → return initial obs
+  step()  → set action, wait for next game tick, compute reward
+  Terminated when: track_progress ≥ 1.0  (finished)
+               or: |lateral_offset| > crash_threshold_m  (crashed)
+  Truncated  when: elapsed_time > max_episode_time_s
+
+Notes on threading
+------------------
+  TMInterface calls on_run_step() on its own thread.
+  The RL training loop runs on the calling thread.
+  A daemon keepalive thread keeps iface.running alive.
+  See clients/rl_client.py for the synchronisation details.
+"""
+
+from __future__ import annotations
+
+import os
+import time
+import threading
+from typing import Any
+
+import numpy as np
+import gymnasium as gym
+from gymnasium import spaces
+from tminterface.interface import TMInterface
+
+from clients.rl_client import RLClient, N_ACTIONS
+from rl.reward import RewardConfig, RewardCalculator
+
+
+_OBS_DIM = 15
+_DEFAULT_REWARD_CONFIG = os.path.join(os.path.dirname(__file__), "reward_config.yaml")
+
+
+class TMNFEnv(gym.Env):
+    """
+    Gymnasium environment for TMNF reinforcement learning.
+
+    Parameters
+    ----------
+    centerline_file:
+        Path to the .npy centreline file (relative to tmnf/ working dir).
+    speed:
+        Game speed multiplier passed to TMInterface (e.g. 10.0 = 10× speed).
+    reward_config:
+        RewardConfig instance.  If None, loaded from rl/reward_config.yaml.
+    max_episode_time_s:
+        Wall-clock seconds (at 1× game speed) before the episode is truncated.
+    """
+
+    metadata = {"render_modes": []}
+
+    def __init__(
+        self,
+        centerline_file: str,
+        speed: float = 10.0,
+        reward_config: RewardConfig | None = None,
+        max_episode_time_s: float = 120.0,
+    ):
+        super().__init__()
+
+        self._reward_config = reward_config or RewardConfig.from_yaml(_DEFAULT_REWARD_CONFIG)
+        self._reward_calc = RewardCalculator(self._reward_config)
+        self._max_episode_time_s = max_episode_time_s
+
+        # Observation: 15 floats, unbounded (SB3's VecNormalize can normalise online)
+        self.observation_space = spaces.Box(
+            low=-np.inf,
+            high=np.inf,
+            shape=(_OBS_DIM,),
+            dtype=np.float32,
+        )
+        self.action_space = spaces.Discrete(N_ACTIONS)
+
+        # Set up TMInterface
+        self._client = RLClient(centerline_file, speed=speed)
+        self._iface = TMInterface()
+
+        print("Waiting for TMInterface connection...")
+        self._iface.register(self._client)
+
+        # Keepalive: TMInterface's internal callbacks need the process to stay alive.
+        self._keepalive = threading.Thread(target=self._run_iface_loop, daemon=True)
+        self._keepalive.start()
+
+        # Episode tracking
+        self._prev_state = None
+        self._elapsed_s: float = 0.0
+        self._episode_start_s: float = 0.0
+
+    # ------------------------------------------------------------------
+    # Gymnasium interface
+    # ------------------------------------------------------------------
+
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict[str, Any] | None = None,
+    ) -> tuple[np.ndarray, dict]:
+        super().reset(seed=seed)
+
+        self._client.request_respawn()
+        init_step = self._client.wait_episode_ready()
+
+        self._prev_state = init_step.state_data
+        self._elapsed_s = 0.0
+        self._episode_start_s = time.monotonic()
+
+        obs = self._make_obs(init_step)
+        return obs, {}
+
+    def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict]:
+        self._client.set_action(int(action))
+        step = self._client.get_step_state()
+
+        data = step.state_data
+        finished = data.track_progress is not None and data.track_progress >= 1.0
+        self._elapsed_s = time.monotonic() - self._episode_start_s
+
+        reward = self._reward_calc.compute(
+            prev=self._prev_state,
+            curr=data,
+            finished=finished,
+            elapsed_s=self._elapsed_s,
+        )
+
+        terminated = finished or (
+            data.lateral_offset is not None
+            and abs(data.lateral_offset) > self._reward_config.crash_threshold_m
+        )
+        # step.done signals a hard crash (>50 m off, handled by client safety net)
+        truncated = step.done and not terminated or (
+            self._elapsed_s > self._max_episode_time_s
+        )
+
+        self._prev_state = data
+        obs = self._make_obs(step)
+        info = {
+            "track_progress": data.track_progress or 0.0,
+            "lateral_offset": data.lateral_offset or 0.0,
+            "finished": finished,
+            "elapsed_s": self._elapsed_s,
+        }
+
+        return obs, reward, terminated, truncated, info
+
+    def close(self) -> None:
+        self._iface.close()
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _make_obs(self, step) -> np.ndarray:
+        d = step.state_data
+        return np.array(
+            [
+                d.velocity.magnitude(),                    # [0] speed m/s
+                d.lateral_offset or 0.0,                   # [1] lateral offset m
+                d.vertical_offset or 0.0,                  # [2] vertical offset m
+                step.yaw_error,                            # [3] heading error rad
+                d.rotation.pitch(),                        # [4] pitch rad
+                d.rotation.roll(),                         # [5] roll rad
+                d.track_progress or 0.0,                   # [6] progress 0-1
+                d.turning_rate,                            # [7] turning rate
+                float(d.wheels[0].contact),                # [8-11] wheel contacts
+                float(d.wheels[1].contact),
+                float(d.wheels[2].contact),
+                float(d.wheels[3].contact),
+                d.angular_velocity.x,                      # [12-14] angular vel
+                d.angular_velocity.y,
+                d.angular_velocity.z,
+            ],
+            dtype=np.float32,
+        )
+
+    def _run_iface_loop(self) -> None:
+        """Keepalive thread: keeps iface running while training."""
+        while self._iface.running:
+            time.sleep(0)

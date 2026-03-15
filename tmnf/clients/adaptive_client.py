@@ -55,17 +55,15 @@ class AdaptiveClient(Client):
     DERIVATIVE_GAIN = 8.0   # steer % per m/s of lateral velocity (D term — damping)
     HEADING_GAIN    = 5.0   # steer % per radian of heading error
 
-    def __init__(self, centerline_file: str, speed: float = 1.0):
+    def __init__(self, centerline_file: str):
         super().__init__()
-        self.speed = speed
         self.centerline = Centerline(centerline_file)
         self._phase = Phase.BRAKING_START
         self._phase_start_ms = 0
         self._ticks_idx = 0
 
     def on_registered(self, iface: TMInterface):
-        print(f"Connected. AdaptiveClient running at {self.speed}x speed.")
-        iface.execute_command(f"set speed {self.speed}")
+        print(f"Connected.")
 
     def on_run_step(self, iface: TMInterface, _time: int):
         state = iface.get_simulation_state()
