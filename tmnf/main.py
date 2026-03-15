@@ -97,6 +97,8 @@ def _run_probes(env, probe_in_game_s: float, speed: float):
 # ---------------------------------------------------------------------------
 
 _TRACE_SAMPLE_EVERY = 10  # record position every N steps
+_WARMUP_STEPS = 100       # 1 in-game second of forced straight acceleration at episode start
+_WARMUP_ACTION = 7        # action 7: accelerate + straight
 
 def _run_episode(env, policy, obs):
     """Run one episode from *obs* until terminated/truncated.
@@ -119,7 +121,7 @@ def _run_episode(env, policy, obs):
     throttle_state: list[int] = []
 
     while True:
-        action = policy(obs)
+        action = _WARMUP_ACTION if steps < _WARMUP_STEPS else policy(obs)
         obs, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
         steps += 1
