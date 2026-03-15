@@ -55,7 +55,7 @@ def _run_episode(env, policy, obs) -> tuple[float, dict]:
         total_reward += reward
         steps += 1
 
-        if steps % 10 == 0:
+        if steps % 50 == 0: # print every X steps
             print(
                 f"    action={get_action_description(action):15s}"
                 f"  step={steps:4d}  progress={info['track_progress']:.3f}"
@@ -127,8 +127,11 @@ def train_rl(
     After *n_sims* simulations a summary is printed showing which policy
     (candidate vs best) won each round.
     """
+    print("waiting for alt-tab...")
+    time.sleep(2) # time to alt-tab into game
+    print("wait done, making env.")
+
     env = _make_env(speed, in_game_episode_s)
-    time.sleep(5)
 
     best_policy = WeightedLinearPolicy(weights_file)
     best_reward = float("-inf")
@@ -182,13 +185,14 @@ def train_rl(
 # ---------------------------------------------------------------------------
 
 def main():
-    SPEED             = 5.0
+    SPEED             = 5.0 # looks like 10.0 is max
     IN_GAME_EPISODE_S = 20.0
     WEIGHTS_FILE      = "policy_weights.yaml"
+    N_SIMS            = 100
 
     train_rl(
         speed=SPEED,
-        n_sims=10,
+        n_sims=N_SIMS,
         in_game_episode_s=IN_GAME_EPISODE_S,
         weights_file=WEIGHTS_FILE,
         mutation_scale=0.1,
