@@ -3,7 +3,7 @@
 # See rl/reward.py for full documentation of each parameter.
 
 # --- Progress ---
-progress_weight: 1000.0
+progress_weight: 10000.0
 
 # --- Centerline adherence ---
 # penalty = centerline_weight * |lateral_offset_m| ^ centerline_exp

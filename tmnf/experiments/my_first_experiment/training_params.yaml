@@ -1,0 +1,7 @@
+speed: 10.0              # game speed multiplier (TMInterface max is 10.0)
+in_game_episode_s: 13.0  # in-game seconds per episode (braking phase + driving)
+n_sims: 200              # greedy hill-climb simulations after cold-start
+mutation_scale: 0.1      # std-dev of Gaussian noise applied to normalised weights each mutation
+probe_s: 8.0             # in-game seconds for each of the 9 single-action probe runs
+cold_restarts: 20        # max random restarts during cold-start search
+cold_sims: 5             # hill-climb sims per cold-start restart

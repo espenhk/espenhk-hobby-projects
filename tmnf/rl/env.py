@@ -181,6 +181,8 @@ class TMNFEnv(gym.Env):
             "lateral_offset": data.lateral_offset or 0.0,
             "finished": finished,
             "elapsed_s": self._elapsed_s,
+            "pos_x": data.position.x,
+            "pos_z": data.position.z,
         }
 
         return obs, reward, terminated, truncated, info

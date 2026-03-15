@@ -20,10 +20,20 @@ from dataclasses import dataclass, field
 # ---------------------------------------------------------------------------
 
 @dataclass
+class RunTrace:
+    """Sampled position + per-step throttle state for one episode."""
+    pos_x: list          # world X, sampled every TRACE_SAMPLE_EVERY steps
+    pos_z: list          # world Z (horizontal plane in TMNF; Y is up)
+    throttle_state: list # per step: 0=brake, 1=coast, 2=accel
+    total_reward: float
+
+
+@dataclass
 class ProbeResult:
     action_idx: int
     action_name: str
     reward: float
+    trace: RunTrace | None = None
 
 
 @dataclass
@@ -32,6 +42,7 @@ class ColdStartSimResult:
     reward: float
     throttle_counts: list  # [brake_steps, coast_steps, accel_steps]
     total_steps: int
+    trace: RunTrace | None = None
 
 
 @dataclass
@@ -49,6 +60,7 @@ class GreedySimResult:
     improved: bool
     throttle_counts: list  # [brake_steps, coast_steps, accel_steps]
     total_steps: int
+    trace: RunTrace | None = None
 
 
 @dataclass
@@ -59,6 +71,9 @@ class ExperimentData:
     greedy_sims: list          # list[GreedySimResult]
     probe_floor: float | None  # best probe reward, or None if probe was skipped
     weights_file: str          # absolute or relative path to policy_weights.yaml
+    reward_config_file: str    # path to the experiment's reward_config.yaml
+    training_params: dict      # SPEED, N_SIMS, etc. from main()
+    timings: dict              # start, end, total_s, probe_s, cold_start_s, greedy_s
 
 
 # ---------------------------------------------------------------------------
@@ -403,28 +418,200 @@ def plot_weight_heatmap(data: ExperimentData, results_dir: str) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _plot_throttle_trace(ax, throttle_state: list, title: str) -> None:
+    """Draw a throttle/brake trace as two binary step lines on *ax*."""
+    steps = range(len(throttle_state))
+    accel = [1 if t == 2 else 0 for t in throttle_state]
+    brake = [1 if t == 0 else 0 for t in throttle_state]
+    ax.step(steps, accel, where="post", color=_THROTTLE_COLORS[2], linewidth=1.0, label="accel")
+    ax.step(steps, [-b for b in brake], where="post", color=_THROTTLE_COLORS[0], linewidth=1.0, label="brake")
+    ax.axhline(0, color="#aaa", linewidth=0.5, linestyle="--")
+    ax.set_ylim(-1.3, 1.3)
+    ax.set_yticks([-1, 0, 1])
+    ax.set_yticklabels(["brake", "", "accel"], fontsize=8)
+    ax.set_xlabel("Step")
+    ax.set_title(title, fontsize=9)
+    ax.legend(fontsize=8, loc="upper right")
+
+
+def plot_probe_paths(data: ExperimentData, results_dir: str) -> None:
+    """One path per probe action, all overlaid on a single bird's-eye plot."""
+    import matplotlib.pyplot as plt
+    import matplotlib.cm as cm
+    import numpy as np
+
+    probes = [p for p in sorted(data.probe_results, key=lambda p: p.action_idx)
+              if p.trace and p.trace.pos_x]
+    if not probes:
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 8))
+    colors = cm.tab10(np.linspace(0, 1, len(probes)))
+
+    for p, color in zip(probes, colors):
+        ax.plot(p.trace.pos_x, p.trace.pos_z, color=color, linewidth=1.2,
+                label=p.action_name, alpha=0.85)
+        ax.plot(p.trace.pos_x[0], p.trace.pos_z[0], "o", color=color, markersize=5)
+
+    ax.set_title(f"{data.experiment_name} — Probe Phase: Paths (bird's eye)")
+    ax.set_xlabel("World X")
+    ax.set_ylabel("World Z")
+    ax.legend(fontsize=8, loc="best")
+    ax.set_aspect("equal", adjustable="datalim")
+    fig.tight_layout()
+    _save(fig, os.path.join(results_dir, "probe_paths.png"))
+
+
+def _best_cold_start_trace(data: ExperimentData):
+    """Return the RunTrace of the highest-reward sim across all cold-start restarts."""
+    best_sim = None
+    best_reward = float("-inf")
+    for restart in data.cold_start_restarts:
+        for s in restart.sims:
+            if s.reward > best_reward:
+                best_reward = s.reward
+                best_sim = s
+    return best_sim.trace if best_sim else None
+
+
+def plot_cold_start_best_run(data: ExperimentData, results_dir: str) -> None:
+    """Path + throttle trace for the best cold-start sim."""
+    import matplotlib.pyplot as plt
+
+    trace = _best_cold_start_trace(data)
+    if not trace or not trace.pos_x:
+        return
+
+    fig, (ax_path, ax_throttle) = plt.subplots(1, 2, figsize=(14, 6))
+
+    ax_path.plot(trace.pos_x, trace.pos_z, color="#9b59b6", linewidth=1.4)
+    ax_path.plot(trace.pos_x[0], trace.pos_z[0], "o", color="#9b59b6", markersize=6)
+    ax_path.set_title("Path (bird's eye)")
+    ax_path.set_xlabel("World X")
+    ax_path.set_ylabel("World Z")
+    ax_path.set_aspect("equal", adjustable="datalim")
+
+    _plot_throttle_trace(ax_throttle, trace.throttle_state,
+                         f"Throttle/brake trace  (reward {trace.total_reward:+.1f})")
+
+    fig.suptitle(f"{data.experiment_name} — Cold-Start Best Run", fontsize=11)
+    fig.tight_layout()
+    _save(fig, os.path.join(results_dir, "cold_start_best_run.png"))
+
+
+def plot_greedy_best_run(data: ExperimentData, results_dir: str) -> None:
+    """Path + throttle trace for the highest-reward greedy sim."""
+    import matplotlib.pyplot as plt
+
+    if not data.greedy_sims:
+        return
+    best = max(data.greedy_sims, key=lambda s: s.reward)
+    trace = best.trace
+    if not trace or not trace.pos_x:
+        return
+
+    fig, (ax_path, ax_throttle) = plt.subplots(1, 2, figsize=(14, 6))
+
+    ax_path.plot(trace.pos_x, trace.pos_z, color="#e67e22", linewidth=1.4)
+    ax_path.plot(trace.pos_x[0], trace.pos_z[0], "o", color="#e67e22", markersize=6)
+    ax_path.set_title("Path (bird's eye)")
+    ax_path.set_xlabel("World X")
+    ax_path.set_ylabel("World Z")
+    ax_path.set_aspect("equal", adjustable="datalim")
+
+    _plot_throttle_trace(ax_throttle, trace.throttle_state,
+                         f"Throttle/brake trace  (reward {trace.total_reward:+.1f})")
+
+    fig.suptitle(f"{data.experiment_name} — Greedy Best Run (sim {best.sim})", fontsize=11)
+    fig.tight_layout()
+    _save(fig, os.path.join(results_dir, "greedy_best_run.png"))
+
+
+def _fmt_duration(seconds: float) -> str:
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    s = seconds % 60
+    if h:
+        return f"{h}h {m:02d}m {s:04.1f}s"
+    if m:
+        return f"{m}m {s:04.1f}s"
+    return f"{s:.1f}s"
+
+
+def _timings_md(data: ExperimentData) -> str:
+    t = data.timings
+    lines = [
+        "## Timings\n\n",
+        f"- **Start:** {t['start']}\n",
+        f"- **End:** {t['end']}\n",
+        f"- **Total runtime:** {_fmt_duration(t['total_s'])}\n\n",
+        "| Phase | Duration |\n",
+        "|-------|----------|\n",
+    ]
+    if t.get("probe_s") is not None:
+        lines.append(f"| Probe | {_fmt_duration(t['probe_s'])} |\n")
+    if t.get("cold_start_s") is not None:
+        lines.append(f"| Cold-start | {_fmt_duration(t['cold_start_s'])} |\n")
+    if t.get("greedy_s") is not None:
+        lines.append(f"| Greedy | {_fmt_duration(t['greedy_s'])} |\n")
+    return "".join(lines) + "\n"
+
+
+def _summary_md(data: ExperimentData) -> str:
+    import yaml
+
+    lines = ["## Run Parameters\n\n"]
+
+    # Training hyperparameters
+    lines.append("### Training\n\n")
+    lines.append("| Parameter | Value |\n")
+    lines.append("|-----------|-------|\n")
+    for k, v in data.training_params.items():
+        lines.append(f"| {k} | {v} |\n")
+
+    # Reward config
+    lines.append("\n### Reward Config\n\n")
+    if os.path.exists(data.reward_config_file):
+        with open(data.reward_config_file) as f:
+            cfg = yaml.safe_load(f)
+        lines.append("| Parameter | Value |\n")
+        lines.append("|-----------|-------|\n")
+        for k, v in cfg.items():
+            lines.append(f"| {k} | {v} |\n")
+    else:
+        lines.append(f"_(reward config not found at `{data.reward_config_file}`)_\n")
+
+    return "".join(lines) + "\n"
+
+
 def save_experiment_results(data: ExperimentData, results_dir: str) -> None:
     """Generate all plots and write a single results.md report to *results_dir*."""
     os.makedirs(results_dir, exist_ok=True)
 
-    sections = [f"# Experiment: {data.experiment_name}\n\n"]
+    sections = [f"# Experiment: {data.experiment_name}\n\n", _timings_md(data), _summary_md(data)]
 
     if data.probe_results:
         plot_probe_rewards(data, results_dir)
+        plot_probe_paths(data, results_dir)
         sections.append(_probe_table_md(data))
         sections.append("\n![Probe rewards](probe_rewards.png)\n\n")
+        sections.append("![Probe paths](probe_paths.png)\n\n")
 
     if data.cold_start_restarts:
         plot_cold_start_rewards(data, results_dir)
         plot_cold_start_action_dist(data, results_dir)
+        plot_cold_start_best_run(data, results_dir)
         sections.append(_cold_start_table_md(data))
         sections.append("\n![Cold-start best rewards](cold_start_best_rewards.png)\n\n")
         sections.append("![Cold-start action distribution](cold_start_action_dist.png)\n\n")
+        sections.append("![Cold-start best run](cold_start_best_run.png)\n\n")
 
     if data.greedy_sims:
         plot_greedy_rewards(data, results_dir)
+        plot_greedy_best_run(data, results_dir)
         sections.append(_greedy_table_md(data))
         sections.append("\n![Greedy rewards](greedy_rewards.png)\n\n")
+        sections.append("![Greedy best run](greedy_best_run.png)\n\n")
 
     plot_greedy_action_dist(data, results_dir)
     plot_reward_trajectory(data, results_dir)

@@ -74,9 +74,9 @@ def _run_probes(env, probe_in_game_s: float, speed: float):
         if "coast" in action[3]:  # skip coast probes
             continue
         obs, _ = env.reset()
-        reward, _, throttle_counts, total_steps = _run_episode(env, _ConstantPolicy(i), obs)
+        reward, _, throttle_counts, total_steps, trace = _run_episode(env, _ConstantPolicy(i), obs)
         results[i] = reward
-        probe_results.append(ProbeResult(action_idx=i, action_name=ACTIONS[i][3], reward=reward))
+        probe_results.append(ProbeResult(action_idx=i, action_name=ACTIONS[i][3], reward=reward, trace=trace))
 
     env._max_episode_time_s = saved_limit
 
@@ -87,7 +87,7 @@ def _run_probes(env, probe_in_game_s: float, speed: float):
         print(f"    action {i} ({ACTIONS[i][3]:15s})  reward={r:+.1f}{marker}")
     print(f"\n  Using probe best ({results[best_idx]:+.1f}) as initial reward floor.\n")
 
-    time.sleep(3)
+    time.sleep(1)
 
     return results[best_idx], probe_results
 
@@ -96,7 +96,9 @@ def _run_probes(env, probe_in_game_s: float, speed: float):
 # Single episode
 # ---------------------------------------------------------------------------
 
-def _run_episode(env, policy, obs) -> tuple[float, dict, list, int]:
+_TRACE_SAMPLE_EVERY = 10  # record position every N steps
+
+def _run_episode(env, policy, obs):
     """Run one episode from *obs* until terminated/truncated.
 
     Returns:
@@ -105,11 +107,16 @@ def _run_episode(env, policy, obs) -> tuple[float, dict, list, int]:
         throttle_counts — [brake_steps, coast_steps, accel_steps]
         total_steps     — int
     """
+    from analytics import RunTrace
+
     total_reward = 0.0
     steps = 0
     info = {}
     throttle_counts = [0, 0, 0]   # brake / coast / accel
     turning_steps   = 0            # any action with steer != straight (action % 3 != 1)
+    pos_x: list[float] = []
+    pos_z: list[float] = []
+    throttle_state: list[int] = []
 
     while True:
         action = policy(obs)
@@ -117,17 +124,15 @@ def _run_episode(env, policy, obs) -> tuple[float, dict, list, int]:
         total_reward += reward
         steps += 1
 
-        throttle_counts[action // 3] += 1
+        t = action // 3   # 0=brake, 1=coast, 2=accel
+        throttle_counts[t] += 1
+        throttle_state.append(t)
         if action % 3 != 1:
             turning_steps += 1
 
-        #if steps % 200 == 0:
-        #    print(
-        #        f"    action={get_action_description(action):15s}"
-        #        f"  step={steps:4d}  progress={info['track_progress']:.3f}"
-        #        f"  lateral={info['lateral_offset']:+.2f} m"
-        #        f"  reward={reward:+.3f}  total={total_reward:+.1f}"
-        #    )
+        if steps % _TRACE_SAMPLE_EVERY == 0:
+            pos_x.append(info["pos_x"])
+            pos_z.append(info["pos_z"])
 
         if terminated or truncated:
             reason = (
@@ -140,10 +145,12 @@ def _run_episode(env, policy, obs) -> tuple[float, dict, list, int]:
                 f"steps={steps}  progress={info['track_progress']:.3f}"
                 f"  total_reward={total_reward:.1f}"
             )
-            _print_action_stats(throttle_counts, turning_steps, steps)
+            #_print_action_stats(throttle_counts, turning_steps, steps)
             break
 
-    return total_reward, info, throttle_counts, steps
+    trace = RunTrace(pos_x=pos_x, pos_z=pos_z,
+                     throttle_state=throttle_state, total_reward=total_reward)
+    return total_reward, info, throttle_counts, steps, trace
 
 
 def _print_action_stats(throttle_counts: list, turning_steps: int, steps: int) -> None:
@@ -164,7 +171,7 @@ def run_rl_policy(speed: float, policy, in_game_episode_s: float = 20.0, reward_
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
     """
     env = _make_env(speed, in_game_episode_s, reward_config_file)
-    time.sleep(5)
+    time.sleep(1)
 
     run = 0
     try:
@@ -230,11 +237,12 @@ def _cold_start_search(
             candidate = local_best_policy.mutated(scale=mutation_scale)
             print(f"  Restart {restart} sim {sim}/{sims_per_restart} (respawning)")
             obs, _ = env.reset()
-            reward, _, throttle_counts, total_steps = _run_episode(env, candidate, obs)
+            reward, _, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
 
             sim_results.append(ColdStartSimResult(
                 sim=sim, reward=reward,
                 throttle_counts=list(throttle_counts), total_steps=total_steps,
+                trace=trace,
             ))
 
             if reward > local_best_reward:
@@ -287,6 +295,8 @@ def train_rl(
     probe_in_game_s: float = 8.0,
     cold_start_restarts: int = 5,
     cold_start_sims: int = 10,
+    training_params: dict | None = None,
+    no_interrupt: bool = False,
 ):
     """
     Hill-climb the WeightedLinearPolicy weights via random mutation.
@@ -301,13 +311,15 @@ def train_rl(
     (candidate vs best) won each round.
     Returns an ExperimentData object with all collected metrics.
     """
+    import datetime
     from analytics import ExperimentData, GreedySimResult
 
+    t_start = datetime.datetime.now()
     cold_start = not os.path.exists(weights_file)
 
     if cold_start:
-        input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
-    time.sleep(2) # time to alt-tab into game
+        if not no_interrupt:
+            input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
 
     print("Connecting to game...")
     env = _make_env(speed, in_game_episode_s, reward_config_file)
@@ -315,16 +327,20 @@ def train_rl(
     probe_results = []
     cold_start_data = []
     probe_best = None
+    t_after_probe = t_after_cold = None
 
     if cold_start:
         probe_best, probe_results = _run_probes(env, probe_in_game_s=probe_in_game_s, speed=speed)
+        t_after_probe = datetime.datetime.now()
 
-        input("\n  [COLD-START SEARCH]  Press Enter to start random-restart search...")
-        time.sleep(3)
+        if not no_interrupt:
+            input("\n  [COLD-START SEARCH]  Press Enter to start random-restart search...")
+        time.sleep(1)
         best_policy, best_reward, cold_start_data = _cold_start_search(
             env, probe_best, weights_file, mutation_scale,
             n_restarts=cold_start_restarts, sims_per_restart=cold_start_sims,
         )
+        t_after_cold = datetime.datetime.now()
     else:
         best_policy = WeightedLinearPolicy(weights_file)
         best_reward = float("-inf")
@@ -336,8 +352,10 @@ def train_rl(
           f"episode={in_game_episode_s}s in-game")
     print(f"  mutation_scale={mutation_scale}  weights → {weights_file}")
     print(f"{'='*60}")
-    input("\n  [GREEDY PHASE]  Press Enter to start greedy optimisation...\n")
-    time.sleep(3)
+    if not no_interrupt:
+        input("\n  [GREEDY PHASE]  Press Enter to start greedy optimisation...\n")
+    time.sleep(1)
+    t_greedy_start = datetime.datetime.now()
 
     try:
         for sim in range(1, n_sims + 1):
@@ -345,7 +363,7 @@ def train_rl(
 
             print(f"--- Sim {sim}/{n_sims} --- (respawning)")
             obs, _ = env.reset()
-            reward, _, throttle_counts, total_steps = _run_episode(env, candidate, obs)
+            reward, _, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
 
             improved = reward > best_reward
             if improved:
@@ -361,6 +379,7 @@ def train_rl(
             greedy_sims.append(GreedySimResult(
                 sim=sim, reward=reward, improved=improved,
                 throttle_counts=list(throttle_counts), total_steps=total_steps,
+                trace=trace,
             ))
 
     except KeyboardInterrupt:
@@ -378,6 +397,17 @@ def train_rl(
         print(f"  {s.sim:>4}  {s.reward:>8.1f}  {tag}")
     print(f"{'='*60}\n")
 
+    t_end = datetime.datetime.now()
+    fmt = "%Y-%m-%d %H:%M:%S"
+    timings = {
+        "start":        t_start.strftime(fmt),
+        "end":          t_end.strftime(fmt),
+        "total_s":      (t_end - t_start).total_seconds(),
+        "probe_s":      (t_after_probe - t_start).total_seconds()         if t_after_probe else None,
+        "cold_start_s": (t_after_cold  - t_after_probe).total_seconds()   if t_after_cold and t_after_probe else None,
+        "greedy_s":     (t_end         - t_greedy_start).total_seconds(),
+    }
+
     return ExperimentData(
         experiment_name=experiment_name,
         probe_results=probe_results,
@@ -385,6 +415,9 @@ def train_rl(
         greedy_sims=greedy_sims,
         probe_floor=probe_best,
         weights_file=weights_file,
+        reward_config_file=reward_config_file,
+        training_params=training_params or {},
+        timings=timings,
     )
 
 
@@ -395,36 +428,41 @@ def train_rl(
 def main():
     parser = argparse.ArgumentParser(description="TMNF RL training")
     parser.add_argument("experiment", help="Experiment name — files stored in experiments/<name>/")
+    parser.add_argument("--no-interrupt", action="store_true",
+                        help="Skip all 'Press Enter' prompts and run all phases automatically")
     args = parser.parse_args()
 
     experiment_dir  = f"experiments/{args.experiment}"
     weights_file    = f"{experiment_dir}/policy_weights.yaml"
     reward_cfg_file = f"{experiment_dir}/reward_config.yaml"
 
+    training_params_file = f"{experiment_dir}/training_params.yaml"
+
     os.makedirs(experiment_dir, exist_ok=True)
     if not os.path.exists(reward_cfg_file):
         shutil.copy("rl/reward_config.yaml", reward_cfg_file)
         print(f"  Copied master reward config → {reward_cfg_file}")
+    if not os.path.exists(training_params_file):
+        shutil.copy("training_params.yaml", training_params_file)
+        print(f"  Copied master training params → {training_params_file}")
 
-    SPEED             = 10.0        # game speed multiplier (10.0 is the TMInterface max)
-    IN_GAME_EPISODE_S = 3.0 + 10.0  # in-game seconds per episode (braking phase + driving)
-    N_SIMS            = 200          # greedy hill-climb simulations after cold-start
-    MUTATION_SCALE    = 0.1         # std-dev of Gaussian noise applied to normalised weights each mutation
-    PROBE_S           = 8.0         # in-game seconds for each of the 9 single-action probe runs
-    COLD_RESTARTS     = 10           # max random restarts during cold-start search
-    COLD_SIMS         = 3           # hill-climb sims per cold-start restart
+    import yaml
+    with open(training_params_file) as f:
+        p = yaml.safe_load(f)
 
     data = train_rl(
         experiment_name=args.experiment,
-        speed=SPEED,
-        n_sims=N_SIMS,
-        in_game_episode_s=IN_GAME_EPISODE_S,
+        speed=p["speed"],
+        n_sims=p["n_sims"],
+        in_game_episode_s=p["in_game_episode_s"],
         weights_file=weights_file,
         reward_config_file=reward_cfg_file,
-        mutation_scale=MUTATION_SCALE,
-        probe_in_game_s=PROBE_S,
-        cold_start_restarts=COLD_RESTARTS,
-        cold_start_sims=COLD_SIMS,
+        mutation_scale=p["mutation_scale"],
+        probe_in_game_s=p["probe_s"],
+        cold_start_restarts=p["cold_restarts"],
+        cold_start_sims=p["cold_sims"],
+        training_params=p,
+        no_interrupt=args.no_interrupt,
     )
 
     from analytics import save_experiment_results

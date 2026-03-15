@@ -62,6 +62,9 @@ class StateData:
         mobil = state.scene_mobil        # type: ignore[attr-defined]
         wheels = state.simulation_wheels # type: ignore[attr-defined]
 
+        pos = state.dyna.current_state.position  # type: ignore[attr-defined]
+        self.position = Vec3(pos[0], pos[1], pos[2])
+
         self.velocity = Vec3(dyna.linear_speed[0], dyna.linear_speed[1], dyna.linear_speed[2])
         self.rotation = Quat(dyna.quat[0], dyna.quat[1], dyna.quat[2], dyna.quat[3])
         self.rotation_euler = self.rotation.to_euler_degrees()
