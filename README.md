@@ -18,9 +18,8 @@ A terminal application for live tracking of ice skating race times. Feed in lap 
 - Skater profile database with historical data (JSON)
 - PDF parsing for competition start lists
 
-**State:** Functional — all core features work. Code is a bit rough in places.
+**State:** Functional — all core features work.
 
-Run with:
 ```bash
 python skate/race_predictor.py
 ```
@@ -29,26 +28,24 @@ python skate/race_predictor.py
 
 ### `tmnf` — Trackmania Nations Forever AI
 
-An attempt at autonomously driving in the racing game Trackmania Nations Forever, first with a hand-tuned PD controller and eventually with a reinforcement learning agent trained via PPO.
+Autonomous driving in Trackmania Nations Forever. Implements a hand-tuned PD controller as a baseline, then trains a linear policy via hill-climbing against a live game environment.
 
 **Key features:**
 - Centerline-following PD controller (works on track A03)
 - Gymnasium-compatible RL environment wrapping the game via TMInterface
-- Configurable reward system (weights in `rl/reward_config.yaml`)
-- PPO training via `stable-baselines3` with TensorBoard logging
+- Hill-climb training with random-restart cold-start and greedy optimisation phases
+- Per-experiment isolation: each run gets its own weights and reward config in `experiments/<name>/`
+- Reward system fully configurable via YAML — no code changes needed to tune
 - Thread-safe bridge between TMInterface callbacks and the RL step loop
 
-**State:** RL scaffolding complete, training not yet run end-to-end.
+**State:** Training loop is fully operational. The hill-climb approach is functional; PPO/SB3 scaffolding exists but is not the primary training path.
 
-Run adaptive controller:
 ```bash
-python tmnf/main.py
+# From the tmnf/ directory:
+python main.py <experiment_name>
 ```
 
-Start RL training:
-```bash
-python tmnf/rl/train.py
-```
+On first run with a new experiment name, a fresh reward config is copied from `rl/reward_config.yaml` into `experiments/<experiment_name>/`. Edit that file to tune rewards for that experiment without affecting others.
 
 ---
 
@@ -90,5 +87,5 @@ pip install -r requirements.txt
 
 Verify:
 ```bash
-python -c "import pandas, numpy, gymnasium, stable_baselines3; print('OK')"
+python -c "import pandas, numpy, gymnasium; print('OK')"
 ```
