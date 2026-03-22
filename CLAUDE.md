@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo contains two independent hobby projects sharing a single Python virtual environment (`.venv/`).
+This repo contains two independent hobby projects sharing a single Python virtual environment managed by Poetry.
 
 ---
 
@@ -8,10 +8,11 @@ This repo contains two independent hobby projects sharing a single Python virtua
 
 ```
 espenhk-hobby-projects/
-├── .venv/                  # Shared virtual environment
+├── .venv/                  # Shared virtual environment (created by Poetry)
 ├── skate/                  # Ice skating race predictor
 ├── tmnf/                   # Trackmania Nations Forever AI
-├── requirements.txt        # Shared dependencies for both projects
+├── pyproject.toml          # Shared dependencies for both projects
+├── poetry.lock             # Locked dependency versions
 ├── README.md
 └── CLAUDE.md
 ```
@@ -183,6 +184,6 @@ TMInterface is callback-driven (`on_run_step`); the RL loop is step-driven (`env
 
 ## Dependencies
 
-All in `requirements.txt`. Run `pip install -r requirements.txt` inside the `.venv`.
+Managed by Poetry. Run `poetry install` to create `.venv/` and install all dependencies.
 
-`tminterface` and `pygbx` are not on PyPI — install from source before running pip if needed.
+`tminterface` and `pygbx` are not on PyPI — install from source before running `poetry install`.

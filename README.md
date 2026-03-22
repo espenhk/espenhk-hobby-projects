@@ -51,41 +51,61 @@ On first run with a new experiment name, a fresh reward config is copied from `r
 
 ## Environment Setup
 
-Both projects share a single virtual environment. Python 3.10+ is recommended.
+Both projects share a single virtual environment managed by [Poetry](https://python-poetry.org/). Python 3.12 is recommended.
 
-> **Note:** `tminterface` and `pygbx` (required by `tmnf`) are not on PyPI — install them manually from their respective GitHub repos before running `pip install -r requirements.txt`.
+> **Note:** `tminterface` and `pygbx` (required by `tmnf`) are not on PyPI — install them manually from their respective GitHub repos before running `poetry install`.
 
-### Option A — VS Code (GUI)
-
-1. Open the repo folder in VS Code.
-2. Open the Command Palette (`Ctrl+Shift+P`) and run **Python: Create Environment**.
-3. Select **Venv**, then select your Python 3.10+ interpreter.
-4. When prompted to install dependencies, check `requirements.txt` and confirm.
-
-VS Code will create `.venv/` and install all dependencies automatically. The environment will be selected as the workspace interpreter going forward.
-
-### Option B — CLI
+### Install Poetry
 
 ```bash
-python -m venv .venv
+curl -sSL https://install.python-poetry.org | python3 -
 ```
 
-Activate (PowerShell):
-```powershell
-.venv\Scripts\Activate.ps1
-```
+Then ensure `~/.local/bin` is on your PATH (add to `~/.bashrc` to make it permanent):
 
-Activate (Git Bash / WSL):
 ```bash
-source .venv/Scripts/activate
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Install dependencies:
+### Install dependencies
+
 ```bash
-pip install -r requirements.txt
+# Create .venv/ inside the project (recommended)
+poetry config virtualenvs.in-project true
+
+poetry install
 ```
 
-Verify:
-```bash
-python -c "import pandas, numpy, gymnasium; print('OK')"
+### VS Code integration
+
+After running `poetry install`, point VS Code at the local venv:
+
+- Open the Command Palette (`Ctrl+Shift+P`) → **Python: Select Interpreter**
+- Choose `./.venv/bin/python`
+
+Or set it permanently in `.vscode/settings.json`:
+
+```json
+{
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python"
+}
 ```
+
+### Running commands
+
+```bash
+poetry run python skate/race_predictor.py
+poetry run python tmnf/main.py <experiment_name>
+
+# Or activate the venv in your shell first:
+poetry shell
+```
+
+### Adding / removing dependencies
+
+```bash
+poetry add <package>
+poetry remove <package>
+```
+
+Both `pyproject.toml` and `poetry.lock` should be committed — the lockfile ensures everyone gets the exact same dependency versions.
