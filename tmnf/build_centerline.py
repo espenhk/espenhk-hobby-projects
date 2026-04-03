@@ -56,7 +56,7 @@ def resample_centerline(positions: np.ndarray, spacing: float) -> np.ndarray:
     return centerline
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Build a track centerline from a TMNF ghost replay.")
     parser.add_argument("replay", help="Path to .Replay.Gbx file")
     parser.add_argument("--output", default="runs/centerline.npy", help="Output .npy path (default: runs/centerline.npy)")

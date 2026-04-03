@@ -30,7 +30,7 @@ def _find_game_hwnd() -> int:
     """
     found = []
 
-    def _cb(hwnd, _):
+    def _cb(hwnd: int, _: None) -> None:
         if win32gui.IsWindowVisible(hwnd):
             title = win32gui.GetWindowText(hwnd)
             if title.startswith(_WINDOW_TITLE_PREFIX):

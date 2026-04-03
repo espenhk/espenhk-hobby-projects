@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.cm as cm
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 import numpy as np
 import yaml
 from policies import WeightedLinearPolicy
@@ -89,7 +91,7 @@ class ExperimentData:
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _save(fig, path: str) -> None:
+def _save(fig: Figure, path: str) -> None:
     fig.savefig(path, dpi=150, bbox_inches="tight")
     plt.close(fig)
 
@@ -453,7 +455,7 @@ def plot_weight_evolution(data: ExperimentData, results_dir: str) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def _plot_throttle_trace(ax, throttle_state: list, title: str) -> None:
+def _plot_throttle_trace(ax: Axes, throttle_state: list[int], title: str) -> None:
     """Draw a throttle/brake trace as two binary step lines on *ax*."""
     steps = range(len(throttle_state))
     accel = [1 if t == 2 else 0 for t in throttle_state]
@@ -494,7 +496,7 @@ def plot_probe_paths(data: ExperimentData, results_dir: str) -> None:
     _save(fig, os.path.join(results_dir, "probe_paths.png"))
 
 
-def _best_cold_start_trace(data: ExperimentData):
+def _best_cold_start_trace(data: ExperimentData) -> RunTrace | None:
     """Return the RunTrace of the highest-reward sim across all cold-start restarts."""
     best_sim = None
     best_reward = float("-inf")
@@ -745,7 +747,7 @@ def _gs_stats(data: ExperimentData) -> dict:
 
 
 def plot_gs_comparison_rewards(
-    runs: list,   # list of (name, stats_dict)
+    runs: list[tuple[str, dict]],
     summary_dir: str,
 ) -> None:
     """Horizontal bar chart of best greedy reward per experiment, sorted descending."""
@@ -772,7 +774,7 @@ def plot_gs_comparison_rewards(
 
 
 def plot_gs_comparison_paths(
-    runs: list,   # list of (name, ExperimentData)
+    runs: list[tuple[str, ExperimentData]],
     summary_dir: str,
 ) -> None:
     """All experiments' best-run paths overlaid; coloured green→red by reward rank."""
@@ -809,7 +811,7 @@ def plot_gs_comparison_paths(
 
 
 def plot_gs_comparison_progress(
-    runs: list,   # list of (name, ExperimentData)
+    runs: list[tuple[str, ExperimentData]],
     summary_dir: str,
 ) -> None:
     """Best-so-far effective progress vs simulation number, one line per experiment.
@@ -865,8 +867,8 @@ def plot_gs_comparison_progress(
 
 
 def save_grid_summary(
-    runs: list,         # list of (name, ExperimentData)
-    varied_keys: list,  # which params were swept (for per-experiment headers)
+    runs: list[tuple[str, ExperimentData]],
+    varied_keys: list[str],
     summary_dir: str,
     base_name: str,
 ) -> None:

@@ -70,7 +70,7 @@ class RewardConfig:
     crash_threshold_m: float = 10.0
 
     @classmethod
-    def from_yaml(cls, path: str) -> RewardConfig:
+    def from_yaml(cls: type[RewardConfig], path: str) -> RewardConfig:
         with open(path) as f:
             data = yaml.safe_load(f) or {}
         return cls(**data)
@@ -79,7 +79,7 @@ class RewardConfig:
 class RewardCalculator:
     """Stateless reward computation — call compute() every RL step."""
 
-    def __init__(self, config: RewardConfig):
+    def __init__(self, config: RewardConfig) -> None:
         self.config = config
 
     def compute(

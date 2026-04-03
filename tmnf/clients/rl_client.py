@@ -25,6 +25,7 @@ import math
 import queue
 import threading
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
 from tminterface.client import Client
@@ -60,7 +61,7 @@ ACTIONS: list[tuple[bool, bool, int, str]] = [
 ]
 N_ACTIONS = len(ACTIONS)
 
-def get_action_description(idx: int):
+def get_action_description(idx: int) -> str:
     return ACTIONS[idx][3]
 
 @dataclass
@@ -75,7 +76,7 @@ class RLClient(Client):
     """TMInterface client used by TMNFEnv during RL training."""
 
     def __init__(self, centerline_file: str, speed: float = 10.0,
-                 auto_respawn_on_finish: bool = False):
+                 auto_respawn_on_finish: bool = False) -> None:
         super().__init__()
         self.speed = speed
         self.centerline = Centerline(centerline_file)
@@ -227,7 +228,7 @@ class RLClient(Client):
             pass
         self._state_queue.put(step_state)
 
-    def _compute_yaw_error(self, raw_state, data: StateData) -> float:
+    def _compute_yaw_error(self, raw_state: Any, data: StateData) -> float:
         """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
         pos = get_position(raw_state)
         track_fwd = self.centerline.forward_at(pos)

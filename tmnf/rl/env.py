@@ -91,7 +91,7 @@ class TMNFEnv(gym.Env):
         max_episode_time_s: float = 120.0,
         n_lidar_rays: int = 0,
         auto_respawn_on_finish: bool = True,
-    ):
+    ) -> None:
         super().__init__()
 
         self._reward_config = reward_config or RewardConfig.from_yaml(_DEFAULT_REWARD_CONFIG)
@@ -231,7 +231,7 @@ class TMNFEnv(gym.Env):
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _make_obs(self, step) -> np.ndarray:
+    def _make_obs(self, step: StepState) -> np.ndarray:
         d = step.state_data
         state = np.array(
             [

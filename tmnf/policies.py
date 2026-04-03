@@ -28,15 +28,15 @@ class BasePolicy(ABC):
     """Abstract base class for all driving policies."""
 
     @abstractmethod
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         """Select action given observation array."""
 
     @abstractmethod
     def to_cfg(self) -> dict:
         """Return a YAML-serializable dict representing this policy's state."""
 
-    def update(self, obs, action: int, reward: float,
-               next_obs, done: bool) -> None:
+    def update(self, obs: np.ndarray, action: int, reward: float,
+               next_obs: np.ndarray, done: bool) -> None:
         """Per-step feedback from the environment. No-op for non-online policies."""
 
     def on_episode_end(self) -> None:
@@ -67,10 +67,10 @@ class SimplePolicy:
     HEADING_GAIN    =  5.0   # steer% per radian of heading error
     STEER_THRESHOLD =  2.0   # deadzone before committing to left/right
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._prev_lateral = 0.0
 
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         lateral = obs[1]
         yaw     = obs[3]
 
@@ -158,16 +158,16 @@ class WeightedLinearPolicy(BasePolicy):
     ], dtype=np.float32)
 
     @classmethod
-    def get_obs_names(cls, n_lidar_rays: int = 0) -> list[str]:
+    def get_obs_names(cls: type[WeightedLinearPolicy], n_lidar_rays: int = 0) -> list[str]:
         """Return the full observation name list for *n_lidar_rays* LIDAR rays."""
         return cls.OBS_NAMES + [f"lidar_{i}" for i in range(n_lidar_rays)]
 
     @classmethod
-    def get_obs_scales(cls, n_lidar_rays: int = 0) -> np.ndarray:
+    def get_obs_scales(cls: type[WeightedLinearPolicy], n_lidar_rays: int = 0) -> np.ndarray:
         """Return the full scale vector. LIDAR values are already ~[0,1] so scale=1."""
         return np.concatenate([cls.OBS_SCALES, np.ones(n_lidar_rays, dtype=np.float32)])
 
-    def __init__(self, weights_file: str, n_lidar_rays: int = 0):
+    def __init__(self, weights_file: str, n_lidar_rays: int = 0) -> None:
         self._weights_file = weights_file
         self._n_lidar_rays = n_lidar_rays
         cfg = self._load_or_init()
@@ -175,7 +175,7 @@ class WeightedLinearPolicy(BasePolicy):
         print(f"[WeightedLinearPolicy] loaded weights from {weights_file}")
 
     @classmethod
-    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> "WeightedLinearPolicy":
+    def from_cfg(cls: type[WeightedLinearPolicy], cfg: dict, n_lidar_rays: int = 0) -> WeightedLinearPolicy:
         """Create a policy from a weights dict (not backed by a file)."""
         obj = object.__new__(cls)
         obj._weights_file = None
@@ -217,7 +217,7 @@ class WeightedLinearPolicy(BasePolicy):
     # Callable interface
     # ------------------------------------------------------------------
 
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         norm_obs       = obs / self.get_obs_scales(self._n_lidar_rays)
         steer_score    = float(np.dot(self._steer_w,    norm_obs))
         throttle_score = float(np.dot(self._throttle_w, norm_obs))
@@ -295,7 +295,7 @@ class NeuralNetPolicy(BasePolicy):
 
     N_ACTIONS = 9
 
-    def __init__(self, hidden_sizes: list[int] | None = None, n_lidar_rays: int = 0):
+    def __init__(self, hidden_sizes: list[int] | None = None, n_lidar_rays: int = 0) -> None:
         self._hidden = list(hidden_sizes or [16, 16])
         self._n_lidar_rays = n_lidar_rays
         obs_dim = 15 + n_lidar_rays
@@ -312,7 +312,7 @@ class NeuralNetPolicy(BasePolicy):
             self._biases.append(b)
 
     @classmethod
-    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> "NeuralNetPolicy":
+    def from_cfg(cls: type[NeuralNetPolicy], cfg: dict, n_lidar_rays: int = 0) -> NeuralNetPolicy:
         obj = cls.__new__(cls)
         obj._hidden = cfg["hidden_sizes"]
         obj._n_lidar_rays = n_lidar_rays
@@ -320,7 +320,7 @@ class NeuralNetPolicy(BasePolicy):
         obj._biases  = [np.array(b, dtype=np.float32) for b in cfg["biases"]]
         return obj
 
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         scales = WeightedLinearPolicy.get_obs_scales(self._n_lidar_rays)
         x = (obs / scales).astype(np.float32)
         for i, (w, b) in enumerate(zip(self._weights, self._biases)):
@@ -355,7 +355,7 @@ class NeuralNetPolicy(BasePolicy):
 # Shared helper for Q-table policies
 # ---------------------------------------------------------------------------
 
-def _discretize_obs(obs, scales: np.ndarray, n_bins: int) -> tuple:
+def _discretize_obs(obs: np.ndarray, scales: np.ndarray, n_bins: int) -> tuple[int, ...]:
     """
     Map a continuous observation vector to a discrete state key.
 
@@ -396,7 +396,7 @@ class EpsilonGreedyPolicy(BasePolicy):
         alpha: float = 0.1,
         gamma: float = 0.99,
         n_lidar_rays: int = 0,
-    ):
+    ) -> None:
         self._n_bins        = n_bins
         self._epsilon       = epsilon
         self._epsilon_decay = epsilon_decay
@@ -410,7 +410,7 @@ class EpsilonGreedyPolicy(BasePolicy):
         self._last_action   = None
 
     @classmethod
-    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> "EpsilonGreedyPolicy":
+    def from_cfg(cls: type[EpsilonGreedyPolicy], cfg: dict, n_lidar_rays: int = 0) -> EpsilonGreedyPolicy:
         return cls(
             n_bins        = cfg.get("n_bins",        3),
             epsilon       = cfg.get("epsilon",       1.0),
@@ -426,7 +426,7 @@ class EpsilonGreedyPolicy(BasePolicy):
             self._q_table[state_key] = np.zeros(self.N_ACTIONS, dtype=np.float32)
         return self._q_table[state_key]
 
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         state_key         = _discretize_obs(obs, self._scales, self._n_bins)
         self._last_obs    = obs
         if np.random.random() < self._epsilon:
@@ -436,7 +436,7 @@ class EpsilonGreedyPolicy(BasePolicy):
         self._last_action = action
         return action
 
-    def update(self, obs, action: int, reward: float, next_obs, done: bool) -> None:
+    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
         s  = _discretize_obs(obs, self._scales, self._n_bins)
         s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
         q_next  = 0.0 if done else float(np.max(self._q(s_)))
@@ -489,7 +489,7 @@ class MCTSPolicy(BasePolicy):
         gamma: float = 0.99,
         n_bins: int = 3,
         n_lidar_rays: int = 0,
-    ):
+    ) -> None:
         self._c            = c
         self._alpha        = alpha
         self._gamma        = gamma
@@ -503,7 +503,7 @@ class MCTSPolicy(BasePolicy):
         self._last_action = None
 
     @classmethod
-    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> "MCTSPolicy":
+    def from_cfg(cls: type[MCTSPolicy], cfg: dict, n_lidar_rays: int = 0) -> MCTSPolicy:
         return cls(
             c            = cfg.get("c",     1.41),
             alpha        = cfg.get("alpha", 0.1),
@@ -522,7 +522,7 @@ class MCTSPolicy(BasePolicy):
             self._n_sa[s] = np.zeros(self.N_ACTIONS, dtype=np.float32)
         return self._n_sa[s]
 
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         s             = _discretize_obs(obs, self._scales, self._n_bins)
         self._last_obs = obs
         n_s           = self._n_s.get(s, 0)
@@ -536,7 +536,7 @@ class MCTSPolicy(BasePolicy):
         self._last_action = action
         return action
 
-    def update(self, obs, action: int, reward: float, next_obs, done: bool) -> None:
+    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
         s  = _discretize_obs(obs, self._scales, self._n_bins)
         s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
         q_next  = 0.0 if done else float(np.max(self._q(s_)))
@@ -585,7 +585,7 @@ class GeneticPolicy(BasePolicy):
         elite_k: int = 3,
         mutation_scale: float = 0.1,
         n_lidar_rays: int = 0,
-    ):
+    ) -> None:
         self._pop_size      = population_size
         self._elite_k       = min(elite_k, population_size)
         self._mutation_scale = mutation_scale
@@ -595,7 +595,7 @@ class GeneticPolicy(BasePolicy):
         self._champion_reward: float = float("-inf")
 
     @classmethod
-    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> "GeneticPolicy":
+    def from_cfg(cls: type[GeneticPolicy], cfg: dict, n_lidar_rays: int = 0) -> GeneticPolicy:
         obj = cls(
             population_size = cfg.get("population_size", 10),
             elite_k         = cfg.get("elite_k", 3),
@@ -633,7 +633,7 @@ class GeneticPolicy(BasePolicy):
             for _ in range(self._pop_size)
         ]
 
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         assert self._champion is not None, "GeneticPolicy: champion not set — call initialize_*() first"
         return self._champion(obs)
 

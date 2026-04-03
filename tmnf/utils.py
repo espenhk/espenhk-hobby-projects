@@ -1,22 +1,25 @@
+from __future__ import annotations
+
 import math
+from typing import Any
 
 
 class Vec3:
-    def __init__(self, x: float, y: float, z: float):
+    def __init__(self, x: float, y: float, z: float) -> None:
         self.x = x
         self.y = y
         self.z = z
 
-    def magnitude(self):
+    def magnitude(self) -> float:
         return (self.x**2 + self.y**2 + self.z**2) ** 0.5
 
-    def compute_speed(self):
+    def compute_speed(self) -> float:
         return self.magnitude()
 
 
 class Quat:
     # TMInterface stores quat as [w, x, y, z]
-    def __init__(self, w: float, x: float, y: float, z: float):
+    def __init__(self, w: float, x: float, y: float, z: float) -> None:
         self.w = w
         self.x = x
         self.y = y
@@ -51,13 +54,13 @@ class Quat:
 
 
 class WheelState:
-    def __init__(self, contact: bool, sliding: bool):
+    def __init__(self, contact: bool, sliding: bool) -> None:
         self.contact = contact
         self.sliding = sliding
 
 
 class StateData:
-    def __init__(self, state, centerline=None):
+    def __init__(self, state: Any, centerline: Any | None = None) -> None:
         dyna = state.dyna.current_state  # type: ignore[attr-defined]
         mobil = state.scene_mobil        # type: ignore[attr-defined]
         wheels = state.simulation_wheels # type: ignore[attr-defined]
@@ -122,12 +125,12 @@ class StateData:
         )
 
 
-def get_position(state) -> Vec3:
+def get_position(state: Any) -> Vec3:
     pos = state.dyna.current_state.position  # type: ignore[attr-defined]
     return Vec3(pos[0], pos[1], pos[2])
 
 
-def get_speed(state) -> Vec3:
+def get_speed(state: Any) -> Vec3:
     speed = state.dyna.current_state.linear_speed  # type: ignore[attr-defined]
     return Vec3(speed[0], speed[1], speed[2])
 

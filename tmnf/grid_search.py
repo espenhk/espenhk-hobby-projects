@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import os
+from typing import Any
 
 import yaml
 from analytics import save_experiment_results, save_grid_summary
@@ -91,7 +92,7 @@ _POLICY_PARAM_MAP = {
 }
 
 
-def _fmt_value(v) -> str:
+def _fmt_value(v: Any) -> str:
     """Format a param value for use in a directory name.
 
     - Integers: plain digits (50 → '50')
@@ -107,7 +108,7 @@ def _fmt_value(v) -> str:
     return str(v).replace("-", "n")
 
 
-def _make_experiment_name(base_name: str, combo: dict, varied_keys: list[str]) -> str:
+def _make_experiment_name(base_name: str, combo: dict[str, Any], varied_keys: list[str]) -> str:
     """Build experiment name from base + only the varied param values."""
     parts = [base_name]
     for key in varied_keys:
@@ -120,7 +121,7 @@ def _make_experiment_name(base_name: str, combo: dict, varied_keys: list[str]) -
 # Config loading and grid expansion
 # ---------------------------------------------------------------------------
 
-def _load_grid_config(path: str) -> tuple[str, dict, dict]:
+def _load_grid_config(path: str) -> tuple[str, dict[str, Any], dict[str, Any]]:
     """Load grid config YAML. Returns (base_name, training_spec, reward_spec)."""
     with open(path) as f:
         cfg = yaml.safe_load(f)
@@ -130,7 +131,7 @@ def _load_grid_config(path: str) -> tuple[str, dict, dict]:
     return base_name, training_spec, reward_spec
 
 
-def _expand_grid(training_spec: dict, reward_spec: dict) -> list[dict]:
+def _expand_grid(training_spec: dict[str, Any], reward_spec: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
     """
     Expand all list-valued params into a Cartesian product.
     Each element of the returned list is a flat dict:
@@ -174,7 +175,7 @@ def _expand_grid(training_spec: dict, reward_spec: dict) -> list[dict]:
 # Policy param helpers
 # ---------------------------------------------------------------------------
 
-def _build_policy_params(t: dict) -> dict:
+def _build_policy_params(t: dict[str, Any]) -> dict[str, Any]:
     """
     Build the policy_params dict for train_rl from a training combo.
 
@@ -196,7 +197,7 @@ def _build_policy_params(t: dict) -> dict:
 # Entry point
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Grid search over TMNF training/reward params")
     parser.add_argument("config", help="Path to grid search YAML config")
     parser.add_argument("--no-interrupt", action="store_true",

@@ -1,7 +1,10 @@
+from __future__ import annotations
+
 import argparse
 import os
 import shutil
 import time
+from typing import Any
 import yaml
 import numpy as np
 import datetime
@@ -30,7 +33,7 @@ from analytics import (
     save_experiment_results
 )
 
-def run_adaptive(speed):
+def run_adaptive(speed: float) -> None:
     """Follow the centreline using the hand-tuned PD controller."""
     client = AdaptiveClient("tracks/a03_centerline.npy")
     iface = TMInterface()
@@ -50,7 +53,7 @@ def run_adaptive(speed):
 # Env factory (shared setup)
 # ---------------------------------------------------------------------------
 
-def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0):
+def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0) -> TMNFEnv:
 
     return TMNFEnv(
         centerline_file="tracks/a03_centerline.npy",
@@ -67,11 +70,11 @@ def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n
 
 class _ConstantPolicy:
     """Always returns the same action — used during cold-start probing."""
-    def __init__(self, action: int):
+    def __init__(self, action: int) -> None:
         self._action = action
-    def __call__(self, obs) -> int:
+    def __call__(self, obs: np.ndarray) -> int:
         return self._action
-    def update(self, obs, action, reward, next_obs, done) -> None:
+    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
         pass
 
 
@@ -149,7 +152,7 @@ def _make_policy(
 # return the best reward as a baseline floor for hill-climbing.
 # ---------------------------------------------------------------------------
 
-def _run_probes(env, probe_in_game_s: float, speed: float):
+def _run_probes(env: TMNFEnv, probe_in_game_s: float, speed: float) -> tuple[float, list[ProbeResult]]:
     saved_limit = env._max_episode_time_s
     env._max_episode_time_s = probe_in_game_s / speed
 
@@ -189,7 +192,11 @@ _TRACE_SAMPLE_EVERY = 2  # record position every N steps
 _WARMUP_STEPS = 100       # 1 in-game second of forced straight acceleration at episode start
 _WARMUP_ACTION = 7        # action 7: accelerate + straight
 
-def _run_episode(env, policy, obs):
+def _run_episode(
+    env: TMNFEnv,
+    policy: BasePolicy | _ConstantPolicy,
+    obs: np.ndarray,
+) -> tuple[float, dict[str, Any], list[int], int, RunTrace]:
     """Run one episode from *obs* until terminated/truncated.
 
     Calls policy.update() after each post-warmup step so that online policies
@@ -259,7 +266,7 @@ def _run_episode(env, policy, obs):
     return total_reward, info, throttle_counts, steps, trace
 
 
-def _print_action_stats(throttle_counts: list, turning_steps: int, steps: int) -> None:
+def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: int) -> None:
     b, c, a = throttle_counts
     print(
         f"    throttle — brake: {100*b/steps:4.1f}%  coast: {100*c/steps:4.1f}%  accel: {100*a/steps:4.1f}%"
@@ -271,7 +278,7 @@ def _print_action_stats(throttle_counts: list, turning_steps: int, steps: int) -
 # Watch mode: run indefinitely, resetting every in_game_episode_s seconds
 # ---------------------------------------------------------------------------
 
-def run_rl_policy(speed: float, policy, in_game_episode_s: float = 20.0, reward_config_file: str = "config/reward_config.yaml"):
+def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0, reward_config_file: str = "config/reward_config.yaml") -> None:
     """
     Repeatedly drive the track with *policy*, resetting every
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
@@ -297,14 +304,14 @@ def run_rl_policy(speed: float, policy, in_game_episode_s: float = 20.0, reward_
 # ---------------------------------------------------------------------------
 
 def _cold_start_search(
-    env,
+    env: TMNFEnv,
     probe_best_reward: float,
     weights_file: str,
     mutation_scale: float,
     n_restarts: int = 5,
     sims_per_restart: int = 10,
     n_lidar_rays: int = 0,
-) -> tuple:
+) -> tuple[WeightedLinearPolicy, float, list[ColdStartRestartResult]]:
     """
     Try up to n_restarts random policy initializations.
     Each restart runs sims_per_restart hill-climb sims.
@@ -391,13 +398,13 @@ def _cold_start_search(
 # ---------------------------------------------------------------------------
 
 def _greedy_loop_hill_climb(
-    env,
-    best_policy,
+    env: TMNFEnv,
+    best_policy: BasePolicy,
     best_reward: float,
     n_sims: int,
     mutation_scale: float,
     weights_file: str,
-) -> tuple:
+) -> tuple[BasePolicy, float, list[GreedySimResult]]:
     """
     Hill-climbing greedy loop (hill_climbing and neural_net policy types).
     Mutate the current best policy, evaluate, keep if improved.
@@ -439,11 +446,11 @@ def _greedy_loop_hill_climb(
 
 
 def _greedy_loop_q_learning(
-    env,
-    policy,
+    env: TMNFEnv,
+    policy: BasePolicy,
     n_episodes: int,
     weights_file: str,
-) -> tuple:
+) -> tuple[BasePolicy, float, list[GreedySimResult]]:
     """
     Q-learning greedy loop for epsilon_greedy and mcts policy types.
     The policy updates its Q-table in-place via policy.update() inside _run_episode().
@@ -486,11 +493,11 @@ def _greedy_loop_q_learning(
 
 
 def _greedy_loop_genetic(
-    env,
+    env: TMNFEnv,
     policy: GeneticPolicy,
     n_generations: int,
     weights_file: str,
-) -> tuple:
+) -> tuple[GeneticPolicy, float, list[GreedySimResult]]:
     """
     Genetic algorithm greedy loop.
     Each "sim" is one generation: evaluate all population members, then evolve.
@@ -556,13 +563,13 @@ def train_rl(
     probe_in_game_s: float = 8.0,
     cold_start_restarts: int = 5,
     cold_start_sims: int = 10,
-    training_params: dict | None = None,
+    training_params: dict[str, Any] | None = None,
     no_interrupt: bool = False,
     n_lidar_rays: int = 0,
     re_initialize: bool = False,
     policy_type: str = "hill_climbing",
-    policy_params: dict | None = None,
-):
+    policy_params: dict[str, Any] | None = None,
+) -> ExperimentData:
     """
     Train a driving policy via the selected algorithm.
 
@@ -687,7 +694,7 @@ def train_rl(
 # Entry point
 # ---------------------------------------------------------------------------
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="TMNF RL training")
     parser.add_argument("experiment", help="Experiment name — files stored in experiments/<name>/")
     parser.add_argument("--no-interrupt", action="store_true",

@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field
-from typing import List
+from __future__ import annotations
+
+from dataclasses import dataclass
 from utils import steer_percent
 
 
@@ -16,7 +17,7 @@ class InputState:
     steer: int = 0  # -65536 to 65536
 
 
-def parse_instructions(path: str) -> List[Instruction]:
+def parse_instructions(path: str) -> list[Instruction]:
     """Parse an instruction file into a sorted list of Instructions.
 
     File format (one instruction per line):

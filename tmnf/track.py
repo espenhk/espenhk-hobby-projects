@@ -4,7 +4,7 @@ from utils import Vec3
 
 
 class Centerline:
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         self._points = np.load(path)  # (N, 3) float32
         diffs = np.diff(self._points, axis=0)
         seg_lengths = np.linalg.norm(diffs, axis=1)
