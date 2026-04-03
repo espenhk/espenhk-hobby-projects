@@ -6,7 +6,7 @@ authors = []
 package-mode = false
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
 
 # common
 pandas = ">=2.0"
@@ -26,6 +26,8 @@ matplotlib = ">=3.8"
 opencv-python = ">=4.8"
 mss = ">=9.0"
 pywin32 = ">=306"
+tminterface = ">=1.0"
+pygbx = ">=0.3"
 
 # Not on PyPI — install from source first:
 # tminterface
