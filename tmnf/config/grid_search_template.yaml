@@ -13,7 +13,7 @@
 #   mutation_scale (search sensitivity) × centerline_weight × accel_bonus
 #   → 3 × 3 × 3 = 27 combinations
 
-base_name: "gs_v1"
+base_name: "gs_lidar_v1"
 
 # ---------------------------------------------------------------------------
 # Training params — listed axes become search dimensions
@@ -22,24 +22,24 @@ training_params:
   speed: 10.0
   n_sims: 50
   in_game_episode_s: 30.0
-  mutation_scale: [0.05, 0.1, 0.2]   # most important: hill-climb step size
+  mutation_scale: 0.05   # most important: hill-climb step size
   probe_s: 8.0
   cold_restarts: 20
   cold_sims: 5
-  n_lidar_rays: 0
+  n_lidar_rays: 8
 
 # ---------------------------------------------------------------------------
 # Reward params — listed axes become search dimensions
 # ---------------------------------------------------------------------------
 reward_params:
   progress_weight: 10000.0
-  centerline_weight: [-0.05, -0.1, -0.5]  # centerline strictness
+  centerline_weight: -0.1  # centerline strictness
   centerline_exp: 2.0
   speed_weight: 0.05
   step_penalty: -0.05
   finish_bonus: 5000.0
   finish_time_weight: -5.0
   par_time_s: 60.0
-  accel_bonus: [1.0, 2.0, 5.0]            # coasting-prevention strength
+  accel_bonus: [1.0, 2.0]            # coasting-prevention strength
   airborne_penalty: -1.0
   crash_threshold_m: 25.0

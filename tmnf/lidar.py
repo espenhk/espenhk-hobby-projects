@@ -18,7 +18,31 @@ import numpy as np
 import win32.win32gui as win32gui
 from mss import mss
 
-GAME_WINDOW_NAME = "Trackmania Nations Forever"
+_WINDOW_TITLE_PREFIX = "TmForever"
+
+
+def _find_game_hwnd() -> int:
+    """Return the HWND of the TMNF/TMInterface window.
+
+    Uses EnumWindows with a prefix match so the TMInterface version suffix
+    (e.g. ' (TMInterface 1.1.1)') does not need to be known in advance.
+    Raises RuntimeError if the window is not found.
+    """
+    found = []
+
+    def _cb(hwnd, _):
+        if win32gui.IsWindowVisible(hwnd):
+            title = win32gui.GetWindowText(hwnd)
+            if title.startswith(_WINDOW_TITLE_PREFIX):
+                found.append(hwnd)
+
+    win32gui.EnumWindows(_cb, None)
+    if not found:
+        raise RuntimeError(
+            f"Could not find a window whose title starts with {_WINDOW_TITLE_PREFIX!r}. "
+            "Is the game running?"
+        )
+    return found[0]
 
 
 class LidarSensor:
@@ -58,7 +82,7 @@ class LidarSensor:
     # ------------------------------------------------------------------
 
     def _window_rect(self) -> tuple[int, int, int, int]:
-        hwnd = win32gui.FindWindow(None, GAME_WINDOW_NAME)
+        hwnd = _find_game_hwnd()
         left, top, right, bottom = win32gui.GetWindowRect(hwnd)
         # Trim window chrome (title bar + borders)
         return left + 10, top + 40, right - 10, bottom - 10
