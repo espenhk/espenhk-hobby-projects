@@ -71,6 +71,8 @@ class _ConstantPolicy:
         self._action = action
     def __call__(self, obs) -> int:
         return self._action
+    def update(self, obs, action, reward, next_obs, done) -> None:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -183,8 +185,8 @@ def _run_probes(env, probe_in_game_s: float, speed: float):
 # Single episode
 # ---------------------------------------------------------------------------
 
-_TRACE_SAMPLE_EVERY = 10  # record position every N steps
-_WARMUP_STEPS = 150       # 1 in-game second of forced straight acceleration at episode start
+_TRACE_SAMPLE_EVERY = 2  # record position every N steps
+_WARMUP_STEPS = 100       # 1 in-game second of forced straight acceleration at episode start
 _WARMUP_ACTION = 7        # action 7: accelerate + straight
 
 def _run_episode(env, policy, obs):
