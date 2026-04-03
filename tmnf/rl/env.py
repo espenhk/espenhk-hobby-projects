@@ -58,6 +58,7 @@ from tminterface.interface import TMInterface
 
 from clients.rl_client import ACTIONS, RLClient, N_ACTIONS
 from rl.reward import RewardConfig, RewardCalculator
+from lidar import LidarSensor
 
 
 _BASE_OBS_DIM = 15
@@ -100,7 +101,6 @@ class TMNFEnv(gym.Env):
 
         # Optional LIDAR sensor (screenshot-based wall distances)
         if n_lidar_rays > 0:
-            from lidar import LidarSensor
             self._lidar: LidarSensor | None = LidarSensor(n_lidar_rays)
         else:
             self._lidar = None
