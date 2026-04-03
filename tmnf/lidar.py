@@ -59,6 +59,7 @@ class LidarSensor:
     def __init__(self, n_rays: int = 16) -> None:
         self.n_rays = n_rays
         self._sct = mss()
+        self._hwnd = _find_game_hwnd()
 
     # ------------------------------------------------------------------
     # Public API
@@ -82,8 +83,7 @@ class LidarSensor:
     # ------------------------------------------------------------------
 
     def _window_rect(self) -> tuple[int, int, int, int]:
-        hwnd = _find_game_hwnd()
-        left, top, right, bottom = win32gui.GetWindowRect(hwnd)
+        left, top, right, bottom = win32gui.GetWindowRect(self._hwnd)
         # Trim window chrome (title bar + borders)
         return left + 10, top + 40, right - 10, bottom - 10
 
