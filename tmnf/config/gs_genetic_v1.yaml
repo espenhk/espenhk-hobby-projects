@@ -25,7 +25,7 @@ base_name: "gs_genetic_v1"
 
 training_params:
   speed: 10.0
-  n_sims: 5
+  n_sims: 10
   in_game_episode_s: 90.0
   n_lidar_rays: 8
   policy_type: genetic
@@ -49,4 +49,4 @@ reward_params:
   accel_bonus: 1.0
   airborne_penalty: -1.0
   crash_threshold_m: 25.0
-  lidar_wall_weight: [-5.0, -20.0, -50.0, 0]  # search axis: wall-proximity penalty strength
+  lidar_wall_weight: [0, -5.0, -20.0]  # search axis: wall-proximity penalty strength
