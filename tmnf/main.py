@@ -7,7 +7,14 @@ from tminterface.interface import TMInterface
 
 from clients import AdaptiveClient
 from clients.rl_client import ACTIONS, N_ACTIONS, get_action_description
-from policies import WeightedLinearPolicy
+from policies import (
+    BasePolicy,
+    WeightedLinearPolicy,
+    NeuralNetPolicy,
+    EpsilonGreedyPolicy,
+    MCTSPolicy,
+    GeneticPolicy,
+)
 
 
 def run_adaptive(speed):
@@ -53,6 +60,76 @@ class _ConstantPolicy:
         self._action = action
     def __call__(self, obs) -> int:
         return self._action
+
+
+# ---------------------------------------------------------------------------
+# Policy factory
+# ---------------------------------------------------------------------------
+
+def _make_policy(
+    policy_type: str,
+    weights_file: str,
+    n_lidar_rays: int,
+    policy_params: dict,
+    re_initialize: bool,
+) -> BasePolicy:
+    """Construct the appropriate policy given type, file, and hyperparams."""
+    import yaml
+
+    if policy_type == "hill_climbing":
+        if os.path.exists(weights_file) and not re_initialize:
+            return WeightedLinearPolicy(weights_file, n_lidar_rays)
+        # Random init (cold-start will handle this path normally)
+        rng = __import__("numpy").random.default_rng()
+        obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
+        cfg = {
+            "steer_threshold":    0.5,
+            "throttle_threshold": 0.5,
+            "steer_weights":    {n: float(rng.standard_normal()) for n in obs_names},
+            "throttle_weights": {n: float(rng.standard_normal()) for n in obs_names},
+        }
+        return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays)
+
+    elif policy_type == "neural_net":
+        if os.path.exists(weights_file) and not re_initialize:
+            with open(weights_file) as f:
+                cfg = yaml.safe_load(f)
+            if cfg.get("policy_type") == "neural_net":
+                print(f"[NeuralNetPolicy] loaded from {weights_file}")
+                return NeuralNetPolicy.from_cfg(cfg, n_lidar_rays)
+        hidden = policy_params.get("hidden_sizes", [16, 16])
+        print(f"[NeuralNetPolicy] initialised random weights (hidden={hidden})")
+        return NeuralNetPolicy(hidden_sizes=hidden, n_lidar_rays=n_lidar_rays)
+
+    elif policy_type == "epsilon_greedy":
+        # Q-table always starts fresh (no meaningful file resume)
+        return EpsilonGreedyPolicy.from_cfg(policy_params, n_lidar_rays)
+
+    elif policy_type == "mcts":
+        return MCTSPolicy.from_cfg(policy_params, n_lidar_rays)
+
+    elif policy_type == "genetic":
+        pop_size = policy_params.get("population_size", 10)
+        elite_k  = policy_params.get("elite_k", 3)
+        policy   = GeneticPolicy(
+            population_size = pop_size,
+            elite_k         = elite_k,
+            mutation_scale  = policy_params.get("mutation_scale",
+                              policy_params.get("_mutation_scale_fallback", 0.1)),
+            n_lidar_rays    = n_lidar_rays,
+        )
+        if os.path.exists(weights_file) and not re_initialize:
+            champion = WeightedLinearPolicy(weights_file, n_lidar_rays)
+            policy.initialize_from_champion(champion)
+            print(f"[GeneticPolicy] seeded population from champion at {weights_file}")
+        else:
+            policy.initialize_random()
+            print(f"[GeneticPolicy] random population of {pop_size}")
+        return policy
+
+    else:
+        raise ValueError(f"Unknown policy_type: {policy_type!r}. "
+                         f"Choose from: hill_climbing, neural_net, epsilon_greedy, mcts, genetic")
 
 
 # ---------------------------------------------------------------------------
@@ -104,11 +181,15 @@ _WARMUP_ACTION = 7        # action 7: accelerate + straight
 def _run_episode(env, policy, obs):
     """Run one episode from *obs* until terminated/truncated.
 
+    Calls policy.update() after each post-warmup step so that online policies
+    (EpsilonGreedyPolicy, MCTSPolicy) can update their Q-tables in real time.
+
     Returns:
         total_reward    — float
         info            — final step info dict from env
         throttle_counts — [brake_steps, coast_steps, accel_steps]
         total_steps     — int
+        trace           — RunTrace
     """
     from analytics import RunTrace
 
@@ -120,12 +201,22 @@ def _run_episode(env, policy, obs):
     pos_x: list[float] = []
     pos_z: list[float] = []
     throttle_state: list[int] = []
+    prev_obs = obs
 
     while True:
-        action = _WARMUP_ACTION if steps < _WARMUP_STEPS else policy(obs)
-        obs, reward, terminated, truncated, info = env.step(action)
+        in_warmup = steps < _WARMUP_STEPS
+        action = _WARMUP_ACTION if in_warmup else policy(obs)
+        next_obs, reward, terminated, truncated, info = env.step(action)
         total_reward += reward
         steps += 1
+
+        # Feed online policies the transition (skip warmup to avoid poisoning Q-table
+        # with forced behaviour that doesn't reflect the policy's decisions)
+        if not in_warmup:
+            policy.update(prev_obs, action, reward, next_obs, terminated or truncated)
+
+        prev_obs = next_obs
+        obs      = next_obs
 
         t = action // 3   # 0=brake, 1=coast, 2=accel
         throttle_counts[t] += 1
@@ -288,7 +379,165 @@ def _cold_start_search(
 
 
 # ---------------------------------------------------------------------------
-# Training: hill-climb by random weight mutation
+# Greedy loops (one per training strategy)
+# ---------------------------------------------------------------------------
+
+def _greedy_loop_hill_climb(
+    env,
+    best_policy,
+    best_reward: float,
+    n_sims: int,
+    mutation_scale: float,
+    weights_file: str,
+) -> tuple:
+    """
+    Hill-climbing greedy loop (hill_climbing and neural_net policy types).
+    Mutate the current best policy, evaluate, keep if improved.
+    Returns (best_policy, best_reward, greedy_sims).
+    """
+    from analytics import GreedySimResult
+
+    greedy_sims = []
+    try:
+        for sim in range(1, n_sims + 1):
+            candidate = best_policy.mutated(scale=mutation_scale)
+
+            print(f"--- Sim {sim}/{n_sims} --- (respawning)")
+            obs, _ = env.reset()
+            reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
+
+            improved = reward > best_reward
+            if improved:
+                prev_best   = best_reward
+                best_reward = reward
+                best_policy = candidate
+                best_policy.save(weights_file)
+                verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
+            else:
+                verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
+
+            print(f"  >> {verdict}\n")
+            greedy_sims.append(GreedySimResult(
+                sim=sim, reward=reward, improved=improved,
+                throttle_counts=list(throttle_counts), total_steps=total_steps,
+                trace=trace,
+                weights=candidate.to_cfg(),
+                final_track_progress=info.get("track_progress", 0.0),
+                laps_completed=info.get("laps_completed", 0),
+            ))
+    except KeyboardInterrupt:
+        print("\nTraining interrupted.")
+
+    return best_policy, best_reward, greedy_sims
+
+
+def _greedy_loop_q_learning(
+    env,
+    policy,
+    n_episodes: int,
+    weights_file: str,
+) -> tuple:
+    """
+    Q-learning greedy loop for epsilon_greedy and mcts policy types.
+    The policy updates its Q-table in-place via policy.update() inside _run_episode().
+    No mutation is performed; the policy itself is the state that improves over time.
+    Returns (policy, best_reward, greedy_sims).
+    """
+    from analytics import GreedySimResult
+
+    best_reward = float("-inf")
+    greedy_sims = []
+    try:
+        for episode in range(1, n_episodes + 1):
+            print(f"--- Episode {episode}/{n_episodes} --- (respawning)")
+            obs, _ = env.reset()
+            reward, info, throttle_counts, total_steps, trace = _run_episode(env, policy, obs)
+            policy.on_episode_end()
+
+            improved = reward > best_reward
+            if improved:
+                prev_best   = best_reward
+                best_reward = reward
+                policy.save(weights_file)
+                verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
+            else:
+                verdict = f"no improvement  episode={reward:+.1f}  best={best_reward:+.1f}"
+
+            cfg = policy.to_cfg()
+            print(f"  >> {verdict}  [states visited: {cfg.get('n_states_visited', '?')}]\n")
+            greedy_sims.append(GreedySimResult(
+                sim=episode, reward=reward, improved=improved,
+                throttle_counts=list(throttle_counts), total_steps=total_steps,
+                trace=trace,
+                weights=cfg,
+                final_track_progress=info.get("track_progress", 0.0),
+                laps_completed=info.get("laps_completed", 0),
+            ))
+    except KeyboardInterrupt:
+        print("\nTraining interrupted.")
+
+    return policy, best_reward, greedy_sims
+
+
+def _greedy_loop_genetic(
+    env,
+    policy: GeneticPolicy,
+    n_generations: int,
+    weights_file: str,
+) -> tuple:
+    """
+    Genetic algorithm greedy loop.
+    Each "sim" is one generation: evaluate all population members, then evolve.
+    Total episodes = n_generations × population_size.
+    Returns (policy, best_reward, greedy_sims).
+    """
+    from analytics import GreedySimResult
+
+    pop_size    = len(policy._population)
+    best_reward = policy._champion_reward
+    greedy_sims = []
+
+    print(f"  [Genetic] population_size={pop_size}, "
+          f"total episodes = {n_generations} × {pop_size} = {n_generations * pop_size}")
+
+    try:
+        for gen in range(1, n_generations + 1):
+            print(f"--- Generation {gen}/{n_generations} --- evaluating {pop_size} individuals")
+            rewards = []
+            for idx, individual in enumerate(policy._population):
+                print(f"  Individual {idx + 1}/{pop_size} (respawning)", end="", flush=True)
+                obs, _ = env.reset()
+                reward, info, _, total_steps, trace = _run_episode(env, individual, obs)
+                rewards.append(reward)
+
+            improved = policy.evaluate_and_evolve(rewards)
+            gen_best = max(rewards)
+            if gen_best > best_reward:
+                best_reward = gen_best
+
+            if improved:
+                policy.save(weights_file)
+                verdict = f"NEW BEST champion  reward={policy._champion_reward:+.1f}"
+            else:
+                verdict = f"no improvement  gen_best={gen_best:+.1f}  champion={policy._champion_reward:+.1f}"
+
+            print(f"  >> {verdict}\n")
+            greedy_sims.append(GreedySimResult(
+                sim=gen, reward=gen_best, improved=improved,
+                throttle_counts=[0, 0, 0], total_steps=total_steps,
+                trace=trace,
+                weights=policy.to_cfg(),
+                final_track_progress=info.get("track_progress", 0.0),
+                laps_completed=info.get("laps_completed", 0),
+            ))
+    except KeyboardInterrupt:
+        print("\nTraining interrupted.")
+
+    return policy, best_reward, greedy_sims
+
+
+# ---------------------------------------------------------------------------
+# Training orchestrator
 # ---------------------------------------------------------------------------
 
 def train_rl(
@@ -306,25 +555,30 @@ def train_rl(
     no_interrupt: bool = False,
     n_lidar_rays: int = 0,
     re_initialize: bool = False,
+    policy_type: str = "hill_climbing",
+    policy_params: dict | None = None,
 ):
     """
-    Hill-climb the WeightedLinearPolicy weights via random mutation.
+    Train a driving policy via the selected algorithm.
 
-    Each simulation:
-      1. Mutate the current best weights by a small random perturbation.
-      2. Run the candidate policy for one episode.
-      3. If the candidate beats the best total reward, it becomes the new best
-         and its weights are saved to *weights_file*.
+    policy_type options:
+      hill_climbing  — random weight mutation, keep if improved (default)
+      neural_net     — MLP policy, same hill-climbing loop
+      epsilon_greedy — tabular Q-learning with epsilon-greedy exploration
+      mcts           — UCT-style online Q-learner with UCB1 action selection
+      genetic        — population of linear policies, evolutionary selection
 
-    After *n_sims* simulations a summary is printed showing which policy
-    (candidate vs best) won each round.
     Returns an ExperimentData object with all collected metrics.
     """
     import datetime
     from analytics import ExperimentData, GreedySimResult
 
+    policy_params = policy_params or {}
     t_start = datetime.datetime.now()
-    cold_start = (not os.path.exists(weights_file)) and not re_initialize
+
+    # Cold-start only applies to hill_climbing (needs a baseline reward floor)
+    cold_start = (not os.path.exists(weights_file) or re_initialize)
+    cold_start = cold_start and (policy_type == "hill_climbing")
 
     if cold_start:
         if not no_interrupt:
@@ -333,25 +587,12 @@ def train_rl(
     print("Connecting to game...")
     env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays)
 
-    probe_results = []
+    probe_results  = []
     cold_start_data = []
-    probe_best = None
-    t_after_probe = t_after_cold = None
+    probe_best     = None
+    t_after_probe  = t_after_cold = None
 
-    if re_initialize:
-        import numpy as np
-        rng = np.random.default_rng()
-        obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
-        init_cfg = {
-            "steer_threshold":    0.5,
-            "throttle_threshold": 0.5,
-            "steer_weights":    {n: float(rng.uniform(0.001, 0.1)) for n in obs_names},
-            "throttle_weights": {n: float(rng.uniform(0.001, 0.1)) for n in obs_names},
-        }
-        best_policy = WeightedLinearPolicy.from_cfg(init_cfg, n_lidar_rays=n_lidar_rays)
-        best_reward = float("-inf")
-        print("  [--re-initialize] Starting from fresh random small-positive weights.")
-    elif cold_start:
+    if cold_start:
         probe_best, probe_results = _run_probes(env, probe_in_game_s=probe_in_game_s, speed=speed)
         t_after_probe = datetime.datetime.now()
 
@@ -365,53 +606,45 @@ def train_rl(
         )
         t_after_cold = datetime.datetime.now()
     else:
-        best_policy = WeightedLinearPolicy(weights_file, n_lidar_rays=n_lidar_rays)
+        # Build the policy via the factory (handles all types)
+        best_policy = _make_policy(
+            policy_type    = policy_type,
+            weights_file   = weights_file,
+            n_lidar_rays   = n_lidar_rays,
+            policy_params  = {**policy_params,
+                              "_mutation_scale_fallback": mutation_scale},
+            re_initialize  = re_initialize,
+        )
         best_reward = float("-inf")
 
-    greedy_sims: list[GreedySimResult] = []
-
     print(f"\n{'='*60}")
-    print(f"  Training — {n_sims} simulations, speed={speed}x, "
+    print(f"  Training — {n_sims} sims/generations, speed={speed}x, "
           f"episode={in_game_episode_s}s in-game")
-    print(f"  mutation_scale={mutation_scale}  weights → {weights_file}")
+    print(f"  policy_type={policy_type}  mutation_scale={mutation_scale}")
+    print(f"  weights → {weights_file}")
     print(f"{'='*60}")
     if not no_interrupt:
-        input("\n  [GREEDY PHASE]  Press Enter to start greedy optimisation...\n")
+        input("\n  [GREEDY PHASE]  Press Enter to start optimisation...\n")
     time.sleep(1)
     t_greedy_start = datetime.datetime.now()
 
-    try:
-        for sim in range(1, n_sims + 1):
-            candidate = best_policy.mutated(scale=mutation_scale)
+    # Dispatch to the appropriate greedy loop
+    if policy_type in ("hill_climbing", "neural_net"):
+        best_policy, best_reward, greedy_sims = _greedy_loop_hill_climb(
+            env, best_policy, best_reward, n_sims, mutation_scale, weights_file
+        )
+    elif policy_type in ("epsilon_greedy", "mcts"):
+        best_policy, best_reward, greedy_sims = _greedy_loop_q_learning(
+            env, best_policy, n_sims, weights_file
+        )
+    elif policy_type == "genetic":
+        best_policy, best_reward, greedy_sims = _greedy_loop_genetic(
+            env, best_policy, n_sims, weights_file  # type: ignore[arg-type]
+        )
+    else:
+        raise ValueError(f"Unknown policy_type: {policy_type!r}")
 
-            print(f"--- Sim {sim}/{n_sims} --- (respawning)")
-            obs, _ = env.reset()
-            reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
-
-            improved = reward > best_reward
-            if improved:
-                prev_best = best_reward
-                best_reward = reward
-                best_policy = candidate
-                best_policy.save(weights_file)
-                verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
-            else:
-                verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
-
-            print(f"  >> {verdict}\n")
-            greedy_sims.append(GreedySimResult(
-                sim=sim, reward=reward, improved=improved,
-                throttle_counts=list(throttle_counts), total_steps=total_steps,
-                trace=trace,
-                weights=candidate.to_cfg(),
-                final_track_progress=info.get("track_progress", 0.0),
-                laps_completed=info.get("laps_completed", 0),
-            ))
-
-    except KeyboardInterrupt:
-        print("\nTraining interrupted.")
-    finally:
-        env.close()
+    env.close()
 
     # Summary
     print(f"\n{'='*60}")
@@ -457,8 +690,8 @@ def main():
     parser.add_argument("--no-interrupt", action="store_true",
                         help="Skip all 'Press Enter' prompts and run all phases automatically")
     parser.add_argument("--re-initialize", action="store_true",
-                        help="Ignore any existing weights file and start from fresh random "
-                             "small-positive weights (0.001–0.1). Skips probe and cold-start phases.")
+                        help="Ignore any existing weights file and restart from scratch, "
+                             "including probe and cold-start phases.")
     args = parser.parse_args()
 
     experiment_dir  = f"experiments/{args.experiment}"
@@ -494,6 +727,8 @@ def main():
         no_interrupt=args.no_interrupt,
         n_lidar_rays=p.get("n_lidar_rays", 0),
         re_initialize=args.re_initialize,
+        policy_type=p.get("policy_type", "hill_climbing"),
+        policy_params=p.get("policy_params") or {},
     )
 
     from analytics import save_experiment_results

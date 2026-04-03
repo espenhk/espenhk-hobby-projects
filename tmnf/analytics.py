@@ -397,6 +397,9 @@ def plot_weight_heatmap(data: ExperimentData, results_dir: str) -> None:
     with open(data.weights_file) as f:
         cfg = yaml.safe_load(f)
 
+    if "steer_weights" not in cfg:
+        return  # non-WLP policy (neural_net, q-table, etc.) — skip heatmap
+
     obs_names = WeightedLinearPolicy.OBS_NAMES
     steer_w    = np.array([cfg["steer_weights"][n]    for n in obs_names])
     throttle_w = np.array([cfg["throttle_weights"][n] for n in obs_names])
@@ -427,9 +430,10 @@ def plot_weight_evolution(data: ExperimentData, results_dir: str) -> None:
     import matplotlib.pyplot as plt
     from policies import WeightedLinearPolicy
 
-    sims = [s for s in data.greedy_sims if s.weights is not None]
+    sims = [s for s in data.greedy_sims
+            if s.weights is not None and "steer_weights" in s.weights]
     if len(sims) < 2:
-        return
+        return  # no WLP weight data (non-linear policy type) — skip evolution plot
 
     obs_names = WeightedLinearPolicy.OBS_NAMES
     xs = [s.sim for s in sims]

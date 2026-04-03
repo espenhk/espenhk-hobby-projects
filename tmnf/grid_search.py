@@ -42,6 +42,15 @@ _ABBREV = {
     "probe_s":         "probe",
     "cold_restarts":   "cr",
     "cold_sims":       "cs",
+    "policy_type":     "pt",
+    # genetic policy params
+    "population_size": "pop",
+    "elite_k":         "ek",
+    # epsilon-greedy params
+    "epsilon":         "eps",
+    "epsilon_decay":   "ed",
+    # mcts params
+    "mcts_c":          "mc",
     # reward params
     "progress_weight": "pw",
     "centerline_weight": "cw",
@@ -210,6 +219,8 @@ def main():
             no_interrupt=args.no_interrupt,
             n_lidar_rays=t.get("n_lidar_rays", 0),
             re_initialize=args.re_initialize,
+            policy_type=t.get("policy_type", "hill_climbing"),
+            policy_params=t.get("policy_params") or {},
         )
 
         save_experiment_results(data, results_dir=f"{experiment_dir}/results")
