@@ -34,8 +34,8 @@ training_params:
 
   # --- Search axes ---
   elite_k: [3, 5]
-  population_size: [10, 20]
-  mutation_scale: [0.01, 0.02, 0.05]
+  population_size: 20
+  mutation_scale: [0.01, 0.05]
 
 reward_params:
   progress_weight: 10000.0
