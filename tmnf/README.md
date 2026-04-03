@@ -1,6 +1,6 @@
 # TMNF — Trackmania Nations Forever RL
 
-Hill-climbing agent for A03 using a `WeightedLinearPolicy`. See the root `CLAUDE.md` for full architecture documentation.
+Hill-climbing / evolutionary / Q-learning agent for A03. See the root `CLAUDE.md` for full architecture documentation.
 
 ---
 
@@ -8,13 +8,107 @@ Hill-climbing agent for A03 using a `WeightedLinearPolicy`. See the root `CLAUDE
 
 ```bash
 # Single experiment
-python main.py <experiment_name> [--no-interrupt]
+python main.py <experiment_name> [--no-interrupt] [--re-initialize]
 
 # Grid search over multiple param combinations
 python grid_search.py config/my_grid.yaml [--no-interrupt]
 ```
 
 Results land in `experiments/<name>/results/`.
+
+`--re-initialize` ignores any existing weights file and reruns probe + cold-start from scratch.
+
+---
+
+## Configuring a run
+
+On first run, `config/training_params.yaml` is copied into `experiments/<name>/training_params.yaml`. Edit the experiment copy to tune without affecting other experiments.
+
+```yaml
+speed: 10.0
+in_game_episode_s: 13.0
+n_sims: 10
+mutation_scale: 0.05
+probe_s: 8.0
+cold_restarts: 20
+cold_sims: 5
+n_lidar_rays: 8          # 0 = disabled
+
+policy_type: hill_climbing   # see Policy types below
+
+policy_params:
+  # type-specific hyperparams (see below)
+```
+
+---
+
+## Policy types
+
+Set `policy_type` in `training_params.yaml`. Each type uses the same `n_sims` budget but runs a different training loop.
+
+| `policy_type` | Algorithm | Notes |
+|---|---|---|
+| `hill_climbing` | Mutate-and-keep `WeightedLinearPolicy` | Default. Includes probe + cold-start phases. |
+| `neural_net` | Mutate-and-keep `NeuralNetPolicy` (MLP) | Pure numpy, no framework needed. Configure `hidden_sizes`. |
+| `epsilon_greedy` | Tabular Q-learning, ε-greedy exploration | ε decays per episode. Q-table is in-memory only. |
+| `mcts` | UCT-style online Q-learner (UCB1) | Approximation — no env cloning, builds value table over real episodes. |
+| `genetic` | Population of `WeightedLinearPolicy`, evolutionary | `n_sims` = number of generations; total episodes = `n_sims × population_size`. |
+
+### Policy-specific params
+
+```yaml
+# neural_net
+policy_params:
+  hidden_sizes: [16, 16]
+
+# epsilon_greedy
+policy_params:
+  n_bins: 3
+  epsilon: 1.0
+  epsilon_decay: 0.995
+  epsilon_min: 0.05
+  alpha: 0.1
+  gamma: 0.99
+
+# mcts
+policy_params:
+  n_bins: 3
+  c: 1.41        # UCB1 exploration constant
+  alpha: 0.1
+  gamma: 0.99
+
+# genetic
+policy_params:
+  population_size: 10
+  elite_k: 3
+  # mutation_scale inherited from top-level
+```
+
+### Training phases (hill_climbing only)
+
+1. **Probe** — runs each of the 9 actions for `probe_s` seconds to establish a reward floor.
+2. **Cold-start search** — up to `cold_restarts` rounds of random-init hill-climbing, `cold_sims` sims each. Stops early if the floor is beaten.
+3. **Greedy** — `n_sims` iterations of mutate-and-keep.
+
+All other policy types skip probe and cold-start and go straight to greedy.
+
+### Episode warmup
+
+The first 150 steps of every episode force full-throttle straight (`accel + straight`) regardless of the policy. This covers the braking-start phase so the policy's Q-table / weights are not poisoned by forced behaviour.
+
+---
+
+## LIDAR
+
+Set `n_lidar_rays > 0` to append wall-distance observations from a screenshot-based LIDAR sensor. The `LidarSensor` class:
+
+- Captures the game window via MSS
+- Converts to a 128×32 binary edge image (grayscale → threshold → Canny → dilate → blur)
+- Raycasts `n_lidar_rays` evenly spaced angles from 0 to π, returning normalised distances in ~[0, 1]
+
+LIDAR rays are appended to the observation vector. All policies handle variable-length observations automatically; `WeightedLinearPolicy` auto-migrates existing weights files to add new LIDAR keys (initialised to 0.0).
+
+Requires: `mss`, `opencv-python`, `pywin32`.
 
 ---
 
