@@ -2,6 +2,9 @@ import argparse
 import os
 import shutil
 import time
+import yaml
+import numpy as np
+import datetime
 
 from tminterface.interface import TMInterface
 
@@ -15,7 +18,17 @@ from policies import (
     MCTSPolicy,
     GeneticPolicy,
 )
-
+from rl.env import TMNFEnv
+from rl.reward import RewardConfig
+from analytics import (
+    ProbeResult,
+    RunTrace,
+    ColdStartSimResult,
+    ColdStartRestartResult,
+    GreedySimResult,
+    ExperimentData,
+    save_experiment_results
+)
 
 def run_adaptive(speed):
     """Follow the centreline using the hand-tuned PD controller."""
@@ -38,8 +51,6 @@ def run_adaptive(speed):
 # ---------------------------------------------------------------------------
 
 def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0):
-    from rl.env import TMNFEnv
-    from rl.reward import RewardConfig
 
     return TMNFEnv(
         centerline_file="tracks/a03_centerline.npy",
@@ -74,7 +85,6 @@ def _make_policy(
     re_initialize: bool,
 ) -> BasePolicy:
     """Construct the appropriate policy given type, file, and hyperparams."""
-    import yaml
 
     if policy_type == "hill_climbing":
         if os.path.exists(weights_file) and not re_initialize:
@@ -138,7 +148,6 @@ def _make_policy(
 # ---------------------------------------------------------------------------
 
 def _run_probes(env, probe_in_game_s: float, speed: float):
-    from analytics import ProbeResult
     saved_limit = env._max_episode_time_s
     env._max_episode_time_s = probe_in_game_s / speed
 
@@ -191,7 +200,6 @@ def _run_episode(env, policy, obs):
         total_steps     — int
         trace           — RunTrace
     """
-    from analytics import RunTrace
 
     total_reward = 0.0
     steps = 0
@@ -301,7 +309,6 @@ def _cold_start_search(
     Stops early if a policy beats probe_best_reward.
     Returns (best_policy, best_reward, restart_results) across all restarts.
     """
-    from analytics import ColdStartSimResult, ColdStartRestartResult
 
     overall_best_policy = None
     overall_best_reward = float("-inf")
@@ -312,7 +319,6 @@ def _cold_start_search(
     print(f"  Target to beat: {probe_best_reward:+.1f}  (best probe reward)")
     print(f"{'='*60}")
 
-    import numpy as np
 
     for restart in range(1, n_restarts + 1):
         print(f"\n  -- Restart {restart}/{n_restarts}: random init --")
@@ -395,7 +401,6 @@ def _greedy_loop_hill_climb(
     Mutate the current best policy, evaluate, keep if improved.
     Returns (best_policy, best_reward, greedy_sims).
     """
-    from analytics import GreedySimResult
 
     greedy_sims = []
     try:
@@ -443,7 +448,6 @@ def _greedy_loop_q_learning(
     No mutation is performed; the policy itself is the state that improves over time.
     Returns (policy, best_reward, greedy_sims).
     """
-    from analytics import GreedySimResult
 
     best_reward = float("-inf")
     greedy_sims = []
@@ -491,7 +495,6 @@ def _greedy_loop_genetic(
     Total episodes = n_generations × population_size.
     Returns (policy, best_reward, greedy_sims).
     """
-    from analytics import GreedySimResult
 
     pop_size    = len(policy._population)
     best_reward = policy._champion_reward
@@ -570,8 +573,6 @@ def train_rl(
 
     Returns an ExperimentData object with all collected metrics.
     """
-    import datetime
-    from analytics import ExperimentData, GreedySimResult
 
     policy_params = policy_params or {}
     t_start = datetime.datetime.now()
@@ -708,7 +709,6 @@ def main():
         shutil.copy("config/training_params.yaml", training_params_file)
         print(f"  Copied master training params → {training_params_file}")
 
-    import yaml
     with open(training_params_file) as f:
         p = yaml.safe_load(f)
 
@@ -731,7 +731,6 @@ def main():
         policy_params=p.get("policy_params") or {},
     )
 
-    from analytics import save_experiment_results
     save_experiment_results(data, results_dir=f"{experiment_dir}/results")
 
 

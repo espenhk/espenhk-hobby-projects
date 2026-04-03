@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import List
+from utils import steer_percent
 
 
 @dataclass
@@ -52,7 +53,6 @@ def parse_instructions(path: str) -> List[Instruction]:
 
 def apply_action(action: str, state: InputState) -> None:
     """Mutate InputState according to the given action string."""
-    from utils import steer_percent
 
     match action:
         case "press up":

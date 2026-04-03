@@ -13,6 +13,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.cm as cm
+import numpy as np
+import yaml
+from policies import WeightedLinearPolicy
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +91,6 @@ class ExperimentData:
 
 def _save(fig, path: str) -> None:
     fig.savefig(path, dpi=150, bbox_inches="tight")
-    import matplotlib.pyplot as plt
     plt.close(fig)
 
 
@@ -112,7 +117,6 @@ def _probe_table_md(data: ExperimentData) -> str:
 
 
 def plot_probe_rewards(data: ExperimentData, results_dir: str) -> None:
-    import matplotlib.pyplot as plt
 
     probes = sorted(data.probe_results, key=lambda p: p.action_idx)
     names  = [p.action_name for p in probes]
@@ -163,7 +167,6 @@ def _cold_start_table_md(data: ExperimentData) -> str:
 
 
 def plot_cold_start_rewards(data: ExperimentData, results_dir: str) -> None:
-    import matplotlib.pyplot as plt
 
     restarts = data.cold_start_restarts
     xs      = [r.restart for r in restarts]
@@ -178,7 +181,6 @@ def plot_cold_start_rewards(data: ExperimentData, results_dir: str) -> None:
                    linewidth=1.4, label=f"probe floor ({data.probe_floor:+.1f})")
 
     # legend patches for beat/miss
-    import matplotlib.patches as mpatches
     ax.legend(handles=[
         mpatches.Patch(color="#27ae60", label="beat probe floor"),
         mpatches.Patch(color="#c0392b", label="below probe floor"),
@@ -200,8 +202,6 @@ def plot_cold_start_rewards(data: ExperimentData, results_dir: str) -> None:
 
 def plot_cold_start_action_dist(data: ExperimentData, results_dir: str) -> None:
     """Stacked bar: mean throttle distribution (brake/coast/accel) per restart."""
-    import matplotlib.pyplot as plt
-    import numpy as np
 
     restarts = data.cold_start_restarts
     xs = [r.restart for r in restarts]
@@ -252,8 +252,6 @@ def _greedy_table_md(data: ExperimentData) -> str:
 
 
 def plot_greedy_rewards(data: ExperimentData, results_dir: str) -> None:
-    import matplotlib.pyplot as plt
-    import numpy as np
 
     sims    = [s.sim for s in data.greedy_sims]
     rewards = [s.reward for s in data.greedy_sims]
@@ -290,8 +288,6 @@ def plot_greedy_rewards(data: ExperimentData, results_dir: str) -> None:
 
 def plot_greedy_action_dist(data: ExperimentData, results_dir: str) -> None:
     """100% stacked bar: throttle mix per greedy sim — shows if policy shifts toward accel."""
-    import matplotlib.pyplot as plt
-    import numpy as np
 
     sims = data.greedy_sims
     xs   = [s.sim for s in sims]
@@ -320,7 +316,6 @@ def plot_greedy_action_dist(data: ExperimentData, results_dir: str) -> None:
 
 def plot_reward_trajectory(data: ExperimentData, results_dir: str) -> None:
     """All-phases best reward on a single cumulative-sim axis."""
-    import matplotlib.pyplot as plt
 
     xs, ys, colors = [], [], []
     x = 0
@@ -366,7 +361,6 @@ def plot_reward_trajectory(data: ExperimentData, results_dir: str) -> None:
     if cs_total > 0 and data.greedy_sims:
         ax.axvline(boundary + cs_total - 0.5, color="#9b59b6", linestyle=":", linewidth=1, alpha=0.6)
 
-    import matplotlib.patches as mpatches
     legend_patches = []
     if data.probe_results:
         legend_patches.append(mpatches.Patch(color="#3498db", label="probe"))
@@ -386,10 +380,6 @@ def plot_reward_trajectory(data: ExperimentData, results_dir: str) -> None:
 
 def plot_weight_heatmap(data: ExperimentData, results_dir: str) -> None:
     """2×15 heatmap of steer/throttle weights from the saved policy YAML."""
-    import yaml
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from policies import WeightedLinearPolicy
 
     if not os.path.exists(data.weights_file):
         return
@@ -426,9 +416,6 @@ def plot_weight_evolution(data: ExperimentData, results_dir: str) -> None:
     Each feature gets one line per sub-plot (steer top, throttle bottom).
     Iterations where the policy improved are marked with a vertical grey band.
     """
-    import numpy as np
-    import matplotlib.pyplot as plt
-    from policies import WeightedLinearPolicy
 
     sims = [s for s in data.greedy_sims
             if s.weights is not None and "steer_weights" in s.weights]
@@ -484,9 +471,6 @@ def _plot_throttle_trace(ax, throttle_state: list, title: str) -> None:
 
 def plot_probe_paths(data: ExperimentData, results_dir: str) -> None:
     """One path per probe action, all overlaid on a single bird's-eye plot."""
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import numpy as np
 
     probes = [p for p in sorted(data.probe_results, key=lambda p: p.action_idx)
               if p.trace and p.trace.pos_x]
@@ -524,7 +508,6 @@ def _best_cold_start_trace(data: ExperimentData):
 
 def plot_cold_start_best_run(data: ExperimentData, results_dir: str) -> None:
     """Path + throttle trace for the best cold-start sim."""
-    import matplotlib.pyplot as plt
 
     trace = _best_cold_start_trace(data)
     if not trace or not trace.pos_x:
@@ -549,7 +532,6 @@ def plot_cold_start_best_run(data: ExperimentData, results_dir: str) -> None:
 
 def plot_greedy_best_run(data: ExperimentData, results_dir: str) -> None:
     """Path + throttle trace for the highest-reward greedy sim."""
-    import matplotlib.pyplot as plt
 
     if not data.greedy_sims:
         return
@@ -606,7 +588,6 @@ def _timings_md(data: ExperimentData) -> str:
 
 
 def _summary_md(data: ExperimentData) -> str:
-    import yaml
 
     lines = ["## Run Parameters\n\n"]
 
@@ -643,7 +624,6 @@ def plot_greedy_progress(data: ExperimentData, results_dir: str) -> None:
     Effective progress = laps_completed + final_track_progress, so finishing
     one full lap and then reaching 50% of lap 2 = 1.5.
     """
-    import matplotlib.pyplot as plt
 
     sims = data.greedy_sims
     xs   = [s.sim for s in sims]
@@ -769,9 +749,6 @@ def plot_gs_comparison_rewards(
     summary_dir: str,
 ) -> None:
     """Horizontal bar chart of best greedy reward per experiment, sorted descending."""
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import numpy as np
 
     runs_sorted = sorted(runs, key=lambda x: x[1]["best_reward"])
     names   = [r[0] for r in runs_sorted]
@@ -799,9 +776,6 @@ def plot_gs_comparison_paths(
     summary_dir: str,
 ) -> None:
     """All experiments' best-run paths overlaid; coloured green→red by reward rank."""
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import numpy as np
 
     # Filter to runs that have a usable trace in the best greedy sim
     traced = []
@@ -843,9 +817,6 @@ def plot_gs_comparison_progress(
     Shows how quickly and how far each configuration's policy learned to drive.
     Coloured green→red by final best progress (green = furthest).
     """
-    import matplotlib.pyplot as plt
-    import matplotlib.cm as cm
-    import numpy as np
 
     # Compute best-so-far progress series per experiment
     series = []
@@ -956,11 +927,10 @@ def save_grid_summary(
 
         # Varied-param values for this experiment
         if varied_keys and data.training_params:
-            import yaml as _yaml
             reward_cfg = {}
             if os.path.exists(data.reward_config_file):
                 with open(data.reward_config_file) as f:
-                    reward_cfg = _yaml.safe_load(f) or {}
+                    reward_cfg = yaml.safe_load(f) or {}
             all_params = {**data.training_params, **reward_cfg}
 
             lines.append("| Param | Value |\n|---|---|\n")

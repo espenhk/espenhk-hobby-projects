@@ -27,6 +27,8 @@ import itertools
 import os
 
 import yaml
+from analytics import save_experiment_results, save_grid_summary
+from main import train_rl
 
 
 # ---------------------------------------------------------------------------
@@ -178,8 +180,6 @@ def main():
         print(f"  {name}")
     print()
 
-    from analytics import save_experiment_results, save_grid_summary
-    from main import train_rl
 
     all_runs = []   # list of (name, ExperimentData) for the summary
 
