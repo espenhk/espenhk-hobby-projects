@@ -174,6 +174,7 @@ class TMNFEnv(gym.Env):
         self._elapsed_s = time.monotonic() - self._episode_start_s
 
         accelerating = ACTIONS[action][0]  # first element is the accelerate bool
+        lidar_rays = self._lidar.get_distances() if self._lidar is not None else None
 
         reward = self._reward_calc.compute(
             prev=self._prev_state,
@@ -181,6 +182,7 @@ class TMNFEnv(gym.Env):
             finished=finished,
             elapsed_s=self._elapsed_s,
             accelerating=accelerating,
+            lidar_rays=lidar_rays,
         )
 
         time_over = self._elapsed_s > self._max_episode_time_s

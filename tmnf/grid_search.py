@@ -45,12 +45,18 @@ _ABBREV = {
     "cold_restarts":   "cr",
     "cold_sims":       "cs",
     "policy_type":     "pt",
+    # neural_net policy params
+    "hidden_sizes":    "hs",
     # genetic policy params
     "population_size": "pop",
     "elite_k":         "ek",
     # epsilon-greedy params
     "epsilon":         "eps",
     "epsilon_decay":   "ed",
+    "epsilon_min":     "emin",
+    "alpha":           "alpha",
+    "gamma":           "gamma",
+    "n_bins":          "bins",
     # mcts params
     "mcts_c":          "mc",
     # reward params
@@ -65,6 +71,23 @@ _ABBREV = {
     "accel_bonus":     "ab",
     "airborne_penalty": "ap",
     "crash_threshold_m": "ct",
+    "lidar_wall_weight": "lww",
+}
+
+# Top-level training_params keys that should be forwarded into policy_params.
+# Allows grid axes like `epsilon: [0.5, 1.0]` without nesting inside policy_params.
+# mcts_c is renamed to c because that's what MCTSPolicy.from_cfg expects.
+_POLICY_PARAM_MAP = {
+    "hidden_sizes":    "hidden_sizes",   # neural_net
+    "epsilon":         "epsilon",        # epsilon_greedy
+    "epsilon_decay":   "epsilon_decay",  # epsilon_greedy
+    "epsilon_min":     "epsilon_min",    # epsilon_greedy
+    "alpha":           "alpha",          # epsilon_greedy / mcts
+    "gamma":           "gamma",          # epsilon_greedy / mcts
+    "n_bins":          "n_bins",         # epsilon_greedy / mcts
+    "mcts_c":          "c",              # mcts (renamed)
+    "population_size": "population_size", # genetic
+    "elite_k":         "elite_k",        # genetic
 }
 
 
@@ -148,6 +171,28 @@ def _expand_grid(training_spec: dict, reward_spec: dict) -> list[dict]:
 
 
 # ---------------------------------------------------------------------------
+# Policy param helpers
+# ---------------------------------------------------------------------------
+
+def _build_policy_params(t: dict) -> dict:
+    """
+    Build the policy_params dict for train_rl from a training combo.
+
+    Policy-specific hyperparams can be specified in two ways in a grid config:
+      1. Nested:   policy_params: {epsilon: 0.5}  (passes through as-is)
+      2. Top-level: epsilon: 0.5                  (promoted via _POLICY_PARAM_MAP)
+
+    Top-level keys take precedence so that grid search axes like
+    `epsilon: [0.5, 1.0]` work without nesting inside policy_params.
+    """
+    params = dict(t.get("policy_params") or {})
+    for tkey, pkey in _POLICY_PARAM_MAP.items():
+        if tkey in t:
+            params[pkey] = t[tkey]
+    return params
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
@@ -198,9 +243,14 @@ def main():
 
         os.makedirs(experiment_dir, exist_ok=True)
 
-        # Always write both configs from the combo values (overwrite if exists)
+        # Write reward config: master defaults merged with combo overrides.
+        # This ensures params not listed in the grid config (e.g. lidar_wall_weight)
+        # still get their master-config values rather than silently defaulting.
+        with open("config/reward_config.yaml") as f:
+            reward_cfg = yaml.safe_load(f) or {}
+        reward_cfg.update(r)
         with open(reward_cfg_file, "w") as f:
-            yaml.dump(r, f, default_flow_style=False, sort_keys=False)
+            yaml.dump(reward_cfg, f, default_flow_style=False, sort_keys=False)
         with open(training_params_file, "w") as f:
             yaml.dump(t, f, default_flow_style=False, sort_keys=False)
 
@@ -220,7 +270,7 @@ def main():
             n_lidar_rays=t.get("n_lidar_rays", 0),
             re_initialize=args.re_initialize,
             policy_type=t.get("policy_type", "hill_climbing"),
-            policy_params=t.get("policy_params") or {},
+            policy_params=_build_policy_params(t),
         )
 
         save_experiment_results(data, results_dir=f"{experiment_dir}/results")

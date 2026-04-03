@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
 import yaml
 
 from utils import StateData
@@ -57,6 +58,13 @@ class RewardConfig:
     # vertical_offset ≤ 0 with few wheel contacts means the car has fallen off or gone sideways.
     airborne_penalty: float = -1.0
 
+    # --- Lidar wall proximity ---
+    # Penalty = lidar_wall_weight * (1 - min_ray)^2, where min_ray is the nearest wall distance.
+    # Lidar rays are normalised to [0, 1]: 0 = wall right there, 1 = wall far away.
+    # Quadratic factor: small drifts toward walls are forgiven, hugging a wall is heavily penalised.
+    # Set to 0.0 to disable (e.g. when n_lidar_rays=0).
+    lidar_wall_weight: float = 0.0
+
     # --- Episode termination threshold ---
     # The env ends the episode when |lateral_offset| exceeds this (in metres).
     crash_threshold_m: float = 10.0
@@ -81,6 +89,7 @@ class RewardCalculator:
         finished: bool,
         elapsed_s: float,
         accelerating: bool = False,
+        lidar_rays: np.ndarray | None = None,
     ) -> float:
         cfg = self.config
         reward = 0.0
@@ -117,5 +126,10 @@ class RewardCalculator:
             # vertical_offset > 0 → car is above centerline → legitimate jump → no penalty
             if airborne and curr.vertical_offset <= 0.0:
                 reward += cfg.airborne_penalty
+
+        # Lidar wall proximity: quadratic penalty for the nearest detected wall.
+        if lidar_rays is not None and len(lidar_rays) > 0 and cfg.lidar_wall_weight != 0.0:
+            min_ray = float(np.min(lidar_rays))
+            reward += cfg.lidar_wall_weight * (1.0 - min_ray) ** 2
 
         return reward

@@ -28,5 +28,10 @@ accel_bonus: 0.5
 # --- Airborne penalty (below/beside centerline only) ---
 airborne_penalty: -1.0
 
+# --- Lidar wall proximity ---
+# penalty = lidar_wall_weight * (1 - min_ray)^2  (negative weight → closer = worse)
+# Set to 0.0 to disable when not using lidar rays.
+lidar_wall_weight: -5.0
+
 # --- Episode termination ---
 crash_threshold_m: 25.0
