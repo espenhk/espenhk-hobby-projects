@@ -168,7 +168,7 @@ class TMNFEnv(gym.Env):
         step = self._client.get_step_state()
 
         data = step.state_data
-        finished = data.track_progress is not None and data.track_progress >= 1.0
+        finished = step.finished or (data.track_progress is not None and data.track_progress >= 1.0)
         crashed  = (data.lateral_offset is not None
                     and abs(data.lateral_offset) > self._reward_config.crash_threshold_m)
         self._elapsed_s = time.monotonic() - self._episode_start_s

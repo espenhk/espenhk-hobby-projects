@@ -70,6 +70,7 @@ class StepState:
     state_data: StateData
     yaw_error: float   # signed radians: track heading minus car heading, in [-π, π]
     done: bool         # True if game client detected a hard termination condition
+    finished: bool = False  # True when car crossed the finish line
 
 
 class RLClient(Client):
@@ -99,6 +100,7 @@ class RLClient(Client):
         # The game thread acts on it the following tick, so the finish step
         # is delivered to the RL thread before the respawn is triggered.
         self._finish_respawn_pending: bool = False
+        self._last_step_state: StepState | None = None
 
     # ------------------------------------------------------------------
     # RL-thread API
@@ -153,6 +155,27 @@ class RLClient(Client):
         print(f"Connected. RLClient running at {self.speed}x speed.")
         iface.execute_command(f"set speed {self.speed}")
         self._registered_event.set()
+
+    def on_simulation_begin(self, iface: TMInterface) -> None:
+        """Fires when TMInterface starts replay validation after the car finishes.
+        If we were in RUNNING phase, treat it as a finish event and deliver a
+        synthetic finish step so the RL thread is not left waiting indefinitely."""
+        if self._phase != Phase.RUNNING:
+            return  # Our own give_up() respawn — ignore
+        if self._last_step_state is None:
+            return  # No cached state to synthesize from
+        synthetic = StepState(
+            state_data=self._last_step_state.state_data,
+            yaw_error=self._last_step_state.yaw_error,
+            done=False,
+            finished=True,
+        )
+        self._drain_and_put(synthetic)
+        if self._auto_respawn_on_finish:
+            # Mark pending so the first on_run_step of the replay calls give_up().
+            self._finish_respawn_pending = True
+        # Non-auto-respawn: RL thread sees finished=True → terminated=True →
+        # calls reset() → request_respawn() → _respawn_event → on_run_step give_up()
 
     def on_run_step(self, iface: TMInterface, _time: int) -> None:
         # Handle a pending respawn request from the RL thread.
@@ -213,6 +236,7 @@ class RLClient(Client):
                     state_data=data,
                     yaw_error=self._compute_yaw_error(state, data),
                     done=done,
+                    finished=finished,
                 )
                 self._drain_and_put(step_state)
 
@@ -222,6 +246,7 @@ class RLClient(Client):
 
     def _drain_and_put(self, step_state: StepState) -> None:
         """Replace any unread state in the queue with the newest one."""
+        self._last_step_state = step_state
         try:
             self._state_queue.get_nowait()
         except queue.Empty:
