@@ -42,6 +42,11 @@ _UP = np.array([0.0, 1.0, 0.0])
 # This is a safety net — the env's crash_threshold_m (default 10 m) triggers first.
 _HARD_CRASH_THRESHOLD_M = 50.0
 
+# Finish is detected when track_progress reaches this threshold.
+# Slightly below 1.0 to catch cases where the game rounds or caps progress
+# just before the exact finish line value.
+_FINISH_THRESHOLD = 0.98
+
 
 # ---------------------------------------------------------------------------
 # Discrete action table
@@ -102,6 +107,13 @@ class RLClient(Client):
         self._finish_respawn_pending: bool = False
         self._last_step_state: StepState | None = None
 
+        # Guards against delivering multiple finish steps during replay
+        # validation (on_simulation_step fires every tick during that phase).
+        self._simulation_finish_delivered: bool = False
+
+        # Debug: tick counter for periodic logging
+        self._tick: int = 0
+
     # ------------------------------------------------------------------
     # RL-thread API
     # ------------------------------------------------------------------
@@ -132,6 +144,7 @@ class RLClient(Client):
     def request_respawn(self) -> None:
         """Signal the game thread to respawn the car. Call before wait_episode_ready()."""
         self._episode_ready.clear()
+        self._simulation_finish_delivered = False
         self._respawn_event.set()
 
     def wait_episode_ready(self) -> StepState:
@@ -152,18 +165,28 @@ class RLClient(Client):
     # ------------------------------------------------------------------
 
     def on_registered(self, iface: TMInterface) -> None:
-        print(f"Connected. RLClient running at {self.speed}x speed.")
+        print(f"[RLClient] Connected. Running at {self.speed}x speed.")
         iface.execute_command(f"set speed {self.speed}")
         self._registered_event.set()
 
-    def on_simulation_begin(self, iface: TMInterface) -> None:
-        """Fires when TMInterface starts replay validation after the car finishes.
-        If we were in RUNNING phase, treat it as a finish event and deliver a
-        synthetic finish step so the RL thread is not left waiting indefinitely."""
+    def on_simulation_step(self, iface: TMInterface, _time: int) -> None:
+        """Fires every tick during replay validation (after race finish).
+        Unlike on_simulation_begin (one-shot), this fires repeatedly so a
+        drain+overwrite race between on_run_step and the RL thread cannot
+        cause the finish step to be lost."""
+        print(f"[RLClient] on_simulation_step t={_time} phase={self._phase.name} "
+              f"delivered={self._simulation_finish_delivered} "
+              f"last_state={'yes' if self._last_step_state else 'no'}")
+
         if self._phase != Phase.RUNNING:
-            return  # Our own give_up() respawn — ignore
+            print(f"[RLClient] on_simulation_step: not RUNNING — ignoring")
+            return
+        if self._simulation_finish_delivered:
+            return  # already delivered; wait for respawn
         if self._last_step_state is None:
-            return  # No cached state to synthesize from
+            print(f"[RLClient] on_simulation_step: no last_step_state — cannot synthesize")
+            return
+
         synthetic = StepState(
             state_data=self._last_step_state.state_data,
             yaw_error=self._last_step_state.yaw_error,
@@ -171,16 +194,20 @@ class RLClient(Client):
             finished=True,
         )
         self._drain_and_put(synthetic)
+        self._simulation_finish_delivered = True
+        print(f"[RLClient] on_simulation_step: delivered synthetic finish step")
+
         if self._auto_respawn_on_finish:
-            # Mark pending so the first on_run_step of the replay calls give_up().
             self._finish_respawn_pending = True
-        # Non-auto-respawn: RL thread sees finished=True → terminated=True →
-        # calls reset() → request_respawn() → _respawn_event → on_run_step give_up()
+            print(f"[RLClient] on_simulation_step: auto-respawn pending set")
 
     def on_run_step(self, iface: TMInterface, _time: int) -> None:
+        self._tick += 1
+
         # Handle a pending respawn request from the RL thread.
         if self._respawn_event.is_set():
             self._respawn_event.clear()
+            print(f"[RLClient] on_run_step t={_time}: respawn triggered → give_up()")
             iface.give_up()
             self._phase = Phase.BRAKING_START
             return
@@ -189,10 +216,15 @@ class RLClient(Client):
         data = StateData(state, centerline=self.centerline)
         speed_ms = data.velocity.magnitude()
 
+        if self._tick % 100 == 0:
+            print(f"[RLClient] tick={self._tick} t={_time} phase={self._phase.name} "
+                  f"speed={speed_ms:.2f}m/s progress={data.track_progress}")
+
         match self._phase:
             case Phase.BRAKING_START:
                 iface.set_input_state(brake=True)
                 if speed_ms < VELOCITY_ZERO_THRESHOLD:
+                    print(f"[RLClient] on_run_step t={_time}: BRAKING_START → RUNNING (episode ready)")
                     self._phase = Phase.RUNNING
                     step_state = StepState(
                         state_data=data,
@@ -208,6 +240,7 @@ class RLClient(Client):
                 if self._finish_respawn_pending:
                     self._finish_respawn_pending = False
                     self._episode_ready.clear()
+                    print(f"[RLClient] on_run_step t={_time}: executing pending finish respawn → give_up()")
                     iface.give_up()   # restart race from position zero
                     self._phase = Phase.BRAKING_START
                     return
@@ -221,14 +254,20 @@ class RLClient(Client):
                     steer=int(steer_pct / 100 * 65536),
                 )
 
-                finished  = data.track_progress is not None and data.track_progress >= 1.0
+                finished  = data.track_progress is not None and data.track_progress >= _FINISH_THRESHOLD
                 hard_crash = (data.lateral_offset is not None
                               and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M)
+
+                if finished:
+                    print(f"[RLClient] on_run_step t={_time}: finish detected "
+                          f"(progress={data.track_progress:.4f} >= {_FINISH_THRESHOLD}) "
+                          f"auto_respawn={self._auto_respawn_on_finish}")
 
                 if finished and self._auto_respawn_on_finish:
                     # Deliver the finish step with done=False; respawn next tick.
                     self._finish_respawn_pending = True
                     done = False
+                    print(f"[RLClient] on_run_step t={_time}: auto-respawn pending set")
                 else:
                     done = finished or hard_crash
 
@@ -251,6 +290,9 @@ class RLClient(Client):
             self._state_queue.get_nowait()
         except queue.Empty:
             pass
+        print(f"[RLClient] _drain_and_put: finished={step_state.finished} "
+              f"done={step_state.done} "
+              f"progress={step_state.state_data.track_progress}")
         self._state_queue.put(step_state)
 
     def _compute_yaw_error(self, raw_state: Any, data: StateData) -> float:
