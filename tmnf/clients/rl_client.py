@@ -25,7 +25,6 @@ import math
 import queue
 import threading
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 from tminterface.client import Client
@@ -33,7 +32,7 @@ from tminterface.interface import TMInterface
 
 from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD
 from track import Centerline
-from utils import StateData, get_position
+from utils import StateData
 
 
 _UP = np.array([0.0, 1.0, 0.0])
@@ -196,7 +195,7 @@ class RLClient(Client):
                     self._phase = Phase.RUNNING
                     step_state = StepState(
                         state_data=data,
-                        yaw_error=self._compute_yaw_error(state, data),
+                        yaw_error=self._compute_yaw_error(data),
                         done=False,
                     )
                     self._drain_and_put(step_state)
@@ -234,7 +233,7 @@ class RLClient(Client):
 
                 step_state = StepState(
                     state_data=data,
-                    yaw_error=self._compute_yaw_error(state, data),
+                    yaw_error=self._compute_yaw_error(data),
                     done=done,
                     finished=finished,
                 )
@@ -253,10 +252,13 @@ class RLClient(Client):
             pass
         self._state_queue.put(step_state)
 
-    def _compute_yaw_error(self, raw_state: Any, data: StateData) -> float:
-        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
-        pos = get_position(raw_state)
-        track_fwd = self.centerline.forward_at(pos)
+    def _compute_yaw_error(self, data: StateData) -> float:
+        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π].
+
+        Uses the forward direction already computed by StateData.project_with_forward()
+        — no second centerline scan needed.
+        """
+        track_fwd = data.track_forward
         track_yaw = math.atan2(float(track_fwd[0]), float(track_fwd[2]))
         car_yaw = data.rotation.yaw()
         diff = (track_yaw - car_yaw + math.pi) % (2 * math.pi) - math.pi
