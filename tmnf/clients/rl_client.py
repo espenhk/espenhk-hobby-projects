@@ -101,6 +101,12 @@ class RLClient(Client):
         self._finish_respawn_pending: bool = False
         self._last_step_state: StepState | None = None
 
+        # Cached nearest centerline index from the previous tick.  Passed as
+        # hint_idx to project_with_forward() so it only searches a local window
+        # (O(window)) instead of the full centerline (O(N)) every tick.
+        # Reset to None on respawn so the first tick does a full scan.
+        self._last_centerline_idx: int | None = None
+
     # ------------------------------------------------------------------
     # RL-thread API
     # ------------------------------------------------------------------
@@ -182,10 +188,13 @@ class RLClient(Client):
             self._respawn_event.clear()
             iface.give_up()
             self._phase = Phase.BRAKING_START
+            self._last_centerline_idx = None  # full scan on next tick after respawn
             return
 
         state = iface.get_simulation_state()
-        data = StateData(state, centerline=self.centerline)
+        data = StateData(state, centerline=self.centerline,
+                         hint_idx=self._last_centerline_idx)
+        self._last_centerline_idx = data._centerline_idx
         speed_ms = data.velocity.magnitude()
 
         match self._phase:
