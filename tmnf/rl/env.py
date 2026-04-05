@@ -183,6 +183,7 @@ class TMNFEnv(gym.Env):
             elapsed_s=self._elapsed_s,
             accelerating=accelerating,
             lidar_rays=lidar_rays,
+            n_ticks=step.ticks_this_step,
         )
 
         time_over = self._elapsed_s > self._max_episode_time_s

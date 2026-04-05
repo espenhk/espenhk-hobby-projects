@@ -70,6 +70,7 @@ class StepState:
     yaw_error: float   # signed radians: track heading minus car heading, in [-π, π]
     done: bool         # True if game client detected a hard termination condition
     finished: bool = False  # True when car crossed the finish line
+    ticks_this_step: int = 1  # game ticks covered by this RL step (≥1; >1 when events were skipped)
 
 
 class RLClient(Client):
@@ -253,10 +254,16 @@ class RLClient(Client):
     # ------------------------------------------------------------------
 
     def _drain_and_put(self, step_state: StepState) -> None:
-        """Replace any unread state in the queue with the newest one."""
+        """Replace any unread state in the queue with the newest one.
+
+        If the RL thread hadn't yet read the previous state, carry its tick
+        count forward so the new state's ticks_this_step reflects every game
+        tick that fired since the last successful read.
+        """
         self._last_step_state = step_state
         try:
-            self._state_queue.get_nowait()
+            evicted = self._state_queue.get_nowait()
+            step_state.ticks_this_step += evicted.ticks_this_step
         except queue.Empty:
             pass
         self._state_queue.put(step_state)
