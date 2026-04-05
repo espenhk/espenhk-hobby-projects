@@ -263,4 +263,4 @@ class TMNFEnv(gym.Env):
         the game sends S_ON_REGISTERED, eliminating the 2000 ms timeout race."""
         self._iface.register(self._client)
         while self._iface.running:
-            time.sleep(0)
+            time.sleep(0.001)  # yield CPU; sleep(0) spun too tightly and competed with game/RL threads
