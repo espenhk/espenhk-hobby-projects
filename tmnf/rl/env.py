@@ -56,7 +56,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from tminterface.interface import TMInterface
 
-from clients.rl_client import ACTIONS, RLClient, N_ACTIONS
+from clients.rl_client import ACTIONS, RLClient, StepState, N_ACTIONS
 from rl.reward import RewardConfig, RewardCalculator
 from lidar import LidarSensor
 
@@ -140,6 +140,12 @@ class TMNFEnv(gym.Env):
         self._episode_start_s: float = 0.0
         self._laps_completed: int = 0
 
+        # Skip-event telemetry — reset each episode, printed at episode end.
+        self._ep_rl_steps: int = 0         # env.step() calls this episode
+        self._ep_total_ticks: int = 0      # game ticks covered (≥ rl_steps)
+        self._ep_max_skip: int = 0         # worst single-step skip
+        self._total_rl_steps: int = 0      # lifetime step counter (for periodic log)
+
     # ------------------------------------------------------------------
     # Gymnasium interface
     # ------------------------------------------------------------------
@@ -159,6 +165,9 @@ class TMNFEnv(gym.Env):
         self._elapsed_s = 0.0
         self._episode_start_s = time.monotonic()
         self._laps_completed = 0
+        self._ep_rl_steps = 0
+        self._ep_total_ticks = 0
+        self._ep_max_skip = 0
 
         obs = self._make_obs(init_step)
         return obs, {}
@@ -172,6 +181,14 @@ class TMNFEnv(gym.Env):
         crashed  = (data.lateral_offset is not None
                     and abs(data.lateral_offset) > self._reward_config.crash_threshold_m)
         self._elapsed_s = time.monotonic() - self._episode_start_s
+
+        # --- skip-event telemetry ---
+        n = step.ticks_this_step
+        self._ep_rl_steps += 1
+        self._ep_total_ticks += n
+        self._total_rl_steps += 1
+        if n > self._ep_max_skip:
+            self._ep_max_skip = n
 
         accelerating = ACTIONS[action][0]  # first element is the accelerate bool
         lidar_rays = self._lidar.get_distances() if self._lidar is not None else None
@@ -210,6 +227,9 @@ class TMNFEnv(gym.Env):
         # step.done signals a hard crash (>50 m off, handled by client safety net)
         truncated = (step.done and not terminated) or time_over
 
+        if terminated or truncated:
+            self._log_skip_stats()
+
         self._prev_state = data
         obs = self._make_obs(step)
         info = {
@@ -220,6 +240,12 @@ class TMNFEnv(gym.Env):
             "elapsed_s": self._elapsed_s,
             "pos_x": data.position.x,
             "pos_z": data.position.z,
+            # Skip stats also surfaced in info so callers can aggregate them.
+            "ticks_this_step": n,
+            "ep_rl_steps": self._ep_rl_steps,
+            "ep_total_ticks": self._ep_total_ticks,
+            "ep_skipped_ticks": self._ep_total_ticks - self._ep_rl_steps,
+            "ep_max_skip": self._ep_max_skip,
         }
 
         return obs, reward, terminated, truncated, info
@@ -231,6 +257,30 @@ class TMNFEnv(gym.Env):
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _log_skip_stats(self) -> None:
+        """Print a per-episode skip-event summary.
+
+        Skipped ticks = game ticks that fired while the RL thread was still
+        processing the previous step. A high skip rate means the policy + reward
+        computation is too slow to keep up with the game at the current speed
+        multiplier.
+
+        Example output (healthy, ~1 skip per step at 10x):
+            [skip] ep 42 | rl_steps=87  game_ticks=102  skipped=15  avg=1.17  max=3
+        Example output (falling behind badly):
+            [skip] ep 42 | rl_steps=87  game_ticks=340  skipped=253  avg=3.91  max=18
+        """
+        skipped = self._ep_total_ticks - self._ep_rl_steps
+        avg = self._ep_total_ticks / self._ep_rl_steps if self._ep_rl_steps else 0.0
+        print(
+            f"[skip] ep_step {self._total_rl_steps} | "
+            f"rl_steps={self._ep_rl_steps}  "
+            f"game_ticks={self._ep_total_ticks}  "
+            f"skipped={skipped}  "
+            f"avg={avg:.2f}  "
+            f"max={self._ep_max_skip}"
+        )
 
     def _make_obs(self, step: StepState) -> np.ndarray:
         d = step.state_data
