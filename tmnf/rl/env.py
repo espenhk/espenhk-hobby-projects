@@ -46,10 +46,13 @@ Notes on threading
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 import threading
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import gymnasium as gym
@@ -127,12 +130,12 @@ class TMNFEnv(gym.Env):
         self._keepalive = threading.Thread(target=self._run_iface_loop, daemon=True)
         self._keepalive.start()
 
-        print("Waiting for TMInterface connection...")
+        logger.info("Waiting for TMInterface connection...")
         if not self._client.wait_registered(timeout=15.0):
             raise RuntimeError(
                 "TMInterface did not connect within 15 s — is the game running?"
             )
-        print("Connected.")
+        logger.info("Connected.")
 
         # Episode tracking
         self._prev_state = None

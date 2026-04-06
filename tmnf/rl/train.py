@@ -20,6 +20,7 @@ Tweaking tips
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 
@@ -35,6 +36,7 @@ from stable_baselines3.common.monitor import Monitor
 from rl.env import TMNFEnv
 from rl.reward import RewardConfig
 
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Config
@@ -52,6 +54,13 @@ BEST_MODEL_PATH  = os.path.join(RUNS_DIR, "best_model")
 
 
 def main() -> None:
+    _lvl = os.environ.get("TMNF_LOG_LEVEL", "INFO").upper()
+    logging.basicConfig(
+        level=getattr(logging, _lvl, logging.INFO),
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
     os.makedirs(TB_LOG_DIR, exist_ok=True)
 
@@ -93,9 +102,9 @@ def main() -> None:
         verbose=1,
     )
 
-    print(f"Starting PPO training for {TOTAL_TIMESTEPS:,} timesteps at {SPEED}× speed.")
-    print(f"TensorBoard: tensorboard --logdir {TB_LOG_DIR}")
-    print(f"Checkpoints: {CHECKPOINT_DIR}")
+    logger.info("Starting PPO training for %s timesteps at %s× speed.", f"{TOTAL_TIMESTEPS:,}", SPEED)
+    logger.info("TensorBoard: tensorboard --logdir %s", TB_LOG_DIR)
+    logger.info("Checkpoints: %s", CHECKPOINT_DIR)
 
     try:
         model.learn(
@@ -105,7 +114,7 @@ def main() -> None:
         )
     finally:
         model.save(BEST_MODEL_PATH)
-        print(f"Model saved to {BEST_MODEL_PATH}.zip")
+        logger.info("Model saved to %s.zip", BEST_MODEL_PATH)
         env.close()
 
 

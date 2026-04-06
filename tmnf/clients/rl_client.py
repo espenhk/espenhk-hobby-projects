@@ -35,6 +35,8 @@ from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD
 from track import Centerline
 from utils import StateData, get_position
 
+import logging
+logger = logging.getLogger(__name__)
 
 _UP = np.array([0.0, 1.0, 0.0])
 
@@ -152,7 +154,7 @@ class RLClient(Client):
     # ------------------------------------------------------------------
 
     def on_registered(self, iface: TMInterface) -> None:
-        print(f"Connected. RLClient running at {self.speed}x speed.")
+        logger.info("Connected. RLClient running at %sx speed.", self.speed)
         iface.execute_command(f"set speed {self.speed}")
         self._registered_event.set()
 

@@ -12,12 +12,15 @@ GeneticPolicy        — population of WeightedLinearPolicy, evolutionary traini
 
 from __future__ import annotations
 
+import logging
 import math
 import os
 from abc import ABC, abstractmethod
 
 import numpy as np
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +175,7 @@ class WeightedLinearPolicy(BasePolicy):
         self._n_lidar_rays = n_lidar_rays
         cfg = self._load_or_init()
         self._apply_cfg(cfg)
-        print(f"[WeightedLinearPolicy] loaded weights from {weights_file}")
+        logger.info("[WeightedLinearPolicy] loaded weights from %s", weights_file)
 
     @classmethod
     def from_cfg(cls: type[WeightedLinearPolicy], cfg: dict, n_lidar_rays: int = 0) -> WeightedLinearPolicy:
@@ -264,7 +267,7 @@ class WeightedLinearPolicy(BasePolicy):
             if migrated:
                 with open(self._weights_file, "w") as f:
                     yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
-                print(f"[WeightedLinearPolicy] migrated weights file with new LIDAR keys → {self._weights_file}")
+                logger.info("[WeightedLinearPolicy] migrated weights file with new LIDAR keys → %s", self._weights_file)
             return cfg
 
         rng = np.random.default_rng()
@@ -276,7 +279,7 @@ class WeightedLinearPolicy(BasePolicy):
         }
         with open(self._weights_file, "w") as f:
             yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
-        print(f"[WeightedLinearPolicy] initialised random weights → {self._weights_file}")
+        logger.info("[WeightedLinearPolicy] initialised random weights → %s", self._weights_file)
         return cfg
 
 
