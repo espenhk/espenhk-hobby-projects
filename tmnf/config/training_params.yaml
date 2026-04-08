@@ -17,6 +17,12 @@ policy_type: genetic
 #
 policy_params:
 
+  # hill_climbing — ES gradient estimation with antithetic pairs (+ε / −ε).
+  # Each sim runs two episodes and updates weights via:
+  #   θ += learning_rate * (R⁺ − R⁻) * ε
+  # mutation_scale controls the probe radius; learning_rate controls the step size.
+  #learning_rate: 0.01
+
   # neural_net — MLP policy, hill-climbing on network weights
   #hidden_sizes: [16, 16]   # hidden layer sizes
 

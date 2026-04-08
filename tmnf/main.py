@@ -404,40 +404,105 @@ def _greedy_loop_hill_climb(
     n_sims: int,
     mutation_scale: float,
     weights_file: str,
+    learning_rate: float = 0.01,
 ) -> tuple[BasePolicy, float, list[GreedySimResult]]:
     """
-    Hill-climbing greedy loop (hill_climbing and neural_net policy types).
-    Mutate the current best policy, evaluate, keep if improved.
+    ES gradient-estimation loop for WeightedLinearPolicy (hill_climbing policy type).
+
+    Each sim evaluates two mirrored perturbations (+ε, −ε) and updates the weight
+    vector using the reward difference as a gradient signal:
+
+        θ += lr * (R⁺ − R⁻) * ε
+
+    This means every episode pair contributes to the update, even when neither
+    candidate beats the current best. Based on OpenAI Evolution Strategies
+    (Salimans et al. 2017).
+
+    Falls back to single-candidate greedy for policies without flat-weight support
+    (neural_net).
+
     Returns (best_policy, best_reward, greedy_sims).
     """
+    if not isinstance(best_policy, WeightedLinearPolicy):
+        # Fallback: single-candidate greedy for neural_net and others
+        greedy_sims = []
+        try:
+            for sim in range(1, n_sims + 1):
+                candidate = best_policy.mutated(scale=mutation_scale)
+                print(f"--- Sim {sim}/{n_sims} --- (respawning)")
+                obs, _ = env.reset()
+                reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
+                improved = reward > best_reward
+                if improved:
+                    prev_best   = best_reward
+                    best_reward = reward
+                    best_policy = candidate
+                    best_policy.save(weights_file)
+                    verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
+                else:
+                    verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
+                print(f"  >> {verdict}\n")
+                greedy_sims.append(GreedySimResult(
+                    sim=sim, reward=reward, improved=improved,
+                    throttle_counts=list(throttle_counts), total_steps=total_steps,
+                    trace=trace, weights=candidate.to_cfg(),
+                    final_track_progress=info.get("track_progress", 0.0),
+                    laps_completed=info.get("laps_completed", 0),
+                ))
+        except KeyboardInterrupt:
+            print("\nTraining interrupted.")
+        return best_policy, best_reward, greedy_sims
 
+    # ES gradient update loop
+    rng = np.random.default_rng()
+    theta = best_policy.to_flat()
     greedy_sims = []
     try:
         for sim in range(1, n_sims + 1):
-            candidate = best_policy.mutated(scale=mutation_scale)
+            eps = rng.standard_normal(len(theta)).astype(np.float32) * mutation_scale
 
-            print(f"--- Sim {sim}/{n_sims} --- (respawning)")
+            policy_plus  = best_policy.with_flat(theta + eps)
+            policy_minus = best_policy.with_flat(theta - eps)
+
+            print(f"--- Sim {sim}/{n_sims} (+) --- (respawning)")
             obs, _ = env.reset()
-            reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
+            r_plus, info_plus, tc_plus, steps_plus, trace_plus = _run_episode(env, policy_plus, obs)
 
-            improved = reward > best_reward
-            if improved:
-                prev_best   = best_reward
-                best_reward = reward
-                best_policy = candidate
-                best_policy.save(weights_file)
-                verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
+            print(f"--- Sim {sim}/{n_sims} (-) --- (respawning)")
+            obs, _ = env.reset()
+            r_minus, info_minus, tc_minus, steps_minus, trace_minus = _run_episode(env, policy_minus, obs)
+
+            # Gradient step — always update regardless of improvement
+            theta += learning_rate * (r_plus - r_minus) * eps
+
+            # Track best-seen candidate for checkpointing
+            improved = False
+            if r_plus >= r_minus:
+                best_r, best_info, best_tc, best_steps, best_trace, best_candidate = (
+                    r_plus, info_plus, tc_plus, steps_plus, trace_plus, policy_plus)
             else:
-                verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
+                best_r, best_info, best_tc, best_steps, best_trace, best_candidate = (
+                    r_minus, info_minus, tc_minus, steps_minus, trace_minus, policy_minus)
+
+            if best_r > best_reward:
+                prev_best   = best_reward
+                best_reward = best_r
+                best_policy = best_candidate
+                best_policy.save(weights_file)
+                improved = True
+                verdict = f"NEW BEST  {best_r:+.1f}  (was {prev_best:+.1f})  gradient_signal={r_plus - r_minus:+.1f}"
+            else:
+                verdict = (f"no improvement  +ε={r_plus:+.1f}  −ε={r_minus:+.1f}  "
+                           f"best={best_reward:+.1f}  gradient_signal={r_plus - r_minus:+.1f}")
 
             print(f"  >> {verdict}\n")
             greedy_sims.append(GreedySimResult(
-                sim=sim, reward=reward, improved=improved,
-                throttle_counts=list(throttle_counts), total_steps=total_steps,
-                trace=trace,
-                weights=candidate.to_cfg(),
-                final_track_progress=info.get("track_progress", 0.0),
-                laps_completed=info.get("laps_completed", 0),
+                sim=sim, reward=best_r, improved=improved,
+                throttle_counts=list(best_tc), total_steps=best_steps,
+                trace=best_trace,
+                weights=best_candidate.to_cfg(),
+                final_track_progress=best_info.get("track_progress", 0.0),
+                laps_completed=best_info.get("laps_completed", 0),
             ))
     except KeyboardInterrupt:
         print("\nTraining interrupted.")
@@ -641,7 +706,8 @@ def train_rl(
     # Dispatch to the appropriate greedy loop
     if policy_type in ("hill_climbing", "neural_net"):
         best_policy, best_reward, greedy_sims = _greedy_loop_hill_climb(
-            env, best_policy, best_reward, n_sims, mutation_scale, weights_file
+            env, best_policy, best_reward, n_sims, mutation_scale, weights_file,
+            learning_rate=policy_params.get("learning_rate", 0.01),
         )
     elif policy_type in ("epsilon_greedy", "mcts"):
         best_policy, best_reward, greedy_sims = _greedy_loop_q_learning(

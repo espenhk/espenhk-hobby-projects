@@ -204,13 +204,26 @@ class WeightedLinearPolicy(BasePolicy):
     # Mutation
     # ------------------------------------------------------------------
 
+    def to_flat(self) -> np.ndarray:
+        """Return [steer_weights | throttle_weights] as a single float32 vector."""
+        return np.concatenate([self._steer_w, self._throttle_w])
+
+    def with_flat(self, flat: np.ndarray) -> "WeightedLinearPolicy":
+        """Return a new policy with weights replaced by flat vector (splits at n_obs_dims)."""
+        n = 15 + self._n_lidar_rays
+        names = self.get_obs_names(self._n_lidar_rays)
+        cfg = self.to_cfg()
+        cfg["steer_weights"]    = {names[i]: float(flat[i])   for i in range(n)}
+        cfg["throttle_weights"] = {names[i]: float(flat[n + i]) for i in range(n)}
+        return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
+
     def mutated(self, scale: float = 0.1) -> "WeightedLinearPolicy":
         """Return a new policy with small Gaussian perturbation applied to all weights."""
         rng = np.random.default_rng()
         cfg = self.to_cfg()
         for group in ("steer_weights", "throttle_weights"):
             for k in cfg[group]:
-                cfg[group][k] += float(rng.normal(-scale, scale))
+                cfg[group][k] += float(rng.normal(0, scale))
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
     # ------------------------------------------------------------------
