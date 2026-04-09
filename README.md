@@ -49,6 +49,43 @@ On first run with a new experiment name, a fresh reward config is copied from `r
 
 ---
 
+## Testing
+
+### `skate`
+
+```bash
+python -m pytest skate/tests/ -v
+```
+
+### `tmnf`
+
+The tmnf tests cover all pure-logic components (policies, reward calculation, track
+geometry, data structures) and run without the game or TMInterface installed.
+
+```bash
+python -m pytest tmnf/tests/ -v
+```
+
+Test files are organised one-to-one with their corresponding source files:
+
+| Test file | Covers |
+|---|---|
+| `test_utils.py` | `Vec3`, `Quat`, `StateData` |
+| `test_track.py` | `Centerline` projection |
+| `test_simple_policy.py` | `SimplePolicy` |
+| `test_weighted_linear_policy.py` | `WeightedLinearPolicy` |
+| `test_neural_net_policy.py` | `NeuralNetPolicy` |
+| `test_discretize_obs.py` | `_discretize_obs` helper |
+| `test_epsilon_greedy_policy.py` | `EpsilonGreedyPolicy` |
+| `test_mcts_policy.py` | `MCTSPolicy` |
+| `test_genetic_policy.py` | `GeneticPolicy` |
+| `test_reward.py` | `RewardCalculator`, `RewardConfig` |
+
+Only `numpy`, `pyyaml`, and `pytest` are required to run the tmnf tests —
+none of the game-dependent dependencies (`tminterface`, `pygbx`, etc.) are needed.
+
+---
+
 ## Environment Setup
 
 Both projects share a single virtual environment managed by [Poetry](https://python-poetry.org/). Python 3.12 is recommended.

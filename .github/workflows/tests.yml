@@ -1,0 +1,43 @@
+name: Tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  tmnf:
+    name: tmnf tests
+    # Skip draft PRs, but always run when a draft is converted to ready for review.
+    if: github.event.action == 'ready_for_review' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install numpy pyyaml pytest
+
+      - name: Run tmnf tests
+        run: python -m pytest tmnf/tests/ -v
+
+  skate:
+    name: skate tests
+    if: github.event.action == 'ready_for_review' || !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install pdfplumber PyPDF2 pytest
+
+      - name: Run skate tests
+        run: python -m pytest skate/tests/ -v
