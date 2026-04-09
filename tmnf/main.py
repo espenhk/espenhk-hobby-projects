@@ -250,6 +250,25 @@ def _run_episode(
     return total_reward, info, throttle_counts, steps, trace
 
 
+def _scaled_episode_time(sim: int, n_total: int, max_time_s: float) -> float:
+    """Return episode time for sim (1-indexed) using a 4-step schedule.
+
+    First 25%  → 1/4 of max_time_s
+    Next  25%  → 1/2
+    Next  25%  → 3/4
+    Final 25%  → full max_time_s
+    """
+    quarter = n_total / 4
+    if sim <= quarter:
+        return max_time_s * 0.25
+    elif sim <= 2 * quarter:
+        return max_time_s * 0.5
+    elif sim <= 3 * quarter:
+        return max_time_s * 0.75
+    else:
+        return max_time_s
+
+
 def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: int) -> None:
     b, c, a = throttle_counts
     print(
@@ -398,11 +417,13 @@ def _greedy_loop_hill_climb(
     """
 
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
     try:
         for sim in range(1, n_sims + 1):
+            env._max_episode_time_s = _scaled_episode_time(sim, n_sims, full_episode_time_s)
             candidate = best_policy.mutated(scale=mutation_scale)
 
-            print(f"--- Sim {sim}/{n_sims} --- (respawning)")
+            print(f"--- Sim {sim}/{n_sims} --- (respawning, episode_time={env._max_episode_time_s:.1f}s)")
             obs, _ = env.reset()
             reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
 
@@ -446,9 +467,11 @@ def _greedy_loop_q_learning(
 
     best_reward = float("-inf")
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
     try:
         for episode in range(1, n_episodes + 1):
-            print(f"--- Episode {episode}/{n_episodes} --- (respawning)")
+            env._max_episode_time_s = _scaled_episode_time(episode, n_episodes, full_episode_time_s)
+            print(f"--- Episode {episode}/{n_episodes} --- (respawning, episode_time={env._max_episode_time_s:.1f}s)")
             obs, _ = env.reset()
             reward, info, throttle_counts, total_steps, trace = _run_episode(env, policy, obs)
             policy.on_episode_end()
@@ -494,13 +517,16 @@ def _greedy_loop_genetic(
     pop_size    = len(policy._population)
     best_reward = policy._champion_reward
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
 
     print(f"  [Genetic] population_size={pop_size}, "
           f"total episodes = {n_generations} × {pop_size} = {n_generations * pop_size}")
 
     try:
         for gen in range(1, n_generations + 1):
-            print(f"--- Generation {gen}/{n_generations} --- evaluating {pop_size} individuals")
+            env._max_episode_time_s = _scaled_episode_time(gen, n_generations, full_episode_time_s)
+            print(f"--- Generation {gen}/{n_generations} --- evaluating {pop_size} individuals "
+                  f"(episode_time={env._max_episode_time_s:.1f}s)")
             rewards = []
             for idx, individual in enumerate(policy._population):
                 print(f"  Individual {idx + 1}/{pop_size} (respawning)", end="", flush=True)
