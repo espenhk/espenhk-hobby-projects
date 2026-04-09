@@ -1,0 +1,18 @@
+resource_group_name = "rg-dpb-dev-network"
+location            = "westeurope"
+vnet_name           = "vnet-dpb-dev-core"
+address_space       = ["10.40.0.0/16"]
+
+subnets = {
+  snet-databricks-public = {
+    address_prefixes = ["10.40.1.0/24"]
+  }
+  snet-databricks-private = {
+    address_prefixes = ["10.40.2.0/24"]
+  }
+}
+
+tags = {
+  environment = "dev"
+  platform    = "dataplatform-beta"
+}

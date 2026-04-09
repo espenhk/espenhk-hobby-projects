@@ -1,0 +1,18 @@
+resource_group_name = "rg-dpb-test-network"
+location            = "westeurope"
+vnet_name           = "vnet-dpb-test-core"
+address_space       = ["10.41.0.0/16"]
+
+subnets = {
+  snet-databricks-public = {
+    address_prefixes = ["10.41.1.0/24"]
+  }
+  snet-databricks-private = {
+    address_prefixes = ["10.41.2.0/24"]
+  }
+}
+
+tags = {
+  environment = "test"
+  platform    = "dataplatform-beta"
+}
