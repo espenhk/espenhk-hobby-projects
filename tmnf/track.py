@@ -15,29 +15,39 @@ class Centerline:
         # KDTree for O(log N) nearest-point queries instead of O(N) argmin.
         self._kdtree = KDTree(self._points)
 
-    def forward_at(self, pos: Vec3) -> np.ndarray:
-        """Return the unit forward direction of the track at the closest point to pos."""
-        p = np.array([pos.x, pos.y, pos.z], dtype=np.float64)
-        _, idx = self._kdtree.query(p)
-        idx = min(int(idx), len(self._points) - 2)
-        ab = self._points[idx + 1].astype(np.float64) - self._points[idx].astype(np.float64)
-        length = float(np.linalg.norm(ab))
-        return ab / length if length > 1e-9 else np.array([0.0, 0.0, 1.0])
-
-    def project(self, pos: Vec3) -> tuple[float, float, float]:
+    def project_with_forward(
+        self, pos: Vec3, hint_idx: int | None = None, window: int = 50
+    ) -> tuple[float, float, float, np.ndarray, int]:
         """
-        Returns (progress, lateral_offset, vertical_offset).
-        progress        : 0.0–1.0 along track
-        lateral_offset  : metres, negative = left, positive = right
-        vertical_offset : metres, negative = below, positive = above
+        Single O(N) scan returning all centerline quantities at once.
+
+        Returns (progress, lateral_offset, vertical_offset, forward_dir, nearest_idx).
+
+        prefer this over calling project() and forward_at() separately — they each
+        did an independent O(N) nearest-point search.  Passing hint_idx (the index
+        returned by the previous call) with a suitable window reduces the search to
+        O(window) once the car is moving predictably.
         """
         p = np.array([pos.x, pos.y, pos.z], dtype=np.float64)
 
-        # Closest point index via KDTree, clamped so segment [idx, idx+1] is always valid.
-        _, idx = self._kdtree.query(p)
-        idx = min(int(idx), len(self._points) - 2)
+        if hint_idx is not None:
+            n = len(self._points)
+            hint_idx = max(0, min(n - 2, hint_idx))
+            w = max(1, window)
+            lo = max(0, hint_idx - w)
+            hi = min(n - 2, hint_idx + w)
+            if lo <= hi:
+                local_dists = np.linalg.norm(self._points[lo:hi + 1] - p, axis=1)
+                idx = lo + int(np.argmin(local_dists))
+            else:
+                dists = np.linalg.norm(self._points - p, axis=1)
+                idx = int(np.argmin(dists))
+        else:
+            dists = np.linalg.norm(self._points - p, axis=1)
+            idx = int(np.argmin(dists))
 
-        # Project onto the segment
+        idx = min(idx, len(self._points) - 2)
+
         a = self._points[idx].astype(np.float64)
         b = self._points[idx + 1].astype(np.float64)
         ab = b - a
@@ -62,4 +72,14 @@ class Centerline:
         lateral_offset = float(np.dot(offset, right))
         vertical_offset = float(offset[1])
 
-        return float(progress), lateral_offset, vertical_offset
+        return float(progress), lateral_offset, vertical_offset, forward, idx
+
+    def project(self, pos: Vec3) -> tuple[float, float, float]:
+        """Returns (progress, lateral_offset, vertical_offset). See project_with_forward()."""
+        progress, lat, vert, _, _ = self.project_with_forward(pos)
+        return progress, lat, vert
+
+    def forward_at(self, pos: Vec3) -> np.ndarray:
+        """Return the unit forward direction of the track at the closest point to pos."""
+        _, _, _, fwd, _ = self.project_with_forward(pos)
+        return fwd

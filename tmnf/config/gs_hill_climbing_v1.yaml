@@ -24,6 +24,7 @@ training_params:
   n_lidar_rays: 0
   policy_type: hill_climbing
   mutation_scale: 0.05
+  mutation_share: 1.0
 
   # --- Search axes ---
   cold_restarts: [5, 20]

@@ -59,7 +59,8 @@ class WheelState:
 
 
 class StateData:
-    def __init__(self, state: Any, centerline: Any | None = None) -> None:
+    def __init__(self, state: Any, centerline: Any | None = None,
+                 hint_idx: int | None = None) -> None:
         dyna = state.dyna.current_state  # type: ignore[attr-defined]
         mobil = state.scene_mobil        # type: ignore[attr-defined]
         wheels = state.simulation_wheels # type: ignore[attr-defined]
@@ -86,8 +87,14 @@ class StateData:
         self.track_progress = None
         self.lateral_offset = None
         self.vertical_offset = None
+        self.track_forward = None   # unit np.ndarray of track direction at car position
+        self._centerline_idx = None  # nearest centerline point index (for windowed search)
         if centerline is not None:
-            self.track_progress, self.lateral_offset, self.vertical_offset = centerline.project(self.position)
+            pos = get_position(state)
+            (self.track_progress, self.lateral_offset, self.vertical_offset,
+             self.track_forward, self._centerline_idx) = centerline.project_with_forward(
+                pos, hint_idx=hint_idx
+            )
 
     def __str__(self) -> str:
         contact_str = " ".join(str(int(w.contact)) for w in self.wheels)

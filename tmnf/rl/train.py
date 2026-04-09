@@ -39,6 +39,7 @@ from rl.env import make_env
 # Config
 # ---------------------------------------------------------------------------
 EXPERIMENT_DIR   = "experiments/ppo_default"
+CENTERLINE_FILE  = os.environ.get("TMNF_TRACK", "tracks/a03_centerline.npy")
 SPEED            = 10.0      # game speed multiplier
 IN_GAME_EPISODE_S = 20.0     # in-game seconds per episode
 TOTAL_TIMESTEPS  = 500_000
