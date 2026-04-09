@@ -33,6 +33,21 @@ output "databricks_workspace_id" {
   value       = module.databricks_workspace.workspace_id
 }
 
+output "foundry_workspace_id" {
+  description = "ARM resource ID of the Foundry backing workspace."
+  value       = module.foundry_workspace.id
+}
+
+output "foundry_service_workspace_id" {
+  description = "Service workspace ID of the Foundry backing workspace."
+  value       = module.foundry_workspace.workspace_id
+}
+
+output "foundry_principal_id" {
+  description = "Foundry managed identity principal ID."
+  value       = module.foundry_workspace.principal_id
+}
+
 output "storage_account_name" {
   description = "ADLS storage account name for medallion data and Databricks volumes."
   value       = module.storage.storage_account_name
@@ -41,6 +56,11 @@ output "storage_account_name" {
 output "storage_filesystem_uris" {
   description = "abfss URIs for medallion, checkpoint, and volume filesystems."
   value       = module.storage.filesystem_uris
+}
+
+output "foundry_exchange_uri" {
+  description = "ADLS exchange URI that Databricks can publish curated files to and Foundry can read from."
+  value       = module.storage.filesystem_uris["foundry-exchange"]
 }
 
 output "databricks_access_connector_id" {

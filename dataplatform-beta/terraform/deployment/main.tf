@@ -3,7 +3,7 @@ locals {
   location             = "westeurope"
   platform             = "dataplatform-beta"
   storage_account_name = substr("sadpb${local.env}core${var.storage_account_suffix}", 0, 24)
-  filesystem_names     = ["bronze", "silver", "gold", "checkpoints", "volumes"]
+  filesystem_names     = ["bronze", "silver", "gold", "checkpoints", "volumes", "foundry-exchange"]
 
   tags = {
     environment = local.env
@@ -181,6 +181,18 @@ module "databricks_workspace" {
   tags = local.tags
 }
 
+module "foundry_workspace" {
+  source = "../modules/foundry_workspace"
+
+  name                          = "fdry-dpb-${local.env}-core"
+  resource_group_name           = azurerm_resource_group.main.name
+  location                      = local.location
+  key_vault_id                  = module.key_vault.key_vault_id
+  storage_account_id            = module.storage.storage_account_id
+  public_network_access_enabled = true
+  tags                          = local.tags
+}
+
 resource "azurerm_databricks_access_connector" "volumes" {
   name                = "dbc-dpb-${local.env}-volumes"
   resource_group_name = azurerm_resource_group.main.name
@@ -197,6 +209,23 @@ resource "azurerm_role_assignment" "databricks_storage_blob_contributor" {
   scope                = module.storage.storage_account_id
   role_definition_name = "Storage Blob Data Contributor"
   principal_id         = azurerm_databricks_access_connector.volumes.identity[0].principal_id
+}
+
+resource "azurerm_role_assignment" "foundry_storage_blob_reader" {
+  scope                = module.storage.storage_account_id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = module.foundry_workspace.principal_id
+}
+
+resource "azurerm_key_vault_access_policy" "foundry_secret_reader" {
+  key_vault_id = module.key_vault.key_vault_id
+  tenant_id    = var.tenant_id
+  object_id    = module.foundry_workspace.principal_id
+
+  secret_permissions = [
+    "Get",
+    "List",
+  ]
 }
 
 # ── Cost Governance — Budgets ──────────────────────────────────────────────────
