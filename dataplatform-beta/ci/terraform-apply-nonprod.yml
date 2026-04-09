@@ -4,24 +4,12 @@ on:
   workflow_dispatch:
     inputs:
       target_env:
-        description: "Environment to apply"
+        description: "Terraform workspace to apply"
         required: true
         type: choice
         options:
           - dev
           - test
-      target_stack:
-        description: "Stack to apply"
-        required: true
-        type: choice
-        options:
-          - foundation
-          - connectivity
-          - security
-          - data_platform
-          - governance
-          - observability
-          - powerbi_rbac
 
 permissions:
   id-token: write
@@ -53,15 +41,19 @@ jobs:
       - name: Terraform init
         run: |
           set -euo pipefail
-          STACK_DIR="dataplatform-beta/terraform/environments/${{ inputs.target_env }}/${{ inputs.target_stack }}"
-          cd "$STACK_DIR"
+          cd dataplatform-beta/terraform/deployment
           terraform init -backend=false
+
+      - name: Select workspace
+        run: |
+          set -euo pipefail
+          cd dataplatform-beta/terraform/deployment
+          terraform workspace select ${{ inputs.target_env }} || terraform workspace new ${{ inputs.target_env }}
 
       - name: Terraform apply
         run: |
           set -euo pipefail
-          STACK_DIR="dataplatform-beta/terraform/environments/${{ inputs.target_env }}/${{ inputs.target_stack }}"
-          cd "$STACK_DIR"
+          cd dataplatform-beta/terraform/deployment
           if [ -f terraform.tfvars ]; then
             terraform apply -input=false -auto-approve -var-file=terraform.tfvars
           elif [ -f terraform.tfvars.example ]; then

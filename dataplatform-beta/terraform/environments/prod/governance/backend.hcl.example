@@ -1,4 +1,0 @@
-resource_group_name  = "rg-dpb-tfstate-prod"
-storage_account_name = "sadpbtfstateprod"
-container_name       = "tfstate"
-key                  = "prod/governance.tfstate"

@@ -3,18 +3,6 @@ name: terraform-plan-prod
 on:
   workflow_dispatch:
     inputs:
-      target_stack:
-        description: "Prod stack to plan"
-        required: true
-        type: choice
-        options:
-          - foundation
-          - connectivity
-          - security
-          - data_platform
-          - governance
-          - observability
-          - powerbi_rbac
       change_ticket:
         description: "Approved change ticket (for example CHG-1234)"
         required: true
@@ -56,15 +44,19 @@ jobs:
       - name: Terraform init
         run: |
           set -euo pipefail
-          STACK_DIR="dataplatform-beta/terraform/environments/prod/${{ inputs.target_stack }}"
-          cd "$STACK_DIR"
+          cd dataplatform-beta/terraform/deployment
           terraform init -backend=false
+
+      - name: Select workspace
+        run: |
+          set -euo pipefail
+          cd dataplatform-beta/terraform/deployment
+          terraform workspace select prod || terraform workspace new prod
 
       - name: Terraform plan
         run: |
           set -euo pipefail
-          STACK_DIR="dataplatform-beta/terraform/environments/prod/${{ inputs.target_stack }}"
-          cd "$STACK_DIR"
+          cd dataplatform-beta/terraform/deployment
           if [ -f terraform.tfvars ]; then
             terraform plan -input=false -var-file=terraform.tfvars
           elif [ -f terraform.tfvars.example ]; then

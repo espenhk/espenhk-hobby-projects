@@ -1,7 +1,0 @@
-resource_group_name = "rg-dpb-dev-observability"
-alert_email         = "alerts-dev@example.com"
-
-tags = {
-  environment = "dev"
-  platform    = "dataplatform-beta"
-}

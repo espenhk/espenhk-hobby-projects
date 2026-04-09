@@ -1,0 +1,11 @@
+# Copy to terraform.tfvars and fill in values for the active workspace.
+# Select workspace with: terraform workspace select dev|test|prod
+#
+# All naming and address spaces are derived automatically from the workspace.
+
+tenant_id   = "00000000-0000-0000-0000-000000000000"
+alert_email = "alerts@example.com"
+
+powerbi_group_owner_object_ids = [
+  "00000000-0000-0000-0000-000000000000",
+]

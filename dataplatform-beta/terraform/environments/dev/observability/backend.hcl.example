@@ -1,4 +1,0 @@
-resource_group_name  = "rg-dpb-tfstate-dev"
-storage_account_name = "sadpbtfstatedev"
-container_name       = "tfstate"
-key                  = "dev/observability.tfstate"
