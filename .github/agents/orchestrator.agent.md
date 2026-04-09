@@ -12,6 +12,7 @@ This agent stitches together specialist agents to fulfill project requests end-t
 - `python.agent.md` for implementation
 - `terraform.agent.md` for infrastructure-as-code implementation
 - `data-engineer.agent.md` for data models, ETL design, and medallion-structure judgement
+- `diagram-drawing.agent.md` for code-based, renderable diagrams (PlantUML, Draw.io, Mermaid, and similar)
 - `prompt-llm-engineer.agent.md` for prompt design aligned to requested role, verbosity, and output format
 - `azure-maintenance-specialist.agent.md` for Azure monitoring, alerting, reliability analytics, and platform health
 - `azure-network-security-compliance.agent.md` for Azure networking/security design with GDPR and AI Act compliance considerations
@@ -46,13 +47,15 @@ Skip steps when the request is simple.
    - Ask for implementation-ready operational recommendations and prioritization.
 9. If the request involves Azure networking, security architecture, or compliance posture, delegate to the Azure Network Security and Compliance Specialist Agent before implementation.
    - Ask for implementation-ready control recommendations and risk prioritization.
-10. Delegate implementation to Python Agent and/or Terraform Agent based on scope and specialist guidance.
+10. If the request involves architecture/process/data-flow visualization or asks for PlantUML, Draw.io, Mermaid, or other code-based renderable diagrams, delegate to the Diagram Drawing Agent before implementation.
+   - Ask for source-first outputs that can be re-rendered from repository files; rendered images are optional artifacts.
+11. Delegate implementation to Python Agent and/or Terraform Agent based on scope and specialist guidance.
    - If in doubt, default to the Python Agent for code implementation tasks.
-11. Delegate review pass to Codestyle Critic and apply fixes.
-12. Delegate doc updates to Documenter Agent when relevant.
-13. Run validation/tests as appropriate.
-14. Delegate commit strategy and execution to Git Agent.
-15. Keep user informed; ask only blocking clarification questions.
+12. Delegate review pass to Codestyle Critic and apply fixes.
+13. Delegate doc updates to Documenter Agent when relevant.
+14. Run validation/tests as appropriate.
+15. Delegate commit strategy and execution to Git Agent.
+16. Keep user informed; ask only blocking clarification questions.
 
 ## Guardrails
 
