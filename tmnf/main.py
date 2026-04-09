@@ -11,7 +11,6 @@ import datetime
 
 from tminterface.interface import TMInterface
 
-from clients import AdaptiveClient
 from clients.rl_client import ACTIONS, N_ACTIONS, get_action_description
 from policies import (
     BasePolicy,
@@ -32,22 +31,6 @@ from analytics import (
     ExperimentData,
     save_experiment_results
 )
-
-def run_adaptive(speed: float) -> None:
-    """Follow the centreline using the hand-tuned PD controller."""
-    client = AdaptiveClient("tracks/a03_centerline.npy")
-    iface = TMInterface()
-    iface.execute_command(f"set speed {speed}")
-
-    print("Waiting for TMInterface connection...")
-    iface.register(client)
-    try:
-        while iface.running:
-            time.sleep(0)
-    except KeyboardInterrupt:
-        pass
-    iface.close()
-
 
 # ---------------------------------------------------------------------------
 # Env factory (shared setup)
