@@ -50,6 +50,8 @@ class RewardConfig:
     # --- Acceleration bonus ---
     # Small flat reward every step the throttle is pressed.
     # Prevents the policy from preferring coast actions when they produce similar progress.
+    # Calculated based on n_ticks since last time calculated, i.e. if the game loop progresses faster than the script,
+    # then scales are based on assuming the current action has been done for n_ticks
     accel_bonus: float = 0.10
 
     # --- Airborne penalty ---
@@ -102,7 +104,9 @@ class RewardCalculator:
 
         # Centerline: quadratic penalty for lateral deviation.
         if curr.lateral_offset is not None:
-            reward += cfg.centerline_weight * abs(curr.lateral_offset) ** cfg.centerline_exp
+            reward += (
+                cfg.centerline_weight * abs(curr.lateral_offset) ** cfg.centerline_exp
+            )
 
         # Speed: small reward for going fast.
         reward += cfg.speed_weight * curr.velocity.magnitude()
@@ -130,7 +134,11 @@ class RewardCalculator:
                 reward += cfg.airborne_penalty
 
         # Lidar wall proximity: quadratic penalty for the nearest detected wall.
-        if lidar_rays is not None and len(lidar_rays) > 0 and cfg.lidar_wall_weight != 0.0:
+        if (
+            lidar_rays is not None
+            and len(lidar_rays) > 0
+            and cfg.lidar_wall_weight != 0.0
+        ):
             min_ray = float(np.min(lidar_rays))
             reward += cfg.lidar_wall_weight * (1.0 - min_ray) ** 2
 
