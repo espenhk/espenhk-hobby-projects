@@ -27,10 +27,17 @@ class Centerline:
         p = np.array([pos.x, pos.y, pos.z], dtype=np.float64)
 
         if hint_idx is not None:
-            lo = max(0, hint_idx - window)
-            hi = min(len(self._points) - 2, hint_idx + window)
-            local_dists = np.linalg.norm(self._points[lo:hi + 1] - p, axis=1)
-            idx = lo + int(np.argmin(local_dists))
+            n = len(self._points)
+            hint_idx = max(0, min(n - 2, hint_idx))
+            w = max(1, window)
+            lo = max(0, hint_idx - w)
+            hi = min(n - 2, hint_idx + w)
+            if lo <= hi:
+                local_dists = np.linalg.norm(self._points[lo:hi + 1] - p, axis=1)
+                idx = lo + int(np.argmin(local_dists))
+            else:
+                dists = np.linalg.norm(self._points - p, axis=1)
+                idx = int(np.argmin(dists))
         else:
             dists = np.linalg.norm(self._points - p, axis=1)
             idx = int(np.argmin(dists))
