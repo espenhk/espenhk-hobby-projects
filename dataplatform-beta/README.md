@@ -41,15 +41,98 @@ Repository secrets:
 - ci/powerbi-pr-validation.yml:
   - Runs PBIP structural and naming checks on pull requests.
 - ci/powerbi-release.yml:
-  - Validates PBIP conventions on main.
-  - Runs smoke checks in Dev.
-  - Promotes Test and Prod using Power BI deployment pipeline API.
+  - Push to main: validates PBIP conventions, updates Dev, runs Dev smoke checks, promotes Dev -> Test.
+  - Manual workflow dispatch on main: promotes Test -> Prod with change ticket gate.
   - Runs post-promotion smoke checks.
 
 ## Local validation
 Run PBIP validation:
 
 python dataplatform-beta/scripts/powerbi/validate_pbip.py
+
+## Architecture and flow diagrams
+Mermaid source diagrams are in docs/architecture-flow-diagrams.md and embedded here for quick review.
+
+### Platform architecture
+
+```mermaid
+flowchart LR
+  subgraph Sources[Source Systems]
+    S1[Operational DBs]
+    S2[SaaS APIs]
+    S3[Files and Events]
+  end
+
+  subgraph Azure[Azure Platform]
+    EH[Event Hubs]
+    AL[Databricks Auto Loader]
+    DBX[Azure Databricks]
+    UC[Unity Catalog]
+    ADLS[ADLS Gen2 Delta Lake]
+    KV[Key Vault]
+    LA[Log Analytics and Alerts]
+    ENTRA[Entra ID Groups]
+  end
+
+  subgraph BI[Power BI]
+    WS[Dev/Test/Prod Workspaces]
+    PIPE[Deployment Pipeline Dev -> Test -> Prod]
+    USERS[Business Consumers]
+  end
+
+  S1 --> AL
+  S2 --> AL
+  S3 --> EH
+  EH --> DBX
+  AL --> DBX
+  DBX <--> ADLS
+  UC -. governance .- DBX
+  KV -. secrets .- DBX
+  ENTRA -. RBAC .- UC
+  DBX --> WS
+  WS --> PIPE
+  PIPE --> USERS
+  DBX --> LA
+  WS --> LA
+```
+
+### Data flow
+
+```mermaid
+flowchart LR
+  SRC[Batch Files and Event Streams] --> RAW[Raw Immutable Landing]
+  RAW --> BRONZE[Bronze Standardized Delta]
+  BRONZE --> SILVER[Silver Validated and Conformed]
+  SILVER --> GOLD[Gold Star Schemas and Data Marts]
+
+  BRONZE --> Q[Quarantine Invalid Records + Reason Codes]
+  SILVER --> Q
+
+  ORCH[Databricks Workflows] -. orchestrates .-> BRONZE
+  ORCH -. orchestrates .-> SILVER
+  ORCH -. orchestrates .-> GOLD
+
+  GOLD --> SM[PBIP Semantic Models]
+  SM --> RPT[Thin Reports]
+  RPT --> CON[Business Consumers]
+```
+
+### CI/CD flow
+
+```mermaid
+flowchart TD
+  DEV[Developer Change] --> PR[Pull Request]
+
+  PR --> PBIP_CI[CI powerbi-pr-validation]
+  PBIP_CI --> MERGE[Merge to main]
+  MERGE --> DEV_RUN[Release workflow publish or sync to Dev]
+  DEV_RUN --> DEV_SMOKE[Dev smoke checks]
+  DEV_SMOKE --> TEST_PROMOTE[Promote Dev -> Test]
+  TEST_PROMOTE --> TEST_SMOKE[Test smoke checks]
+  TEST_SMOKE --> PROD_GATE[Manual dispatch + change ticket]
+  PROD_GATE --> PROD_PROMOTE[Promote Test -> Prod]
+  PROD_PROMOTE --> PROD_SMOKE[Prod smoke checks]
+```
 
 ## Terraform bootstrap (Power BI RBAC)
 
