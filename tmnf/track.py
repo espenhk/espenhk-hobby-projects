@@ -1,5 +1,7 @@
 import numpy as np
+from scipy.spatial import KDTree
 
+from constants import UP_VECTOR
 from utils import Vec3
 
 
@@ -10,6 +12,8 @@ class Centerline:
         seg_lengths = np.linalg.norm(diffs, axis=1)
         self._arc = np.concatenate([[0.0], np.cumsum(seg_lengths)])
         self._total_length = self._arc[-1]
+        # KDTree for O(log N) nearest-point queries instead of O(N) argmin.
+        self._kdtree = KDTree(self._points)
 
     def project_with_forward(
         self, pos: Vec3, hint_idx: int | None = None, window: int = 50
@@ -57,8 +61,8 @@ class Centerline:
         offset = p - foot
         forward = ab / seg_len if seg_len > 1e-9 else np.array([1.0, 0.0, 0.0])
 
-        up = np.array([0.0, 1.0, 0.0])
-        right = np.cross(forward, up)
+        # World up is Y in TMNF (imported from constants)
+        right = np.cross(forward, UP_VECTOR)
         right_len = np.linalg.norm(right)
         if right_len > 1e-9:
             right /= right_len

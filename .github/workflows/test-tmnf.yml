@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
+    paths:
+      - "tmnf/**"
 
 jobs:
   test:
@@ -24,7 +26,7 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --only tmnf-test
 
       - name: Run tests
         run: poetry run python -m pytest tmnf/tests/ -v

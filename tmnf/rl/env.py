@@ -1,29 +1,25 @@
 """
 TMNFEnv — Gymnasium environment wrapping TMInterface for RL training.
 
-Observation space (15 + n_lidar_rays floats, dtype float32)
-------------------------------------------------------------
-  [0]  speed_ms          — vehicle speed in m/s
-  [1]  lateral_offset_m  — metres from centreline (neg=left, pos=right)
-  [2]  vertical_offset_m — metres above (+) / below (-) centreline
-  [3]  yaw_error_rad     — signed heading error vs track direction, [-π, π]
-  [4]  pitch_rad         — nose-up/down rotation
-  [5]  roll_rad          — tilt left/right
-  [6]  track_progress    — fraction of track completed, [0, 1]
-  [7]  turning_rate      — current steering angle reported by the game
-  [8]  wheel_0_contact   — 1.0 if front-left wheel has ground contact, else 0.0
-  [9]  wheel_1_contact   — front-right
-  [10] wheel_2_contact   — rear-left
-  [11] wheel_3_contact   — rear-right
-  [12] angular_vel_x     — roll rate  (rad/s)
-  [13] angular_vel_y     — yaw rate   (rad/s)
-  [14] angular_vel_z     — pitch rate (rad/s)
-  [15+] lidar_i          — LIDAR wall distances, ~[0, 1], left-to-right across
-                           the car's forward view (only present if n_lidar_rays > 0)
+Observation space  (BASE_OBS_DIM + n_lidar_rays floats, dtype float32)
+-----------------------------------------------------------------------
+  See obs_spec.OBS_SPEC for the full list with descriptions and scales.
+  Summary:
+    [0]  speed_ms          — vehicle speed in m/s
+    [1]  lateral_offset_m  — metres from centreline (neg=left, pos=right)
+    [2]  vertical_offset_m — metres above (+) / below (-) centreline
+    [3]  yaw_error_rad     — signed heading error vs track direction, [-π, π]
+    [4]  pitch_rad         — nose-up/down rotation
+    [5]  roll_rad          — tilt left/right
+    [6]  track_progress    — fraction of track completed, [0, 1]
+    [7]  turning_rate      — current steering angle reported by the game
+    [8–11] wheel_N_contact — 1.0 if wheel has ground contact, else 0.0
+    [12–14] angular_vel_N  — angular velocity components (rad/s)
+    [15+] lidar_i          — LIDAR wall distances ~[0,1] (only if n_lidar_rays > 0)
 
 Action space
 ------------
-  Discrete(9) — see clients/rl_client.py ACTIONS table.
+  Discrete(N_ACTIONS) — see clients/rl_client.py ACTIONS table.
   0-2: brake  + left/straight/right
   3-5: coast  + left/straight/right
   6-8: accel  + left/straight/right
@@ -49,6 +45,7 @@ from __future__ import annotations
 import os
 import time
 import threading
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -56,13 +53,15 @@ import gymnasium as gym
 from gymnasium import spaces
 from tminterface.interface import TMInterface
 
-from clients.rl_client import ACTIONS, RLClient, StepState, N_ACTIONS
+from clients.rl_client import ACTIONS, RLClient, StepState
+from constants import N_ACTIONS
+from obs_spec import BASE_OBS_DIM
 from rl.reward import RewardConfig, RewardCalculator
 from lidar import LidarSensor
 
 
-_BASE_OBS_DIM = 15
 _DEFAULT_REWARD_CONFIG = os.path.join(os.path.dirname(__file__), "..", "config", "reward_config.yaml")
+_DEFAULT_CENTERLINE    = "tracks/a03_centerline.npy"
 
 
 class TMNFEnv(gym.Env):
@@ -85,7 +84,7 @@ class TMNFEnv(gym.Env):
 
     def __init__(
         self,
-        centerline_file: str,
+        centerline_file: str = _DEFAULT_CENTERLINE,
         speed: float = 10.0,
         reward_config: RewardConfig | None = None,
         max_episode_time_s: float = 120.0,
@@ -105,7 +104,7 @@ class TMNFEnv(gym.Env):
         else:
             self._lidar = None
 
-        obs_dim = _BASE_OBS_DIM + n_lidar_rays
+        obs_dim = BASE_OBS_DIM + n_lidar_rays
         # Observation: unbounded (SB3's VecNormalize can normalise online)
         self.observation_space = spaces.Box(
             low=-np.inf,
@@ -314,3 +313,28 @@ class TMNFEnv(gym.Env):
         self._iface.register(self._client)
         while self._iface.running:
             time.sleep(0.001)  # yield CPU; sleep(0) spun too tightly and competed with game/RL threads
+
+
+def make_env(
+    experiment_dir: str | Path,
+    speed: float = 10.0,
+    in_game_episode_s: float = 20.0,
+    centerline_file: str = _DEFAULT_CENTERLINE,
+    n_lidar_rays: int = 0,
+) -> TMNFEnv:
+    """
+    Factory that wires up a TMNFEnv from an experiment directory.
+
+    Loads reward_config.yaml from *experiment_dir* and converts
+    *in_game_episode_s* to a wall-clock episode limit at the given speed.
+    Both main.py and rl/train.py call this instead of constructing TMNFEnv directly.
+    """
+    experiment_dir = Path(experiment_dir)
+    reward_config = RewardConfig.from_yaml(str(experiment_dir / "reward_config.yaml"))
+    return TMNFEnv(
+        centerline_file=centerline_file,
+        speed=speed,
+        reward_config=reward_config,
+        max_episode_time_s=in_game_episode_s / speed,
+        n_lidar_rays=n_lidar_rays,
+    )

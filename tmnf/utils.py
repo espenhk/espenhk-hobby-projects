@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from typing import Any
 
+from constants import STEER_SCALE
+
 
 class Vec3:
     def __init__(self, x: float, y: float, z: float) -> None:
@@ -14,6 +16,7 @@ class Vec3:
         return (self.x**2 + self.y**2 + self.z**2) ** 0.5
 
     def compute_speed(self) -> float:
+        """Backward-compatible alias for magnitude()."""
         return self.magnitude()
 
 
@@ -91,10 +94,9 @@ class StateData:
         self.track_forward = None   # unit np.ndarray of track direction at car position
         self._centerline_idx = None  # nearest centerline point index (for windowed search)
         if centerline is not None:
-            pos = get_position(state)
             (self.track_progress, self.lateral_offset, self.vertical_offset,
              self.track_forward, self._centerline_idx) = centerline.project_with_forward(
-                pos, hint_idx=hint_idx
+                self.position, hint_idx=hint_idx
             )
 
     def __str__(self) -> str:
@@ -131,15 +133,5 @@ class StateData:
         )
 
 
-def get_position(state: Any) -> Vec3:
-    pos = state.dyna.current_state.position  # type: ignore[attr-defined]
-    return Vec3(pos[0], pos[1], pos[2])
-
-
-def get_speed(state: Any) -> Vec3:
-    speed = state.dyna.current_state.linear_speed  # type: ignore[attr-defined]
-    return Vec3(speed[0], speed[1], speed[2])
-
-
 def steer_percent(pct: int) -> int:  # -100 = full left, 0 = straight, 100 = full right
-    return int(pct / 100 * 65536)
+    return int(pct / 100 * STEER_SCALE)

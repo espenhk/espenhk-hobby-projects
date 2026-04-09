@@ -27,9 +27,10 @@ import threading
 from dataclasses import dataclass
 
 import numpy as np
-from tminterface.client import Client
 from tminterface.interface import TMInterface
 
+from clients.base import PhaseAwareClient
+from steering import angle_diff
 from track import Centerline
 from utils import StateData
 
@@ -49,26 +50,27 @@ _FINISH_THRESHOLD = 0.98
 
 # ---------------------------------------------------------------------------
 # Discrete action table
-# Index → (accelerate, brake, steer_percent)
-# steer_percent is in [-100, 100]; converted to [-65536, 65536] when applied.
+# Index → (accelerate, brake, steer_percent, description)
+# steer_percent is in [-100, 100]; converted to [-STEER_SCALE, STEER_SCALE] when applied.
 # ---------------------------------------------------------------------------
 ACTIONS: list[tuple[bool, bool, int, str]] = [
-    (False, True, -100, "brake LEFT"),  # 0: brake  + full left
-    (False, True, 0, "brake"),  # 1: brake  + straight
-    (False, True, 100, "brake RIGHT"),  # 2: brake  + full right
-    (False, False, -100, "coast LEFT"),  # 3: coast  + full left
-    (False, False, 0, "coast"),  # 4: coast  + straight
-    (False, False, 100, "coast RIGHT"),  # 5: coast  + full right
-    (True, False, -100, "accelerate LEFT"),  # 6: accel  + full left
-    (True, False, 0, "accelerate"),  # 7: accel  + straight   ← default
-    (True, False, 100, "accelerate right"),  # 8: accel  + full right
-]
-N_ACTIONS = len(ACTIONS)
+    (False,  True,  -100, "brake LEFT"),         # 0: brake  + full left
+    (False,  True,     0, "brake"),              # 1: brake  + straight
+    (False,  True,   100, "brake RIGHT"),        # 2: brake  + full right
+    (False, False,  -100, "coast LEFT"),         # 3: coast  + full left
+    (False, False,     0, "coast"),              # 4: coast  + straight
+    (False, False,   100, "coast RIGHT"),        # 5: coast  + full right
+    (True,  False,  -100, "accelerate LEFT"),    # 6: accel  + full left
+    (True,  False,     0, "accelerate"),         # 7: accel  + straight   ← default
+    (True,  False,   100, "accelerate right"),   # 8: accel  + full right  
+] 
+
+
+
 
 
 def get_action_description(idx: int) -> str:
     return ACTIONS[idx][3]
-
 
 @dataclass
 class StepState:
@@ -83,7 +85,7 @@ class StepState:
     )
 
 
-class RLClient(Client):
+class RLClient(PhaseAwareClient):
     """TMInterface client used by TMNFEnv during RL training."""
 
     def __init__(
@@ -324,13 +326,8 @@ class RLClient(Client):
         self._state_queue.put(step_state)
 
     def _compute_yaw_error(self, data: StateData) -> float:
-        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π].
-
-        Uses the forward direction already computed by StateData.project_with_forward()
-        — no second centerline scan needed.
-        """
+        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
+        assert data.track_forward is not None  # always set when centerline is provided
         track_fwd = data.track_forward
         track_yaw = math.atan2(float(track_fwd[0]), float(track_fwd[2]))
-        car_yaw = data.rotation.yaw()
-        diff = (track_yaw - car_yaw + math.pi) % (2 * math.pi) - math.pi
-        return diff
+        return angle_diff(track_yaw, data.rotation.yaw())

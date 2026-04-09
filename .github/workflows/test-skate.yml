@@ -4,6 +4,8 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     branches: [main]
+    paths:
+      - "skate/**"
 
 jobs:
   test:
@@ -24,7 +26,7 @@ jobs:
           virtualenvs-in-project: true
 
       - name: Install dependencies
-        run: poetry install
+        run: poetry install --only skate-test
 
       - name: Run tests
         run: poetry run python -m pytest skate/tests/ -v

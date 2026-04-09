@@ -15,13 +15,14 @@ class TestCenterline(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         points = np.array([[0.0, 0.0, i * 10.0] for i in range(11)], dtype=np.float32)
-        cls._tmp = tempfile.NamedTemporaryFile(suffix=".npy", delete=False)
-        np.save(cls._tmp.name, points)
-        cls.cl = Centerline(cls._tmp.name)
+        fd, cls._tmp_path = tempfile.mkstemp(suffix=".npy")
+        os.close(fd)
+        np.save(cls._tmp_path, points)
+        cls.cl = Centerline(cls._tmp_path)
 
     @classmethod
     def tearDownClass(cls):
-        os.unlink(cls._tmp.name)
+        os.unlink(cls._tmp_path)
 
     def test_start_progress(self):
         progress, _, _ = self.cl.project(Vec3(0, 0, 0))

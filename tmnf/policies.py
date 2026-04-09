@@ -4,6 +4,7 @@ Driving policies for TMNF.
 BasePolicy           — abstract base class for all policies
 WeightedLinearPolicy — trainable linear policy; weights stored in YAML
 NeuralNetPolicy      — small MLP policy; trained via hill-climbing
+QTablePolicy         — shared base for tabular Q-learning policies
 EpsilonGreedyPolicy  — Q-table with epsilon-greedy exploration
 MCTSPolicy           — Q-table with UCB1 (UCT-style) action selection
 GeneticPolicy        — population of WeightedLinearPolicy, evolutionary training
@@ -17,6 +18,10 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 import yaml
+
+from constants import N_ACTIONS
+from obs_spec import OBS_NAMES, OBS_SCALES, obs_names_with_lidar, obs_scales_with_lidar
+from steering import PDHeadingController
 
 
 # ---------------------------------------------------------------------------
@@ -74,54 +79,17 @@ class WeightedLinearPolicy(BasePolicy):
     Create via WeightedLinearPolicy(file) or WeightedLinearPolicy.from_cfg(dict).
     """
 
-    OBS_NAMES = [
-        "speed_ms",
-        "lateral_offset_m",
-        "vertical_offset_m",
-        "yaw_error_rad",
-        "pitch_rad",
-        "roll_rad",
-        "track_progress",
-        "turning_rate",
-        "wheel_0_contact",
-        "wheel_1_contact",
-        "wheel_2_contact",
-        "wheel_3_contact",
-        "angular_vel_x",
-        "angular_vel_y",
-        "angular_vel_z",
-    ]
-
-    # Typical magnitude of each obs feature. obs is divided by these before the
-    # dot product so every weight operates on a ~[-1, 1] input, making mutation
-    # steps comparable across features regardless of raw unit scale.
-    OBS_SCALES = np.array([
-        50.0,    # speed_ms         — typical ~50 m/s at race pace
-        5.0,     # lateral_offset_m — crash threshold 25 m, normal range ±2–3 m
-        2.0,     # vertical_offset_m
-        3.14159, # yaw_error_rad    — full range is [-π, π]
-        0.3,     # pitch_rad
-        0.3,     # roll_rad
-        1.0,     # track_progress   — already [0, 1]
-        65536.0, # turning_rate     — raw TMInterface steer value, ±65536
-        1.0,     # wheel_0_contact  — already {0, 1}
-        1.0,     # wheel_1_contact
-        1.0,     # wheel_2_contact
-        1.0,     # wheel_3_contact
-        5.0,     # angular_vel_x    — rad/s, typical peak ±5
-        5.0,     # angular_vel_y
-        5.0,     # angular_vel_z
-    ], dtype=np.float32)
+    # Observation names and scales are imported from obs_spec.py — one source of truth.
+    OBS_NAMES  = OBS_NAMES
+    OBS_SCALES = OBS_SCALES
 
     @classmethod
-    def get_obs_names(cls: type[WeightedLinearPolicy], n_lidar_rays: int = 0) -> list[str]:
-        """Return the full observation name list for *n_lidar_rays* LIDAR rays."""
-        return cls.OBS_NAMES + [f"lidar_{i}" for i in range(n_lidar_rays)]
+    def get_obs_names(cls, n_lidar_rays: int = 0) -> list[str]:
+        return obs_names_with_lidar(n_lidar_rays)
 
     @classmethod
-    def get_obs_scales(cls: type[WeightedLinearPolicy], n_lidar_rays: int = 0) -> np.ndarray:
-        """Return the full scale vector. LIDAR values are already ~[0,1] so scale=1."""
-        return np.concatenate([cls.OBS_SCALES, np.ones(n_lidar_rays, dtype=np.float32)])
+    def get_obs_scales(cls, n_lidar_rays: int = 0) -> np.ndarray:
+        return obs_scales_with_lidar(n_lidar_rays)
 
     def __init__(self, weights_file: str, n_lidar_rays: int = 0) -> None:
         self._weights_file = weights_file
@@ -131,7 +99,7 @@ class WeightedLinearPolicy(BasePolicy):
         print(f"[WeightedLinearPolicy] loaded weights from {weights_file}")
 
     @classmethod
-    def from_cfg(cls: type[WeightedLinearPolicy], cfg: dict, n_lidar_rays: int = 0) -> WeightedLinearPolicy:
+    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> WeightedLinearPolicy:
         """Create a policy from a weights dict (not backed by a file)."""
         obj = object.__new__(cls)
         obj._weights_file = None
@@ -262,18 +230,17 @@ class NeuralNetPolicy(BasePolicy):
     """
     Small MLP policy trained via hill-climbing (same loop as WeightedLinearPolicy).
 
-    Architecture: obs → Linear → ReLU → ... → Linear(9) → argmax
+    Architecture: obs → Linear → ReLU → ... → Linear(N_ACTIONS) → argmax
     Pure numpy, no external ML framework required.
     Weights serialized to YAML as nested lists.
     """
 
-    N_ACTIONS = 9
-
     def __init__(self, hidden_sizes: list[int] | None = None, n_lidar_rays: int = 0) -> None:
+        from obs_spec import BASE_OBS_DIM
         self._hidden = list(hidden_sizes or [16, 16])
         self._n_lidar_rays = n_lidar_rays
-        obs_dim = 15 + n_lidar_rays
-        layer_dims = [obs_dim] + self._hidden + [self.N_ACTIONS]
+        obs_dim = BASE_OBS_DIM + n_lidar_rays
+        layer_dims = [obs_dim] + self._hidden + [N_ACTIONS]
         rng = np.random.default_rng()
         self._weights: list[np.ndarray] = []
         self._biases:  list[np.ndarray] = []
@@ -286,7 +253,7 @@ class NeuralNetPolicy(BasePolicy):
             self._biases.append(b)
 
     @classmethod
-    def from_cfg(cls: type[NeuralNetPolicy], cfg: dict, n_lidar_rays: int = 0) -> NeuralNetPolicy:
+    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> NeuralNetPolicy:
         obj = cls.__new__(cls)
         obj._hidden = cfg["hidden_sizes"]
         obj._n_lidar_rays = n_lidar_rays
@@ -295,7 +262,7 @@ class NeuralNetPolicy(BasePolicy):
         return obj
 
     def __call__(self, obs: np.ndarray) -> int:
-        scales = WeightedLinearPolicy.get_obs_scales(self._n_lidar_rays)
+        scales = obs_scales_with_lidar(self._n_lidar_rays)
         x = (obs / scales).astype(np.float32)
         for i, (w, b) in enumerate(zip(self._weights, self._biases)):
             x = w @ x + b
@@ -303,7 +270,7 @@ class NeuralNetPolicy(BasePolicy):
                 x = np.maximum(0.0, x)   # ReLU on all but output layer
         return int(np.argmax(x))
 
-    def mutated(self, scale: float = 0.1) -> "NeuralNetPolicy":
+    def mutated(self, scale: float = 0.1) -> NeuralNetPolicy:
         """Return a new policy with Gaussian noise added to all weights and biases."""
         rng = np.random.default_rng()
         obj = NeuralNetPolicy.__new__(NeuralNetPolicy)
@@ -326,7 +293,7 @@ class NeuralNetPolicy(BasePolicy):
 
 
 # ---------------------------------------------------------------------------
-# Shared helper for Q-table policies
+# QTablePolicy — shared base for tabular Q-learning policies
 # ---------------------------------------------------------------------------
 
 def _discretize_obs(obs: np.ndarray, scales: np.ndarray, n_bins: int) -> tuple[int, ...]:
@@ -342,24 +309,87 @@ def _discretize_obs(obs: np.ndarray, scales: np.ndarray, n_bins: int) -> tuple[i
     return tuple(bins.tolist())
 
 
+class QTablePolicy(BasePolicy):
+    """
+    Shared base for tabular Q-learning policies (EpsilonGreedy and MCTS).
+
+    Manages the Q-table, visit counts, discretization, and Bellman updates.
+    Subclasses override _select_action() to implement their exploration strategy.
+    """
+
+    def __init__(
+        self,
+        alpha: float = 0.1,
+        gamma: float = 0.99,
+        n_bins: int = 3,
+        n_lidar_rays: int = 0,
+    ) -> None:
+        self._alpha        = alpha
+        self._gamma        = gamma
+        self._n_bins       = n_bins
+        self._n_lidar_rays = n_lidar_rays
+        self._scales       = obs_scales_with_lidar(n_lidar_rays)
+        self._q_table: dict[tuple, np.ndarray] = {}
+        self._n_sa:    dict[tuple, np.ndarray] = {}   # N(s, a) — visit counts
+        self._n_s:     dict[tuple, int]        = {}   # N(s) = Σ N(s, a)
+        self._last_obs    = None
+        self._last_action = None
+
+    def _q(self, s: tuple) -> np.ndarray:
+        if s not in self._q_table:
+            self._q_table[s] = np.zeros(N_ACTIONS, dtype=np.float32)
+        return self._q_table[s]
+
+    def _n(self, s: tuple) -> np.ndarray:
+        if s not in self._n_sa:
+            self._n_sa[s] = np.zeros(N_ACTIONS, dtype=np.float32)
+        return self._n_sa[s]
+
+    @abstractmethod
+    def _select_action(self, s: tuple) -> int:
+        """Choose an action for state key s. Implemented by subclasses."""
+
+    def __call__(self, obs: np.ndarray) -> int:
+        s = _discretize_obs(obs, self._scales, self._n_bins)
+        self._last_obs = obs
+        action = self._select_action(s)
+        self._last_action = action
+        return action
+
+    def update(self, obs: np.ndarray, action: int, reward: float,
+               next_obs: np.ndarray, done: bool) -> None:
+        s  = _discretize_obs(obs,      self._scales, self._n_bins)
+        s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
+        q_next = 0.0 if done else float(np.max(self._q(s_)))
+        td = reward + self._gamma * q_next - self._q(s)[action]
+        self._q(s)[action] += self._alpha * td
+        self._n(s)[action] += 1.0
+        self._n_s[s] = self._n_s.get(s, 0) + 1
+
+    def on_episode_end(self) -> None:
+        self._last_obs    = None
+        self._last_action = None
+
+    @property
+    def n_states_visited(self) -> int:
+        return len(self._q_table)
+
+
 # ---------------------------------------------------------------------------
 # EpsilonGreedyPolicy
 # ---------------------------------------------------------------------------
 
-class EpsilonGreedyPolicy(BasePolicy):
+class EpsilonGreedyPolicy(QTablePolicy):
     """
     Tabular Q-learning with epsilon-greedy exploration.
 
     State space is the observation vector discretized into n_bins buckets per
-    feature (default 3).  Q-values are updated online via the Bellman equation
-    after every environment step.  Epsilon decays each episode.
+    feature (default 3).  Epsilon decays each episode.
 
     Note: the Q-table is NOT persisted to policy_weights.yaml (it can be very
     large).  to_cfg() records only hyperparameters; the table lives in memory
     for the duration of a training run.
     """
-
-    N_ACTIONS = 9
 
     def __init__(
         self,
@@ -371,20 +401,13 @@ class EpsilonGreedyPolicy(BasePolicy):
         gamma: float = 0.99,
         n_lidar_rays: int = 0,
     ) -> None:
-        self._n_bins        = n_bins
+        super().__init__(alpha=alpha, gamma=gamma, n_bins=n_bins, n_lidar_rays=n_lidar_rays)
         self._epsilon       = epsilon
         self._epsilon_decay = epsilon_decay
         self._epsilon_min   = epsilon_min
-        self._alpha         = alpha
-        self._gamma         = gamma
-        self._n_lidar_rays  = n_lidar_rays
-        self._scales        = WeightedLinearPolicy.get_obs_scales(n_lidar_rays)
-        self._q_table: dict[tuple, np.ndarray] = {}
-        self._last_obs      = None
-        self._last_action   = None
 
     @classmethod
-    def from_cfg(cls: type[EpsilonGreedyPolicy], cfg: dict, n_lidar_rays: int = 0) -> EpsilonGreedyPolicy:
+    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> EpsilonGreedyPolicy:
         return cls(
             n_bins        = cfg.get("n_bins",        3),
             epsilon       = cfg.get("epsilon",       1.0),
@@ -395,44 +418,26 @@ class EpsilonGreedyPolicy(BasePolicy):
             n_lidar_rays  = n_lidar_rays,
         )
 
-    def _q(self, state_key: tuple) -> np.ndarray:
-        if state_key not in self._q_table:
-            self._q_table[state_key] = np.zeros(self.N_ACTIONS, dtype=np.float32)
-        return self._q_table[state_key]
-
-    def __call__(self, obs: np.ndarray) -> int:
-        state_key         = _discretize_obs(obs, self._scales, self._n_bins)
-        self._last_obs    = obs
+    def _select_action(self, s: tuple) -> int:
         if np.random.random() < self._epsilon:
-            action = int(np.random.randint(self.N_ACTIONS))
-        else:
-            action = int(np.argmax(self._q(state_key)))
-        self._last_action = action
-        return action
-
-    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
-        s  = _discretize_obs(obs, self._scales, self._n_bins)
-        s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
-        q_next  = 0.0 if done else float(np.max(self._q(s_)))
-        td      = reward + self._gamma * q_next - self._q(s)[action]
-        self._q(s)[action] += self._alpha * td
+            return int(np.random.randint(N_ACTIONS))
+        return int(np.argmax(self._q(s)))
 
     def on_episode_end(self) -> None:
+        super().on_episode_end()
         self._epsilon = max(self._epsilon_min,
                             self._epsilon * self._epsilon_decay)
-        self._last_obs    = None
-        self._last_action = None
 
     def to_cfg(self) -> dict:
         return {
-            "policy_type":     "epsilon_greedy",
-            "n_bins":          self._n_bins,
-            "epsilon":         float(self._epsilon),
-            "epsilon_decay":   float(self._epsilon_decay),
-            "epsilon_min":     float(self._epsilon_min),
-            "alpha":           float(self._alpha),
-            "gamma":           float(self._gamma),
-            "n_states_visited": len(self._q_table),
+            "policy_type":      "epsilon_greedy",
+            "n_bins":           self._n_bins,
+            "epsilon":          float(self._epsilon),
+            "epsilon_decay":    float(self._epsilon_decay),
+            "epsilon_min":      float(self._epsilon_min),
+            "alpha":            float(self._alpha),
+            "gamma":            float(self._gamma),
+            "n_states_visited": self.n_states_visited,
         }
 
 
@@ -440,7 +445,7 @@ class EpsilonGreedyPolicy(BasePolicy):
 # MCTSPolicy  (UCT-style online learner)
 # ---------------------------------------------------------------------------
 
-class MCTSPolicy(BasePolicy):
+class MCTSPolicy(QTablePolicy):
     """
     UCT-inspired online Q-learner.
 
@@ -450,11 +455,9 @@ class MCTSPolicy(BasePolicy):
     where N(s, a) is the visit count for (state, action) and N(s) = Σ_a N(s, a).
 
     NOTE: True Monte Carlo Tree Search requires cloning the environment state,
-    which is not possible with TMInterface.  This implementation is a UCT-style
-    approximation that builds value/count tables incrementally over real episodes.
+    which is not possible with TMInterface.  This is a UCT-style approximation
+    that builds value/count tables incrementally over real episodes.
     """
-
-    N_ACTIONS = 9
 
     def __init__(
         self,
@@ -464,20 +467,11 @@ class MCTSPolicy(BasePolicy):
         n_bins: int = 3,
         n_lidar_rays: int = 0,
     ) -> None:
-        self._c            = c
-        self._alpha        = alpha
-        self._gamma        = gamma
-        self._n_bins       = n_bins
-        self._n_lidar_rays = n_lidar_rays
-        self._scales       = WeightedLinearPolicy.get_obs_scales(n_lidar_rays)
-        self._q_table:  dict[tuple, np.ndarray] = {}
-        self._n_sa:     dict[tuple, np.ndarray] = {}   # N(s, a)
-        self._n_s:      dict[tuple, int]        = {}   # N(s) = Σ N(s,a)
-        self._last_obs    = None
-        self._last_action = None
+        super().__init__(alpha=alpha, gamma=gamma, n_bins=n_bins, n_lidar_rays=n_lidar_rays)
+        self._c = c
 
     @classmethod
-    def from_cfg(cls: type[MCTSPolicy], cfg: dict, n_lidar_rays: int = 0) -> MCTSPolicy:
+    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> MCTSPolicy:
         return cls(
             c            = cfg.get("c",     1.41),
             alpha        = cfg.get("alpha", 0.1),
@@ -486,42 +480,14 @@ class MCTSPolicy(BasePolicy):
             n_lidar_rays = n_lidar_rays,
         )
 
-    def _q(self, s: tuple) -> np.ndarray:
-        if s not in self._q_table:
-            self._q_table[s] = np.zeros(self.N_ACTIONS, dtype=np.float32)
-        return self._q_table[s]
-
-    def _n(self, s: tuple) -> np.ndarray:
-        if s not in self._n_sa:
-            self._n_sa[s] = np.zeros(self.N_ACTIONS, dtype=np.float32)
-        return self._n_sa[s]
-
-    def __call__(self, obs: np.ndarray) -> int:
-        s             = _discretize_obs(obs, self._scales, self._n_bins)
-        self._last_obs = obs
-        n_s           = self._n_s.get(s, 0)
+    def _select_action(self, s: tuple) -> int:
+        n_s = self._n_s.get(s, 0)
         if n_s == 0:
-            action = int(np.random.randint(self.N_ACTIONS))
-        else:
-            ucb    = self._q(s) + self._c * np.sqrt(
-                math.log(n_s + 1) / (self._n(s) + 1e-8)
-            )
-            action = int(np.argmax(ucb))
-        self._last_action = action
-        return action
-
-    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
-        s  = _discretize_obs(obs, self._scales, self._n_bins)
-        s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
-        q_next  = 0.0 if done else float(np.max(self._q(s_)))
-        td      = reward + self._gamma * q_next - self._q(s)[action]
-        self._q(s)[action]  += self._alpha * td
-        self._n(s)[action]  += 1.0
-        self._n_s[s]         = self._n_s.get(s, 0) + 1
-
-    def on_episode_end(self) -> None:
-        self._last_obs    = None
-        self._last_action = None
+            return int(np.random.randint(N_ACTIONS))
+        ucb = self._q(s) + self._c * np.sqrt(
+            math.log(n_s + 1) / (self._n(s) + 1e-8)
+        )
+        return int(np.argmax(ucb))
 
     def to_cfg(self) -> dict:
         return {
@@ -530,7 +496,7 @@ class MCTSPolicy(BasePolicy):
             "alpha":            float(self._alpha),
             "gamma":            float(self._gamma),
             "n_bins":           self._n_bins,
-            "n_states_visited": len(self._q_table),
+            "n_states_visited": self.n_states_visited,
         }
 
 
@@ -571,7 +537,7 @@ class GeneticPolicy(BasePolicy):
         self._champion_reward: float = float("-inf")
 
     @classmethod
-    def from_cfg(cls: type[GeneticPolicy], cfg: dict, n_lidar_rays: int = 0) -> GeneticPolicy:
+    def from_cfg(cls, cfg: dict, n_lidar_rays: int = 0) -> GeneticPolicy:
         obj = cls(
             population_size = cfg.get("population_size", 10),
             elite_k         = cfg.get("elite_k", 3),
@@ -585,17 +551,25 @@ class GeneticPolicy(BasePolicy):
             obj._champion_reward = float(cfg.get("champion_reward", float("-inf")))
         return obj
 
+    @property
+    def population(self) -> list[WeightedLinearPolicy]:
+        return self._population
+
+    @property
+    def champion_reward(self) -> float:
+        return self._champion_reward
+
     def initialize_random(self) -> None:
         """Build a fresh random population."""
-        rng       = np.random.default_rng()
-        obs_names = WeightedLinearPolicy.get_obs_names(self._n_lidar_rays)
-        pop       = []
+        rng = np.random.default_rng()
+        names = obs_names_with_lidar(self._n_lidar_rays)
+        pop = []
         for _ in range(self._pop_size):
             cfg = {
                 "steer_threshold":    0.5,
                 "throttle_threshold": 0.5,
-                "steer_weights":    {n: float(rng.standard_normal()) for n in obs_names},
-                "throttle_weights": {n: float(rng.standard_normal()) for n in obs_names},
+                "steer_weights":    {n: float(rng.standard_normal()) for n in names},
+                "throttle_weights": {n: float(rng.standard_normal()) for n in names},
             }
             pop.append(WeightedLinearPolicy.from_cfg(cfg, self._n_lidar_rays))
         self._population = pop
@@ -633,13 +607,13 @@ class GeneticPolicy(BasePolicy):
             self._champion        = ranked[0][1]
             improved              = True
 
-        elites   = [ind for _, ind in ranked[:self._elite_k]]
-        new_pop  = list(elites)
-        rng_idx  = np.random.default_rng()
+        elites  = [ind for _, ind in ranked[:self._elite_k]]
+        new_pop = list(elites)
+        rng_idx = np.random.default_rng()
 
         while len(new_pop) < self._pop_size:
-            i1     = int(rng_idx.integers(self._elite_k))
-            i2     = int(rng_idx.integers(self._elite_k))
+            i1 = int(rng_idx.integers(self._elite_k))
+            i2 = int(rng_idx.integers(self._elite_k))
             child_cfg = self._crossover(elites[i1].to_cfg(), elites[i2].to_cfg())
             child     = WeightedLinearPolicy.from_cfg(child_cfg, self._n_lidar_rays)
             new_pop.append(child.mutated(self._mutation_scale, self._mutation_share))
