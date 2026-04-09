@@ -35,7 +35,7 @@ from utils import StateData
 
 
 _UP = np.array([0.0, 1.0, 0.0])
-VELOCITY_ZERO_THRESHOLD = 0.5   # m/s — wait for car to stop before starting episode
+VELOCITY_ZERO_THRESHOLD = 0.5  # m/s — wait for car to stop before starting episode
 
 # Hard-limit lateral offset before the client itself declares the episode done.
 # This is a safety net — the env's crash_threshold_m (default 10 m) triggers first.
@@ -53,43 +53,52 @@ _FINISH_THRESHOLD = 0.98
 # steer_percent is in [-100, 100]; converted to [-65536, 65536] when applied.
 # ---------------------------------------------------------------------------
 ACTIONS: list[tuple[bool, bool, int, str]] = [
-    (False, True,   -100, "brake LEFT"),  # 0: brake  + full left
-    (False, True,      0, "brake"),       # 1: brake  + straight
-    (False, True,    100, "brake RIGHT"), # 2: brake  + full right
-    (False, False, -100, "coast LEFT"),   # 3: coast  + full left
-    (False, False,    0, "coast"),        # 4: coast  + straight
-    (False, False,  100, "coast RIGHT"),  # 5: coast  + full right
-    (True,  False, -100, "accelerate LEFT"),   # 6: accel  + full left
-    (True,  False,    0, "accelerate"),        # 7: accel  + straight   ← default
-    (True,  False,  100, "accelerate right")   # 8: accel  + full right
+    (False, True, -100, "brake LEFT"),  # 0: brake  + full left
+    (False, True, 0, "brake"),  # 1: brake  + straight
+    (False, True, 100, "brake RIGHT"),  # 2: brake  + full right
+    (False, False, -100, "coast LEFT"),  # 3: coast  + full left
+    (False, False, 0, "coast"),  # 4: coast  + straight
+    (False, False, 100, "coast RIGHT"),  # 5: coast  + full right
+    (True, False, -100, "accelerate LEFT"),  # 6: accel  + full left
+    (True, False, 0, "accelerate"),  # 7: accel  + straight   ← default
+    (True, False, 100, "accelerate right"),  # 8: accel  + full right
 ]
 N_ACTIONS = len(ACTIONS)
+
 
 def get_action_description(idx: int) -> str:
     return ACTIONS[idx][3]
 
+
 @dataclass
 class StepState:
     """Everything the env needs to compute observations and rewards."""
+
     state_data: StateData
-    yaw_error: float   # signed radians: track heading minus car heading, in [-π, π]
-    done: bool         # True if game client detected a hard termination condition
+    yaw_error: float  # signed radians: track heading minus car heading, in [-π, π]
+    done: bool  # True if game client detected a hard termination condition
     finished: bool = False  # True when car crossed the finish line
-    ticks_this_step: int = 1  # game ticks covered by this RL step (≥1; >1 when events were skipped)
+    ticks_this_step: int = (
+        1  # game ticks covered by this RL step (≥1; >1 when events were skipped)
+    )
 
 
 class RLClient(Client):
     """TMInterface client used by TMNFEnv during RL training."""
 
-    def __init__(self, centerline_file: str, speed: float = 10.0,
-                 auto_respawn_on_finish: bool = False) -> None:
+    def __init__(
+        self,
+        centerline_file: str,
+        speed: float = 10.0,
+        auto_respawn_on_finish: bool = False,
+    ) -> None:
         super().__init__()
         self.speed = speed
         self.centerline = Centerline(centerline_file)
         self._auto_respawn_on_finish = auto_respawn_on_finish
 
         # Shared state — written by RL thread, read by game thread
-        self._action_idx: int = 7   # default: accel + straight
+        self._action_idx: int = 7  # default: accel + straight
         self._action_lock = threading.Lock()
 
         # Shared state — written by game thread, read by RL thread
@@ -97,7 +106,7 @@ class RLClient(Client):
         self._respawn_event = threading.Event()
         self._episode_ready = threading.Event()
 
-        self._running = False   # False = braking to a stop, True = episode running
+        self._running = False  # False = braking to a stop, True = episode running
         self._registered_event = threading.Event()
         self._stop_event = threading.Event()
 
@@ -130,7 +139,7 @@ class RLClient(Client):
     def stop(self) -> None:
         """Unblock any waiting RL-thread calls so the process can exit cleanly."""
         self._stop_event.set()
-        self._episode_ready.set()   # unblock wait_episode_ready
+        self._episode_ready.set()  # unblock wait_episode_ready
 
     def set_action(self, action_idx: int) -> None:
         """Set the next action. Thread-safe."""
@@ -197,6 +206,7 @@ class RLClient(Client):
             yaw_error=self._last_step_state.yaw_error,
             done=False,
             finished=True,
+            ticks_this_step=self._last_step_state.ticks_this_step,
         )
         self._drain_and_put(synthetic)
         self._simulation_finish_delivered = True
@@ -219,8 +229,9 @@ class RLClient(Client):
             return
 
         state = iface.get_simulation_state()
-        data = StateData(state, centerline=self.centerline,
-                         hint_idx=self._last_centerline_idx)
+        data = StateData(
+            state, centerline=self.centerline, hint_idx=self._last_centerline_idx
+        )
         self._last_centerline_idx = data._centerline_idx
         speed_ms = data.velocity.magnitude()
 
@@ -247,7 +258,7 @@ class RLClient(Client):
             if self._finish_respawn_pending:
                 self._finish_respawn_pending = False
                 self._episode_ready.clear()
-                iface.give_up()   # restart race from position zero
+                iface.give_up()  # restart race from position zero
                 self._running = False
                 return
 
@@ -260,9 +271,12 @@ class RLClient(Client):
                 steer=int(steer_pct / 100 * 65536),
             )
 
+
             finished  = data.track_progress is not None and data.track_progress >= _FINISH_THRESHOLD
-            hard_crash = (data.lateral_offset is not None
-                          and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M)
+            hard_crash = (
+                data.lateral_offset is not None
+                and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M
+            )
 
             if finished:
                 print(f"[RLClient] on_run_step t={_time}: finish detected "
