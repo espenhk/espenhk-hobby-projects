@@ -25,18 +25,17 @@ import math
 import queue
 import threading
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
-from tminterface.client import Client
 from tminterface.interface import TMInterface
 
+from clients.base import PhaseAwareClient
 from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD
+from constants import N_ACTIONS, STEER_SCALE, UP_VECTOR
+from steering import angle_diff
 from track import Centerline
-from utils import StateData, get_position
+from utils import StateData
 
-
-_UP = np.array([0.0, 1.0, 0.0])
 
 # Hard-limit lateral offset before the client itself declares the episode done.
 # This is a safety net — the env's crash_threshold_m (default 10 m) triggers first.
@@ -45,24 +44,26 @@ _HARD_CRASH_THRESHOLD_M = 50.0
 
 # ---------------------------------------------------------------------------
 # Discrete action table
-# Index → (accelerate, brake, steer_percent)
-# steer_percent is in [-100, 100]; converted to [-65536, 65536] when applied.
+# Index → (accelerate, brake, steer_percent, description)
+# steer_percent is in [-100, 100]; converted to [-STEER_SCALE, STEER_SCALE] when applied.
 # ---------------------------------------------------------------------------
 ACTIONS: list[tuple[bool, bool, int, str]] = [
-    (False, True,   -100, "brake LEFT"),  # 0: brake  + full left
-    (False, True,      0, "brake"),       # 1: brake  + straight
-    (False, True,    100, "brake RIGHT"), # 2: brake  + full right
-    (False, False, -100, "coast LEFT"),   # 3: coast  + full left
-    (False, False,    0, "coast"),        # 4: coast  + straight
-    (False, False,  100, "coast RIGHT"),  # 5: coast  + full right
-    (True,  False, -100, "accelerate LEFT"),   # 6: accel  + full left
-    (True,  False,    0, "accelerate"),        # 7: accel  + straight   ← default
-    (True,  False,  100, "accelerate right")   # 8: accel  + full right
+    (False, True,   -100, "brake LEFT"),        # 0
+    (False, True,      0, "brake"),             # 1
+    (False, True,    100, "brake RIGHT"),       # 2
+    (False, False, -100, "coast LEFT"),         # 3
+    (False, False,    0, "coast"),              # 4
+    (False, False,  100, "coast RIGHT"),        # 5
+    (True,  False, -100, "accelerate LEFT"),    # 6
+    (True,  False,    0, "accelerate"),         # 7  ← default
+    (True,  False,  100, "accelerate right"),   # 8
 ]
-N_ACTIONS = len(ACTIONS)
+assert len(ACTIONS) == N_ACTIONS, f"ACTIONS table length {len(ACTIONS)} != N_ACTIONS {N_ACTIONS}"
+
 
 def get_action_description(idx: int) -> str:
     return ACTIONS[idx][3]
+
 
 @dataclass
 class StepState:
@@ -73,7 +74,7 @@ class StepState:
     finished: bool = False  # True when car crossed the finish line
 
 
-class RLClient(Client):
+class RLClient(PhaseAwareClient):
     """TMInterface client used by TMNFEnv during RL training."""
 
     def __init__(self, centerline_file: str, speed: float = 10.0,
@@ -92,7 +93,6 @@ class RLClient(Client):
         self._respawn_event = threading.Event()
         self._episode_ready = threading.Event()
 
-        self._phase = Phase.BRAKING_START
         self._registered_event = threading.Event()
         self._stop_event = threading.Event()
 
@@ -158,18 +158,16 @@ class RLClient(Client):
 
     def on_simulation_begin(self, iface: TMInterface) -> None:
         """Fires when TMInterface starts replay validation after the car finishes.
-        If we were in RUNNING phase, treat it as a finish event and deliver a
-        synthetic finish step so the RL thread is not left waiting indefinitely."""
+
+        TMInterface calls on_simulation_begin() instead of a final on_run_step()
+        when the car crosses the finish line.  We synthesize a finish step from
+        the last cached state so the RL thread is not left waiting indefinitely.
+        """
         if self._phase != Phase.RUNNING:
             return  # Our own give_up() respawn — ignore
         if self._last_step_state is None:
             return  # No cached state to synthesize from
-        synthetic = StepState(
-            state_data=self._last_step_state.state_data,
-            yaw_error=self._last_step_state.yaw_error,
-            done=False,
-            finished=True,
-        )
+        synthetic = self._synthesize_finish_step(self._last_step_state)
         self._drain_and_put(synthetic)
         if self._auto_respawn_on_finish:
             # Mark pending so the first on_run_step of the replay calls give_up().
@@ -196,7 +194,7 @@ class RLClient(Client):
                     self._phase = Phase.RUNNING
                     step_state = StepState(
                         state_data=data,
-                        yaw_error=self._compute_yaw_error(state, data),
+                        yaw_error=self._compute_yaw_error(data),
                         done=False,
                     )
                     self._drain_and_put(step_state)
@@ -218,7 +216,7 @@ class RLClient(Client):
                 iface.set_input_state(
                     accelerate=accelerate,
                     brake=brake,
-                    steer=int(steer_pct / 100 * 65536),
+                    steer=int(steer_pct / 100 * STEER_SCALE),
                 )
 
                 finished  = data.track_progress is not None and data.track_progress >= 1.0
@@ -234,7 +232,7 @@ class RLClient(Client):
 
                 step_state = StepState(
                     state_data=data,
-                    yaw_error=self._compute_yaw_error(state, data),
+                    yaw_error=self._compute_yaw_error(data),
                     done=done,
                     finished=finished,
                 )
@@ -253,11 +251,21 @@ class RLClient(Client):
             pass
         self._state_queue.put(step_state)
 
-    def _compute_yaw_error(self, raw_state: Any, data: StateData) -> float:
-        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
-        pos = get_position(raw_state)
-        track_fwd = self.centerline.forward_at(pos)
+    def _synthesize_finish_step(self, last: StepState) -> StepState:
+        """Build a finish-flagged step from the last cached state.
+
+        Used because TMInterface fires on_simulation_begin() on finish instead
+        of a final on_run_step(), so we must fabricate the terminal step ourselves.
+        """
+        return StepState(
+            state_data=last.state_data,
+            yaw_error=last.yaw_error,
+            done=False,
+            finished=True,
+        )
+
+    def _compute_yaw_error(self, data: StateData) -> float:
+        """Signed heading error: track yaw minus car yaw, wrapped to [−π, π]."""
+        track_fwd = self.centerline.forward_at(data.position)
         track_yaw = math.atan2(float(track_fwd[0]), float(track_fwd[2]))
-        car_yaw = data.rotation.yaw()
-        diff = (track_yaw - car_yaw + math.pi) % (2 * math.pi) - math.pi
-        return diff
+        return angle_diff(track_yaw, data.rotation.yaw())
