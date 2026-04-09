@@ -1,5 +1,3 @@
-steer_threshold: 0.5
-throttle_threshold: 0.5
 steer_weights:
   speed_ms: -0.28487545251846313
   lateral_offset_m: -0.4866882264614105
@@ -16,7 +14,7 @@ steer_weights:
   angular_vel_x: -0.8446816802024841
   angular_vel_y: 1.4914647340774536
   angular_vel_z: -1.4354835748672485
-throttle_weights:
+accel_weights:
   speed_ms: -0.25455018877983093
   lateral_offset_m: 0.014529877342283726
   vertical_offset_m: 0.6293942332267761
@@ -32,3 +30,19 @@ throttle_weights:
   angular_vel_x: -1.9723800420761108
   angular_vel_y: 0.2778632640838623
   angular_vel_z: 0.31998276710510254
+brake_weights:
+  speed_ms: 0.25455018877983093
+  lateral_offset_m: -0.014529877342283726
+  vertical_offset_m: -0.6293942332267761
+  yaw_error_rad: 0.11218017339706421
+  pitch_rad: -0.15918737649917603
+  roll_rad: 0.18116319179534912
+  track_progress: -1.1080328226089478
+  turning_rate: -0.6530641317367554
+  wheel_0_contact: -0.6195100545883179
+  wheel_1_contact: -0.6235398054122925
+  wheel_2_contact: 0.036519479006528854
+  wheel_3_contact: 1.5754592418670654
+  angular_vel_x: 1.9723800420761108
+  angular_vel_y: -0.2778632640838623
+  angular_vel_z: -0.31998276710510254

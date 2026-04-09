@@ -12,7 +12,6 @@ import datetime
 from tminterface.interface import TMInterface
 
 from clients import AdaptiveClient
-from clients.rl_client import ACTIONS, N_ACTIONS, get_action_description
 from policies import (
     BasePolicy,
     WeightedLinearPolicy,
@@ -65,16 +64,31 @@ def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n
 
 
 # ---------------------------------------------------------------------------
+# Probe actions — fixed action vectors for cold-start evaluation.
+# Each is (action_array, description).  Coast actions are skipped (same as before).
+# ---------------------------------------------------------------------------
+
+_PROBE_ACTIONS: list[tuple[np.ndarray, str]] = [
+    (np.array([-1., 0., 1.], dtype=np.float32), "brake left"),
+    (np.array([ 0., 0., 1.], dtype=np.float32), "brake"),
+    (np.array([ 1., 0., 1.], dtype=np.float32), "brake right"),
+    (np.array([-1., 1., 0.], dtype=np.float32), "accel left"),
+    (np.array([ 0., 1., 0.], dtype=np.float32), "accel"),
+    (np.array([ 1., 1., 0.], dtype=np.float32), "accel right"),
+]
+
+
+# ---------------------------------------------------------------------------
 # Constant-action policy (used by probe phase)
 # ---------------------------------------------------------------------------
 
 class _ConstantPolicy:
     """Always returns the same action — used during cold-start probing."""
-    def __init__(self, action: int) -> None:
+    def __init__(self, action: np.ndarray) -> None:
         self._action = action
-    def __call__(self, obs: np.ndarray) -> int:
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
         return self._action
-    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
+    def update(self, obs: np.ndarray, action: np.ndarray, reward: float, next_obs: np.ndarray, done: bool) -> None:
         pass
 
 
@@ -98,10 +112,9 @@ def _make_policy(
         rng = __import__("numpy").random.default_rng()
         obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
         cfg = {
-            "steer_threshold":    0.5,
-            "throttle_threshold": 0.5,
-            "steer_weights":    {n: float(rng.standard_normal()) for n in obs_names},
-            "throttle_weights": {n: float(rng.standard_normal()) for n in obs_names},
+            "steer_weights": {n: float(rng.standard_normal()) for n in obs_names},
+            "accel_weights": {n: float(rng.standard_normal()) for n in obs_names},
+            "brake_weights": {n: float(rng.standard_normal()) for n in obs_names},
         }
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays)
 
@@ -156,19 +169,17 @@ def _run_probes(env: TMNFEnv, probe_in_game_s: float, speed: float) -> tuple[flo
     saved_limit = env._max_episode_time_s
     env._max_episode_time_s = probe_in_game_s / speed
 
-    print(f"\n  No weights file found — running {N_ACTIONS} probe episodes "
+    print(f"\n  No weights file found — running {len(_PROBE_ACTIONS)} probe episodes "
           f"({probe_in_game_s}s each) to establish a baseline.\n")
 
-    results = {}  # action_idx -> reward
+    results = {}  # probe_idx -> reward
     probe_results = []
-    for i, action in enumerate(ACTIONS):
-        print(f"  Probe {i + 1}/{N_ACTIONS}: {ACTIONS[i][3]}")
-        if "coast" in action[3]:  # skip coast probes
-            continue
+    for i, (action_arr, action_name) in enumerate(_PROBE_ACTIONS):
+        print(f"  Probe {i + 1}/{len(_PROBE_ACTIONS)}: {action_name}")
         obs, _ = env.reset()
-        reward, _, throttle_counts, total_steps, trace = _run_episode(env, _ConstantPolicy(i), obs)
+        reward, _, throttle_counts, total_steps, trace = _run_episode(env, _ConstantPolicy(action_arr), obs)
         results[i] = reward
-        probe_results.append(ProbeResult(action_idx=i, action_name=ACTIONS[i][3], reward=reward, trace=trace))
+        probe_results.append(ProbeResult(action_idx=i, action_name=action_name, reward=reward, trace=trace))
 
     env._max_episode_time_s = saved_limit
 
@@ -176,7 +187,7 @@ def _run_probes(env: TMNFEnv, probe_in_game_s: float, speed: float) -> tuple[flo
     print(f"\n  Probe results:")
     for i, r in results.items():
         marker = " <-- best" if i == best_idx else ""
-        print(f"    action {i} ({ACTIONS[i][3]:15s})  reward={r:+.1f}{marker}")
+        print(f"    probe {i} ({_PROBE_ACTIONS[i][1]:15s})  reward={r:+.1f}{marker}")
     print(f"\n  Using probe best ({results[best_idx]:+.1f}) as initial reward floor.\n")
 
     time.sleep(1)
@@ -190,7 +201,7 @@ def _run_probes(env: TMNFEnv, probe_in_game_s: float, speed: float) -> tuple[flo
 
 _TRACE_SAMPLE_EVERY = 2  # record position every N steps
 _WARMUP_STEPS = 100       # 1 in-game second of forced straight acceleration at episode start
-_WARMUP_ACTION = 7        # action 7: accelerate + straight
+_WARMUP_ACTION = np.array([0., 1., 0.], dtype=np.float32)  # accel + straight, no brake
 
 def _run_episode(
     env: TMNFEnv,
@@ -235,10 +246,17 @@ def _run_episode(
         prev_obs = next_obs
         obs      = next_obs
 
-        t = action // 3   # 0=brake, 1=coast, 2=accel
+        accel_on = float(action[1]) >= 0.5
+        brake_on = float(action[2]) >= 0.5
+        if brake_on and not accel_on:
+            t = 0   # brake only
+        elif accel_on:
+            t = 2   # accel (including accel+brake)
+        else:
+            t = 1   # coast
         throttle_counts[t] += 1
         throttle_state.append(t)
-        if action % 3 != 1:
+        if abs(float(action[0])) > 0.05:
             turning_steps += 1
 
         if steps % _TRACE_SAMPLE_EVERY == 0:
@@ -337,10 +355,9 @@ def _cold_start_search(
         rng = np.random.default_rng()
         obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
         random_cfg = {
-            "steer_threshold":    0.5,
-            "throttle_threshold": 0.5,
-            "steer_weights":    {n: float(rng.standard_normal()) for n in obs_names},
-            "throttle_weights": {n: float(rng.standard_normal()) for n in obs_names},
+            "steer_weights": {n: float(rng.standard_normal()) for n in obs_names},
+            "accel_weights": {n: float(rng.standard_normal()) for n in obs_names},
+            "brake_weights": {n: float(rng.standard_normal()) for n in obs_names},
         }
         local_best_policy = WeightedLinearPolicy.from_cfg(random_cfg, n_lidar_rays=n_lidar_rays)
         local_best_reward = float("-inf")

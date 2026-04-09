@@ -23,10 +23,11 @@ Observation space (15 + n_lidar_rays floats, dtype float32)
 
 Action space
 ------------
-  Discrete(9) — see clients/rl_client.py ACTIONS table.
-  0-2: brake  + left/straight/right
-  3-5: coast  + left/straight/right
-  6-8: accel  + left/straight/right
+  Box([-1, 0, 0], [1, 1, 1], shape=(3,), dtype=float32)
+    [0] steer  — steering input in [-1, 1]  (maps to [-65536, 65536] in-game)
+    [1] accel  — throttle; thresholded at 0.5 → bool
+    [2] brake  — braking;  thresholded at 0.5 → bool
+  accel and brake are independent: both can be 1 simultaneously (a common tactic).
 
 Episode lifecycle
 -----------------
@@ -56,7 +57,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from tminterface.interface import TMInterface
 
-from clients.rl_client import ACTIONS, RLClient, N_ACTIONS
+from clients.rl_client import RLClient, StepState
 from rl.reward import RewardConfig, RewardCalculator
 from lidar import LidarSensor
 
@@ -113,7 +114,14 @@ class TMNFEnv(gym.Env):
             shape=(obs_dim,),
             dtype=np.float32,
         )
-        self.action_space = spaces.Discrete(N_ACTIONS)
+        # Action: [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+        # accel and brake are continuous [0,1] inputs thresholded at 0.5;
+        # both can be 1 simultaneously.
+        self.action_space = spaces.Box(
+            low=np.array([-1.0, 0.0, 0.0], dtype=np.float32),
+            high=np.array([1.0, 1.0, 1.0], dtype=np.float32),
+            dtype=np.float32,
+        )
 
         # Set up TMInterface
         self._client = RLClient(centerline_file, speed=speed,
@@ -163,8 +171,8 @@ class TMNFEnv(gym.Env):
         obs = self._make_obs(init_step)
         return obs, {}
 
-    def step(self, action: int) -> tuple[np.ndarray, float, bool, bool, dict]:
-        self._client.set_action(int(action))
+    def step(self, action: np.ndarray) -> tuple[np.ndarray, float, bool, bool, dict]:
+        self._client.set_action(action)
         step = self._client.get_step_state()
 
         data = step.state_data
@@ -173,7 +181,7 @@ class TMNFEnv(gym.Env):
                     and abs(data.lateral_offset) > self._reward_config.crash_threshold_m)
         self._elapsed_s = time.monotonic() - self._episode_start_s
 
-        accelerating = ACTIONS[action][0]  # first element is the accelerate bool
+        accelerating = bool(float(action[1]) >= 0.5)
         lidar_rays = self._lidar.get_distances() if self._lidar is not None else None
 
         reward = self._reward_calc.compute(

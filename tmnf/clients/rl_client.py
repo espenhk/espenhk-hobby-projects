@@ -7,11 +7,12 @@ TMInterface fires on_run_step() on its own internal thread.
 The RL training loop runs on the main (or another) thread.
 They communicate through:
 
-  action_idx   : the RL thread writes, the game thread reads (lock-protected)
-  _state_queue : the game thread writes one StepState per tick;
-                 the RL thread blocks on get() to receive it.
-  _respawn_event    : RL thread sets → game thread calls iface.respawn()
-  _episode_ready    : game thread sets → RL thread unblocks from reset()
+  _action          : the RL thread writes, the game thread reads (lock-protected)
+                     shape (3,) float32 — [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+  _state_queue     : the game thread writes one StepState per tick;
+                     the RL thread blocks on get() to receive it.
+  _respawn_event   : RL thread sets → game thread calls iface.respawn()
+  _episode_ready   : game thread sets → RL thread unblocks from reset()
 
 Because the game runs at high speed (e.g. 10×) and the policy evaluation
 takes some time, multiple game ticks may pass before the RL thread reads a
@@ -42,27 +43,10 @@ _UP = np.array([0.0, 1.0, 0.0])
 # This is a safety net — the env's crash_threshold_m (default 10 m) triggers first.
 _HARD_CRASH_THRESHOLD_M = 50.0
 
+# Default action: accel + straight, no brake
+# shape (3,): [steer, accel, brake]
+_DEFAULT_ACTION = np.array([0.0, 1.0, 0.0], dtype=np.float32)
 
-# ---------------------------------------------------------------------------
-# Discrete action table
-# Index → (accelerate, brake, steer_percent)
-# steer_percent is in [-100, 100]; converted to [-65536, 65536] when applied.
-# ---------------------------------------------------------------------------
-ACTIONS: list[tuple[bool, bool, int, str]] = [
-    (False, True,   -100, "brake LEFT"),  # 0: brake  + full left
-    (False, True,      0, "brake"),       # 1: brake  + straight
-    (False, True,    100, "brake RIGHT"), # 2: brake  + full right
-    (False, False, -100, "coast LEFT"),   # 3: coast  + full left
-    (False, False,    0, "coast"),        # 4: coast  + straight
-    (False, False,  100, "coast RIGHT"),  # 5: coast  + full right
-    (True,  False, -100, "accelerate LEFT"),   # 6: accel  + full left
-    (True,  False,    0, "accelerate"),        # 7: accel  + straight   ← default
-    (True,  False,  100, "accelerate right")   # 8: accel  + full right
-]
-N_ACTIONS = len(ACTIONS)
-
-def get_action_description(idx: int) -> str:
-    return ACTIONS[idx][3]
 
 @dataclass
 class StepState:
@@ -84,7 +68,8 @@ class RLClient(Client):
         self._auto_respawn_on_finish = auto_respawn_on_finish
 
         # Shared state — written by RL thread, read by game thread
-        self._action_idx: int = 7   # default: accel + straight
+        # shape (3,): [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+        self._action: np.ndarray = _DEFAULT_ACTION.copy()
         self._action_lock = threading.Lock()
 
         # Shared state — written by game thread, read by RL thread
@@ -115,10 +100,14 @@ class RLClient(Client):
         self._stop_event.set()
         self._episode_ready.set()   # unblock wait_episode_ready
 
-    def set_action(self, action_idx: int) -> None:
-        """Set the next action. Thread-safe."""
+    def set_action(self, action: np.ndarray) -> None:
+        """Set the next action. Thread-safe.
+
+        action: shape (3,) float32 — [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+        accel and brake are thresholded at 0.5 when applied to the game.
+        """
         with self._action_lock:
-            self._action_idx = action_idx
+            self._action = action
 
     def get_step_state(self) -> StepState:
         """Block until the game thread delivers the next state."""
@@ -213,12 +202,14 @@ class RLClient(Client):
                     return
 
                 with self._action_lock:
-                    action_idx = self._action_idx
-                accelerate, brake, steer_pct, _ = ACTIONS[action_idx]
+                    action = self._action
+                steer_norm = float(np.clip(action[0], -1.0, 1.0))
+                accel = bool(float(action[1]) >= 0.5)
+                brake = bool(float(action[2]) >= 0.5)
                 iface.set_input_state(
-                    accelerate=accelerate,
+                    accelerate=accel,
                     brake=brake,
-                    steer=int(steer_pct / 100 * 65536),
+                    steer=int(steer_norm * 65536),
                 )
 
                 finished  = data.track_progress is not None and data.track_progress >= 1.0

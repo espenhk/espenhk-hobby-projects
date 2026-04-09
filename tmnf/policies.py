@@ -1,6 +1,11 @@
 """
 Driving policies for TMNF.
 
+All policies return a (3,) float32 action array: [steer, accel, brake]
+  steer ∈ [-1.0, 1.0]  — maps to [-65536, 65536] in-game
+  accel ∈ {0.0, 1.0}   — thresholded at 0.5 by the game client
+  brake ∈ {0.0, 1.0}   — thresholded at 0.5; independent of accel
+
 BasePolicy           — abstract base class for all policies
 SimplePolicy         — hand-tuned PD controller (reference baseline)
 WeightedLinearPolicy — trainable linear policy; weights stored in YAML
@@ -21,6 +26,35 @@ import yaml
 
 
 # ---------------------------------------------------------------------------
+# Discrete action set for Q-table policies (EpsilonGreedy, MCTS)
+# ---------------------------------------------------------------------------
+# Each row is a (3,) action: [steer, accel, brake]
+# Includes brake+accel combinations since both can be pressed simultaneously.
+
+_DISCRETE_ACTIONS = np.array([
+    [-1., 0., 1.],   #  0: brake + left
+    [ 0., 0., 1.],   #  1: brake + straight
+    [ 1., 0., 1.],   #  2: brake + right
+    [-1., 0., 0.],   #  3: coast + left
+    [ 0., 0., 0.],   #  4: coast + straight
+    [ 1., 0., 0.],   #  5: coast + right
+    [-1., 1., 0.],   #  6: accel + left
+    [ 0., 1., 0.],   #  7: accel + straight
+    [ 1., 1., 0.],   #  8: accel + right
+    [-1., 1., 1.],   #  9: accel+brake + left
+    [ 0., 1., 1.],   # 10: accel+brake + straight
+    [ 1., 1., 1.],   # 11: accel+brake + right
+], dtype=np.float32)
+_N_DISCRETE_ACTIONS = len(_DISCRETE_ACTIONS)
+
+
+def _action_to_idx(action: np.ndarray) -> int:
+    """Map an action array back to its nearest index in _DISCRETE_ACTIONS."""
+    diffs = np.abs(_DISCRETE_ACTIONS - action[np.newaxis, :]).sum(axis=1)
+    return int(np.argmin(diffs))
+
+
+# ---------------------------------------------------------------------------
 # BasePolicy
 # ---------------------------------------------------------------------------
 
@@ -28,14 +62,17 @@ class BasePolicy(ABC):
     """Abstract base class for all driving policies."""
 
     @abstractmethod
-    def __call__(self, obs: np.ndarray) -> int:
-        """Select action given observation array."""
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        """Select action given observation array.
+
+        Returns a (3,) float32 array: [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+        """
 
     @abstractmethod
     def to_cfg(self) -> dict:
         """Return a YAML-serializable dict representing this policy's state."""
 
-    def update(self, obs: np.ndarray, action: int, reward: float,
+    def update(self, obs: np.ndarray, action: np.ndarray, reward: float,
                next_obs: np.ndarray, done: bool) -> None:
         """Per-step feedback from the environment. No-op for non-online policies."""
 
@@ -56,39 +93,35 @@ class SimplePolicy:
     """
     Hardcoded PD+heading policy mirroring AdaptiveClient's steering formula.
 
-    Maps obs[1] (lateral offset) and obs[3] (yaw error) to three discrete
-    steering actions (accel+left / accel+straight / accel+right).
+    Maps obs[1] (lateral offset) and obs[3] (yaw error) to a continuous
+    steering value; always accelerates without braking.
 
     The D term approximates lateral velocity as Δlateral_offset per tick.
     """
 
-    LATERAL_GAIN    = 16.0   # P: steer% per metre off-centre
-    DERIVATIVE_GAIN =  8.0   # D: steer% per m/tick of lateral drift
-    HEADING_GAIN    =  5.0   # steer% per radian of heading error
-    STEER_THRESHOLD =  2.0   # deadzone before committing to left/right
+    LATERAL_GAIN    = 16.0   # P: steer per metre off-centre (normalised)
+    DERIVATIVE_GAIN =  8.0   # D: steer per m/tick of lateral drift
+    HEADING_GAIN    =  5.0   # steer per radian of heading error
 
     def __init__(self) -> None:
         self._prev_lateral = 0.0
 
-    def __call__(self, obs: np.ndarray) -> int:
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
         lateral = obs[1]
         yaw     = obs[3]
 
         lateral_vel        = lateral - self._prev_lateral
         self._prev_lateral = lateral
 
+        # Compute a signed steer value in units of "steer%" ÷ 100
+        # (LATERAL_GAIN is tuned for the old steer_pct range, so divide by 100)
         steer_pct = (
             -lateral     * self.LATERAL_GAIN
             - lateral_vel  * self.DERIVATIVE_GAIN
             + yaw          * self.HEADING_GAIN
         )
-
-        if steer_pct < -self.STEER_THRESHOLD:
-            return 6   # accel + left
-        elif steer_pct > self.STEER_THRESHOLD:
-            return 8   # accel + right
-        else:
-            return 7   # accel + straight
+        steer = float(np.clip(steer_pct / 100.0, -1.0, 1.0))
+        return np.array([steer, 1.0, 0.0], dtype=np.float32)  # always accelerate
 
 
 # ---------------------------------------------------------------------------
@@ -97,22 +130,13 @@ class SimplePolicy:
 
 class WeightedLinearPolicy(BasePolicy):
     """
-    Linear policy: steer and throttle decisions from independent dot products.
+    Linear policy with three independent output heads:
 
-        steer_score    = dot(steer_weights,    obs)
-        throttle_score = dot(throttle_weights, obs)
+        steer_score    = dot(steer_weights,  norm_obs)  →  clipped to [-1, 1]
+        accel_score    = dot(accel_weights,  norm_obs)  →  accel = 1 if score > 0
+        brake_score    = dot(brake_weights,  norm_obs)  →  brake = 1 if score > 0
 
-    Steer score:
-        < -steer_threshold    → left   (action +0)
-        within threshold      → straight (action +1)
-        > +steer_threshold    → right  (action +2)
-
-    Throttle score:
-        < -throttle_threshold → brake  (action 0–2)
-        within threshold      → coast  (action 3–5)
-        > +throttle_threshold → accel  (action 6–8)
-
-    action = throttle_idx * 3 + steer_idx
+    accel and brake are independent — both can fire simultaneously.
 
     Weights are loaded from / saved to a YAML file for observability.
     Create via WeightedLinearPolicy(file) or WeightedLinearPolicy.from_cfg(dict).
@@ -190,10 +214,9 @@ class WeightedLinearPolicy(BasePolicy):
     def to_cfg(self) -> dict:
         names = self.get_obs_names(self._n_lidar_rays)
         return {
-            "steer_threshold":    float(self._steer_t),
-            "throttle_threshold": float(self._throttle_t),
-            "steer_weights":    {n: float(self._steer_w[i])    for i, n in enumerate(names)},
-            "throttle_weights": {n: float(self._throttle_w[i]) for i, n in enumerate(names)},
+            "steer_weights": {n: float(self._steer_w[i]) for i, n in enumerate(names)},
+            "accel_weights": {n: float(self._accel_w[i]) for i, n in enumerate(names)},
+            "brake_weights": {n: float(self._brake_w[i]) for i, n in enumerate(names)},
         }
 
     def save(self, path: str) -> None:
@@ -208,7 +231,7 @@ class WeightedLinearPolicy(BasePolicy):
         """Return a new policy with small Gaussian perturbation applied to all weights."""
         rng = np.random.default_rng()
         cfg = self.to_cfg()
-        for group in ("steer_weights", "throttle_weights"):
+        for group in ("steer_weights", "accel_weights", "brake_weights"):
             for k in cfg[group]:
                 cfg[group][k] += float(rng.normal(-scale, scale))
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
@@ -217,26 +240,12 @@ class WeightedLinearPolicy(BasePolicy):
     # Callable interface
     # ------------------------------------------------------------------
 
-    def __call__(self, obs: np.ndarray) -> int:
-        norm_obs       = obs / self.get_obs_scales(self._n_lidar_rays)
-        steer_score    = float(np.dot(self._steer_w,    norm_obs))
-        throttle_score = float(np.dot(self._throttle_w, norm_obs))
-
-        if steer_score < -self._steer_t:
-            steer_idx = 0
-        elif steer_score > self._steer_t:
-            steer_idx = 2
-        else:
-            steer_idx = 1
-
-        if throttle_score < -self._throttle_t:
-            throttle_idx = 0
-        elif throttle_score > self._throttle_t:
-            throttle_idx = 2
-        else:
-            throttle_idx = 1
-
-        return throttle_idx * 3 + steer_idx
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        norm_obs    = obs / self.get_obs_scales(self._n_lidar_rays)
+        steer       = float(np.clip(np.dot(self._steer_w, norm_obs), -1.0, 1.0))
+        accel       = 1.0 if float(np.dot(self._accel_w, norm_obs)) > 0.0 else 0.0
+        brake       = 1.0 if float(np.dot(self._brake_w, norm_obs)) > 0.0 else 0.0
+        return np.array([steer, accel, brake], dtype=np.float32)
 
     # ------------------------------------------------------------------
     # Internal helpers
@@ -244,19 +253,32 @@ class WeightedLinearPolicy(BasePolicy):
 
     def _apply_cfg(self, cfg: dict) -> None:
         names = self.get_obs_names(self._n_lidar_rays)
-        self._steer_w    = np.array([cfg["steer_weights"][n]    for n in names], dtype=np.float32)
-        self._throttle_w = np.array([cfg["throttle_weights"][n] for n in names], dtype=np.float32)
-        self._steer_t    = float(cfg["steer_threshold"])
-        self._throttle_t = float(cfg["throttle_threshold"])
+        self._steer_w = np.array([cfg["steer_weights"][n] for n in names], dtype=np.float32)
+        self._accel_w = np.array([cfg["accel_weights"][n] for n in names], dtype=np.float32)
+        self._brake_w = np.array([cfg["brake_weights"][n] for n in names], dtype=np.float32)
 
     def _load_or_init(self) -> dict:
         names = self.get_obs_names(self._n_lidar_rays)
         if os.path.exists(self._weights_file):
             with open(self._weights_file) as f:
                 cfg = yaml.safe_load(f)
-            # Migrate: fill in any missing LIDAR keys with 0.0 (neutral starting point)
+
+            # Migrate old format (steer_weights + throttle_weights + thresholds)
+            # to new format (steer_weights + accel_weights + brake_weights).
+            if "throttle_weights" in cfg and "accel_weights" not in cfg:
+                throttle = cfg["throttle_weights"]
+                cfg["accel_weights"] = {k: v        for k, v in throttle.items()}
+                cfg["brake_weights"] = {k: -v       for k, v in throttle.items()}
+                cfg.pop("throttle_weights", None)
+                cfg.pop("steer_threshold",  None)
+                cfg.pop("throttle_threshold", None)
+                with open(self._weights_file, "w") as f:
+                    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+                print(f"[WeightedLinearPolicy] migrated old throttle_weights format → {self._weights_file}")
+
+            # Fill in any missing LIDAR keys with 0.0
             migrated = False
-            for group in ("steer_weights", "throttle_weights"):
+            for group in ("steer_weights", "accel_weights", "brake_weights"):
                 for n in names:
                     if n not in cfg[group]:
                         cfg[group][n] = 0.0
@@ -269,10 +291,9 @@ class WeightedLinearPolicy(BasePolicy):
 
         rng = np.random.default_rng()
         cfg = {
-            "steer_threshold":    0.5,
-            "throttle_threshold": 0.5,
-            "steer_weights":    {n: float(rng.standard_normal()) for n in names},
-            "throttle_weights": {n: float(rng.standard_normal()) for n in names},
+            "steer_weights": {n: float(rng.standard_normal()) for n in names},
+            "accel_weights": {n: float(rng.standard_normal()) for n in names},
+            "brake_weights": {n: float(rng.standard_normal()) for n in names},
         }
         with open(self._weights_file, "w") as f:
             yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
@@ -288,18 +309,20 @@ class NeuralNetPolicy(BasePolicy):
     """
     Small MLP policy trained via hill-climbing (same loop as WeightedLinearPolicy).
 
-    Architecture: obs → Linear → ReLU → ... → Linear(9) → argmax
+    Architecture: obs → Linear → ReLU → ... → Linear(3) → [tanh, step, step]
+    Output: [steer = tanh(out[0]), accel = 1 if out[1] > 0 else 0,
+             brake = 1 if out[2] > 0 else 0]
     Pure numpy, no external ML framework required.
     Weights serialized to YAML as nested lists.
     """
 
-    N_ACTIONS = 9
+    _OUTPUT_DIM = 3  # [steer, accel, brake]
 
     def __init__(self, hidden_sizes: list[int] | None = None, n_lidar_rays: int = 0) -> None:
         self._hidden = list(hidden_sizes or [16, 16])
         self._n_lidar_rays = n_lidar_rays
         obs_dim = 15 + n_lidar_rays
-        layer_dims = [obs_dim] + self._hidden + [self.N_ACTIONS]
+        layer_dims = [obs_dim] + self._hidden + [self._OUTPUT_DIM]
         rng = np.random.default_rng()
         self._weights: list[np.ndarray] = []
         self._biases:  list[np.ndarray] = []
@@ -320,14 +343,18 @@ class NeuralNetPolicy(BasePolicy):
         obj._biases  = [np.array(b, dtype=np.float32) for b in cfg["biases"]]
         return obj
 
-    def __call__(self, obs: np.ndarray) -> int:
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
         scales = WeightedLinearPolicy.get_obs_scales(self._n_lidar_rays)
         x = (obs / scales).astype(np.float32)
         for i, (w, b) in enumerate(zip(self._weights, self._biases)):
             x = w @ x + b
             if i < len(self._weights) - 1:
                 x = np.maximum(0.0, x)   # ReLU on all but output layer
-        return int(np.argmax(x))
+        # Output layer: [steer via tanh, accel via step, brake via step]
+        steer = float(np.tanh(x[0]))
+        accel = 1.0 if float(x[1]) > 0.0 else 0.0
+        brake = 1.0 if float(x[2]) > 0.0 else 0.0
+        return np.array([steer, accel, brake], dtype=np.float32)
 
     def mutated(self, scale: float = 0.1) -> "NeuralNetPolicy":
         """Return a new policy with Gaussian noise added to all weights and biases."""
@@ -380,12 +407,15 @@ class EpsilonGreedyPolicy(BasePolicy):
     feature (default 3).  Q-values are updated online via the Bellman equation
     after every environment step.  Epsilon decays each episode.
 
+    Actions are selected from _DISCRETE_ACTIONS (12 entries including
+    brake+accel combinations and partial steering is covered by the ±1 range).
+
     Note: the Q-table is NOT persisted to policy_weights.yaml (it can be very
     large).  to_cfg() records only hyperparameters; the table lives in memory
     for the duration of a training run.
     """
 
-    N_ACTIONS = 9
+    N_ACTIONS = _N_DISCRETE_ACTIONS
 
     def __init__(
         self,
@@ -406,8 +436,6 @@ class EpsilonGreedyPolicy(BasePolicy):
         self._n_lidar_rays  = n_lidar_rays
         self._scales        = WeightedLinearPolicy.get_obs_scales(n_lidar_rays)
         self._q_table: dict[tuple, np.ndarray] = {}
-        self._last_obs      = None
-        self._last_action   = None
 
     @classmethod
     def from_cfg(cls: type[EpsilonGreedyPolicy], cfg: dict, n_lidar_rays: int = 0) -> EpsilonGreedyPolicy:
@@ -426,28 +454,26 @@ class EpsilonGreedyPolicy(BasePolicy):
             self._q_table[state_key] = np.zeros(self.N_ACTIONS, dtype=np.float32)
         return self._q_table[state_key]
 
-    def __call__(self, obs: np.ndarray) -> int:
-        state_key         = _discretize_obs(obs, self._scales, self._n_bins)
-        self._last_obs    = obs
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        state_key = _discretize_obs(obs, self._scales, self._n_bins)
         if np.random.random() < self._epsilon:
-            action = int(np.random.randint(self.N_ACTIONS))
+            idx = int(np.random.randint(self.N_ACTIONS))
         else:
-            action = int(np.argmax(self._q(state_key)))
-        self._last_action = action
-        return action
+            idx = int(np.argmax(self._q(state_key)))
+        return _DISCRETE_ACTIONS[idx].copy()
 
-    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
+    def update(self, obs: np.ndarray, action: np.ndarray, reward: float,
+               next_obs: np.ndarray, done: bool) -> None:
+        action_idx = _action_to_idx(action)
         s  = _discretize_obs(obs, self._scales, self._n_bins)
         s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
         q_next  = 0.0 if done else float(np.max(self._q(s_)))
-        td      = reward + self._gamma * q_next - self._q(s)[action]
-        self._q(s)[action] += self._alpha * td
+        td      = reward + self._gamma * q_next - self._q(s)[action_idx]
+        self._q(s)[action_idx] += self._alpha * td
 
     def on_episode_end(self) -> None:
         self._epsilon = max(self._epsilon_min,
                             self._epsilon * self._epsilon_decay)
-        self._last_obs    = None
-        self._last_action = None
 
     def to_cfg(self) -> dict:
         return {
@@ -475,12 +501,14 @@ class MCTSPolicy(BasePolicy):
 
     where N(s, a) is the visit count for (state, action) and N(s) = Σ_a N(s, a).
 
+    Actions are selected from _DISCRETE_ACTIONS (12 entries).
+
     NOTE: True Monte Carlo Tree Search requires cloning the environment state,
     which is not possible with TMInterface.  This implementation is a UCT-style
     approximation that builds value/count tables incrementally over real episodes.
     """
 
-    N_ACTIONS = 9
+    N_ACTIONS = _N_DISCRETE_ACTIONS
 
     def __init__(
         self,
@@ -499,8 +527,6 @@ class MCTSPolicy(BasePolicy):
         self._q_table:  dict[tuple, np.ndarray] = {}
         self._n_sa:     dict[tuple, np.ndarray] = {}   # N(s, a)
         self._n_s:      dict[tuple, int]        = {}   # N(s) = Σ N(s,a)
-        self._last_obs    = None
-        self._last_action = None
 
     @classmethod
     def from_cfg(cls: type[MCTSPolicy], cfg: dict, n_lidar_rays: int = 0) -> MCTSPolicy:
@@ -522,32 +548,31 @@ class MCTSPolicy(BasePolicy):
             self._n_sa[s] = np.zeros(self.N_ACTIONS, dtype=np.float32)
         return self._n_sa[s]
 
-    def __call__(self, obs: np.ndarray) -> int:
-        s             = _discretize_obs(obs, self._scales, self._n_bins)
-        self._last_obs = obs
-        n_s           = self._n_s.get(s, 0)
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
+        s   = _discretize_obs(obs, self._scales, self._n_bins)
+        n_s = self._n_s.get(s, 0)
         if n_s == 0:
-            action = int(np.random.randint(self.N_ACTIONS))
+            idx = int(np.random.randint(self.N_ACTIONS))
         else:
-            ucb    = self._q(s) + self._c * np.sqrt(
+            ucb = self._q(s) + self._c * np.sqrt(
                 math.log(n_s + 1) / (self._n(s) + 1e-8)
             )
-            action = int(np.argmax(ucb))
-        self._last_action = action
-        return action
+            idx = int(np.argmax(ucb))
+        return _DISCRETE_ACTIONS[idx].copy()
 
-    def update(self, obs: np.ndarray, action: int, reward: float, next_obs: np.ndarray, done: bool) -> None:
+    def update(self, obs: np.ndarray, action: np.ndarray, reward: float,
+               next_obs: np.ndarray, done: bool) -> None:
+        action_idx = _action_to_idx(action)
         s  = _discretize_obs(obs, self._scales, self._n_bins)
         s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
         q_next  = 0.0 if done else float(np.max(self._q(s_)))
-        td      = reward + self._gamma * q_next - self._q(s)[action]
-        self._q(s)[action]  += self._alpha * td
-        self._n(s)[action]  += 1.0
-        self._n_s[s]         = self._n_s.get(s, 0) + 1
+        td      = reward + self._gamma * q_next - self._q(s)[action_idx]
+        self._q(s)[action_idx]  += self._alpha * td
+        self._n(s)[action_idx]  += 1.0
+        self._n_s[s]             = self._n_s.get(s, 0) + 1
 
     def on_episode_end(self) -> None:
-        self._last_obs    = None
-        self._last_action = None
+        pass
 
     def to_cfg(self) -> dict:
         return {
@@ -615,10 +640,9 @@ class GeneticPolicy(BasePolicy):
         pop       = []
         for _ in range(self._pop_size):
             cfg = {
-                "steer_threshold":    0.5,
-                "throttle_threshold": 0.5,
-                "steer_weights":    {n: float(rng.standard_normal()) for n in obs_names},
-                "throttle_weights": {n: float(rng.standard_normal()) for n in obs_names},
+                "steer_weights": {n: float(rng.standard_normal()) for n in obs_names},
+                "accel_weights": {n: float(rng.standard_normal()) for n in obs_names},
+                "brake_weights": {n: float(rng.standard_normal()) for n in obs_names},
             }
             pop.append(WeightedLinearPolicy.from_cfg(cfg, self._n_lidar_rays))
         self._population = pop
@@ -633,7 +657,7 @@ class GeneticPolicy(BasePolicy):
             for _ in range(self._pop_size)
         ]
 
-    def __call__(self, obs: np.ndarray) -> int:
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
         assert self._champion is not None, "GeneticPolicy: champion not set — call initialize_*() first"
         return self._champion(obs)
 
@@ -674,12 +698,11 @@ class GeneticPolicy(BasePolicy):
     def _crossover(cfg1: dict, cfg2: dict) -> dict:
         """Uniform weight crossover: each weight is randomly drawn from parent 1 or 2."""
         result = {
-            "steer_threshold":    cfg1["steer_threshold"],
-            "throttle_threshold": cfg1["throttle_threshold"],
-            "steer_weights":    {},
-            "throttle_weights": {},
+            "steer_weights": {},
+            "accel_weights": {},
+            "brake_weights": {},
         }
-        for group in ("steer_weights", "throttle_weights"):
+        for group in ("steer_weights", "accel_weights", "brake_weights"):
             for k in cfg1[group]:
                 result[group][k] = (cfg1[group][k] if np.random.random() < 0.5
                                     else cfg2[group][k])
