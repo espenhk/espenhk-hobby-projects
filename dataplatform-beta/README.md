@@ -58,6 +58,10 @@ Repository secrets:
   - Manual workflow to run Terraform plan for selected non-prod environment and stack.
 - ci/terraform-apply-nonprod.yml:
   - Manual workflow to run Terraform apply for selected non-prod environment and stack.
+- ci/terraform-plan-prod.yml:
+  - Manual workflow to run Terraform plan for selected prod stack with change ticket input.
+- ci/terraform-apply-prod.yml:
+  - Manual workflow to run Terraform apply for selected prod stack with change ticket input and approvals.
 - ci/data-contract-checks.yml:
   - Runs data-contract JSON validation on pull requests touching contract files.
 

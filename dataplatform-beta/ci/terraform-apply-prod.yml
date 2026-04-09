@@ -1,0 +1,74 @@
+name: terraform-apply-prod
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_stack:
+        description: "Prod stack to apply"
+        required: true
+        type: choice
+        options:
+          - foundation
+          - connectivity
+          - security
+          - data_platform
+          - governance
+          - observability
+          - powerbi_rbac
+      change_ticket:
+        description: "Approved change ticket (for example CHG-1234)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: terraform-prod-apply
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Validate change ticket format
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "${{ inputs.change_ticket }}" | grep -E '^(CHG|RFC)-[0-9]{3,}$' >/dev/null
+
+      - name: Terraform init
+        run: |
+          set -euo pipefail
+          STACK_DIR="dataplatform-beta/terraform/environments/prod/${{ inputs.target_stack }}"
+          cd "$STACK_DIR"
+          terraform init -backend=false
+
+      - name: Terraform apply
+        run: |
+          set -euo pipefail
+          STACK_DIR="dataplatform-beta/terraform/environments/prod/${{ inputs.target_stack }}"
+          cd "$STACK_DIR"
+          if [ -f terraform.tfvars ]; then
+            terraform apply -input=false -auto-approve -var-file=terraform.tfvars
+          elif [ -f terraform.tfvars.example ]; then
+            terraform apply -input=false -auto-approve -var-file=terraform.tfvars.example
+          else
+            terraform apply -input=false -auto-approve
+          fi
