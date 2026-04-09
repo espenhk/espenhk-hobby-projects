@@ -11,6 +11,7 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - Python utility scripts for PBIP validation, smoke checks, and deployment pipeline promotion.
 - Python utility script for data-contract validation.
 - Terraform module scaffold for Entra groups used by Power BI RBAC.
+- Terraform monitor_alerting module and observability stack wiring for dev/test/prod action groups.
 - Initial dataset contract scaffolding under databricks/contracts.
 
 ## Directory map
