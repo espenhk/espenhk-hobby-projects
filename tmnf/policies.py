@@ -2,7 +2,6 @@
 Driving policies for TMNF.
 
 BasePolicy           — abstract base class for all policies
-SimplePolicy         — hand-tuned PD controller (reference baseline)
 WeightedLinearPolicy — trainable linear policy; weights stored in YAML
 NeuralNetPolicy      — small MLP policy; trained via hill-climbing
 EpsilonGreedyPolicy  — Q-table with epsilon-greedy exploration
@@ -46,49 +45,6 @@ class BasePolicy(ABC):
         """Write to_cfg() to YAML at path."""
         with open(path, "w") as f:
             yaml.dump(self.to_cfg(), f, default_flow_style=False, sort_keys=False)
-
-
-# ---------------------------------------------------------------------------
-# SimplePolicy
-# ---------------------------------------------------------------------------
-
-class SimplePolicy:
-    """
-    Hardcoded PD+heading policy mirroring AdaptiveClient's steering formula.
-
-    Maps obs[1] (lateral offset) and obs[3] (yaw error) to three discrete
-    steering actions (accel+left / accel+straight / accel+right).
-
-    The D term approximates lateral velocity as Δlateral_offset per tick.
-    """
-
-    LATERAL_GAIN    = 16.0   # P: steer% per metre off-centre
-    DERIVATIVE_GAIN =  8.0   # D: steer% per m/tick of lateral drift
-    HEADING_GAIN    =  5.0   # steer% per radian of heading error
-    STEER_THRESHOLD =  2.0   # deadzone before committing to left/right
-
-    def __init__(self) -> None:
-        self._prev_lateral = 0.0
-
-    def __call__(self, obs: np.ndarray) -> int:
-        lateral = obs[1]
-        yaw     = obs[3]
-
-        lateral_vel        = lateral - self._prev_lateral
-        self._prev_lateral = lateral
-
-        steer_pct = (
-            -lateral     * self.LATERAL_GAIN
-            - lateral_vel  * self.DERIVATIVE_GAIN
-            + yaw          * self.HEADING_GAIN
-        )
-
-        if steer_pct < -self.STEER_THRESHOLD:
-            return 6   # accel + left
-        elif steer_pct > self.STEER_THRESHOLD:
-            return 8   # accel + right
-        else:
-            return 7   # accel + straight
 
 
 # ---------------------------------------------------------------------------
@@ -217,13 +173,18 @@ class WeightedLinearPolicy(BasePolicy):
         cfg["throttle_weights"] = {names[i]: float(flat[n + i]) for i in range(n)}
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
-    def mutated(self, scale: float = 0.1) -> "WeightedLinearPolicy":
-        """Return a new policy with small Gaussian perturbation applied to all weights."""
+    def mutated(self, scale: float = 0.1, share: float = 1.0) -> "WeightedLinearPolicy":
+        """Return a new policy with Gaussian perturbation applied to a random subset of weights.
+
+        share: probability [0, 1] that each individual weight is perturbed.
+               1.0 = all weights mutated (original behaviour).
+        """
         rng = np.random.default_rng()
         cfg = self.to_cfg()
         for group in ("steer_weights", "throttle_weights"):
             for k in cfg[group]:
-                cfg[group][k] += float(rng.normal(0, scale))
+                if share >= 1.0 or rng.random() < share:
+                    cfg[group][k] += float(rng.normal(0, scale))
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
     # ------------------------------------------------------------------
@@ -597,12 +558,14 @@ class GeneticPolicy(BasePolicy):
         population_size: int = 10,
         elite_k: int = 3,
         mutation_scale: float = 0.1,
+        mutation_share: float = 1.0,
         n_lidar_rays: int = 0,
     ) -> None:
-        self._pop_size      = population_size
-        self._elite_k       = min(elite_k, population_size)
+        self._pop_size       = population_size
+        self._elite_k        = min(elite_k, population_size)
         self._mutation_scale = mutation_scale
-        self._n_lidar_rays  = n_lidar_rays
+        self._mutation_share = mutation_share
+        self._n_lidar_rays   = n_lidar_rays
         self._population: list[WeightedLinearPolicy] = []
         self._champion: WeightedLinearPolicy | None = None
         self._champion_reward: float = float("-inf")
@@ -613,6 +576,7 @@ class GeneticPolicy(BasePolicy):
             population_size = cfg.get("population_size", 10),
             elite_k         = cfg.get("elite_k", 3),
             mutation_scale  = cfg.get("mutation_scale", 0.1),
+            mutation_share  = cfg.get("mutation_share", 1.0),
             n_lidar_rays    = n_lidar_rays,
         )
         champion_w = cfg.get("champion_weights")
@@ -642,7 +606,7 @@ class GeneticPolicy(BasePolicy):
         """Seed the population by mutating the given champion."""
         self._champion = champion
         self._population = [
-            champion.mutated(self._mutation_scale)
+            champion.mutated(self._mutation_scale, self._mutation_share)
             for _ in range(self._pop_size)
         ]
 
@@ -678,7 +642,7 @@ class GeneticPolicy(BasePolicy):
             i2     = int(rng_idx.integers(self._elite_k))
             child_cfg = self._crossover(elites[i1].to_cfg(), elites[i2].to_cfg())
             child     = WeightedLinearPolicy.from_cfg(child_cfg, self._n_lidar_rays)
-            new_pop.append(child.mutated(self._mutation_scale))
+            new_pop.append(child.mutated(self._mutation_scale, self._mutation_share))
 
         self._population = new_pop
         return improved
@@ -704,6 +668,7 @@ class GeneticPolicy(BasePolicy):
             "population_size":  self._pop_size,
             "elite_k":          self._elite_k,
             "mutation_scale":   float(self._mutation_scale),
+            "mutation_share":   float(self._mutation_share),
             "champion_reward":  float(self._champion_reward),
             "champion_weights": self._champion.to_cfg() if self._champion else {},
         }
