@@ -316,9 +316,10 @@ class RLClient(Client):
             step_state.ticks_this_step += evicted.ticks_this_step
         except queue.Empty:
             pass
-        print(f"[RLClient] _drain_and_put: finished={step_state.finished} "
-              f"done={step_state.done} "
-              f"progress={step_state.state_data.track_progress}")
+        if step_state.done or step_state.finished or self._tick % 100 == 0:
+            print(f"[RLClient] _drain_and_put: finished={step_state.finished} "
+                  f"done={step_state.done} "
+                  f"progress={step_state.state_data.track_progress}")
         self._state_queue.put(step_state)
 
     def _compute_yaw_error(self, data: StateData) -> float:
