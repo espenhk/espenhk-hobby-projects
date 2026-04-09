@@ -195,7 +195,7 @@ def _run_episode(
     steps = 0
     info: dict[str, Any] = {}
     throttle_counts = [0, 0, 0]
-    turning_steps = [0]   # wrapped in list so _record_step can mutate it
+    turning_steps = 0
     pos_x: list[float] = []
     pos_z: list[float] = []
     throttle_state: list[int] = []
@@ -233,6 +233,7 @@ def _run_episode(
 
         if terminated or truncated:
             _print_episode_summary(info, steps, total_reward, truncated)
+            _print_action_stats(throttle_counts, turning_steps, steps)
             break
 
     trace = RunTrace(pos_x=pos_x, pos_z=pos_z,
@@ -259,7 +260,30 @@ def _scaled_episode_time(sim: int, n_total: int, max_time_s: float) -> float:
         return max_time_s
 
 
+def _print_episode_summary(
+    info: dict[str, Any],
+    steps: int,
+    total_reward: float,
+    truncated: bool,
+) -> None:
+    progress = 100 * float(info.get("track_progress", 0.0))
+    laps_completed = int(info.get("laps_completed", 0))
+    finished = bool(info.get("finished", False))
+    if truncated:
+        outcome = "truncated"
+    elif finished:
+        outcome = "finished"
+    else:
+        outcome = "terminated"
+    print(
+        f"  episode end — {outcome}  steps={steps}  reward={total_reward:+.1f}"
+        f"  progress={progress:5.1f}%  laps={laps_completed}"
+    )
+
+
 def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: int) -> None:
+    if steps == 0:
+        return
     b, c, a = throttle_counts
     print(
         f"    throttle — brake: {100*b/steps:4.1f}%  coast: {100*c/steps:4.1f}%  accel: {100*a/steps:4.1f}%"
@@ -427,8 +451,9 @@ def _greedy_loop(
 
     Returns (best_policy, best_reward, greedy_sims).
     """
-    if not isinstance(best_policy, WeightedLinearPolicy):
-        # Fallback: single-candidate greedy for neural_net and others
+    best_policy = policy
+    if isinstance(best_policy, NeuralNetPolicy):
+        # Fallback: single-candidate greedy for neural_net
         greedy_sims = []
         try:
             for sim in range(1, n_sims + 1):
@@ -456,6 +481,9 @@ def _greedy_loop(
         except KeyboardInterrupt:
             print("\nTraining interrupted.")
         return best_policy, best_reward, greedy_sims
+
+    if not isinstance(best_policy, WeightedLinearPolicy):
+        raise TypeError(f"Unsupported policy for _greedy_loop: {type(best_policy).__name__}")
 
     # ES gradient update loop
     rng = np.random.default_rng()
