@@ -308,7 +308,7 @@ def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 2
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
     """
     env = TMNFEnv(
-        centerline_file="tracks/a03_centerline.npy",
+        centerline_file=centerline_file,
         speed=speed,
         reward_config=RewardConfig.from_yaml(reward_config_file),
         max_episode_time_s=in_game_episode_s / speed,
