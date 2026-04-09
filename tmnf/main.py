@@ -549,7 +549,7 @@ def _greedy_loop_q_learning(
     try:
         for episode in range(1, n_episodes + 1):
             env._max_episode_time_s = _scaled_episode_time(episode, n_episodes, full_episode_time_s)
-            logger.info("--- Episode %d/%d --- (respawning, episode_time={env._max_episode_time_s:.1f}s)", episode, n_episodes)
+            logger.info("--- Episode %d/%d --- (respawning, episode_time=%.1fs)", episode, n_episodes, env._max_episode_time_s)
             obs, _ = env.reset()
             reward, info, throttle_counts, total_steps, trace = _run_episode(env, policy, obs)
             policy.on_episode_end()
@@ -605,8 +605,8 @@ def _greedy_loop_genetic(
     try:
         for gen in range(1, n_generations + 1):
             env._max_episode_time_s = _scaled_episode_time(gen, n_generations, full_episode_time_s)
-            logger.info("--- Generation %d/%d --- evaluating %d individuals "
-                  f"(episode_time={env._max_episode_time_s:.1f}s)", gen, n_generations, pop_size)
+            logger.info("--- Generation %d/%d --- evaluating %d individuals (episode_time=%.1fs)",
+                        gen, n_generations, pop_size, env._max_episode_time_s)
             rewards = []
             total_steps = 0
             trace = None
@@ -825,12 +825,6 @@ def main() -> None:
                         choices=["DEBUG", "INFO", "WARNING", "ERROR"],
                         help="Logging verbosity (default: INFO)")
     args = parser.parse_args()
-
-    logging.basicConfig(
-        level=getattr(logging, args.log_level),
-        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
-        datefmt="%H:%M:%S",
-    )
 
     logging.basicConfig(
         level=getattr(logging, args.log_level),
