@@ -54,6 +54,10 @@ Repository secrets:
   - Runs post-promotion smoke checks.
 - ci/terraform-validate-plan.yml:
   - Runs terraform fmt -check and terraform init/validate for all dev/test/prod stack roots on pull requests.
+- ci/terraform-plan-nonprod.yml:
+  - Manual workflow to run Terraform plan for selected non-prod environment and stack.
+- ci/terraform-apply-nonprod.yml:
+  - Manual workflow to run Terraform apply for selected non-prod environment and stack.
 - ci/data-contract-checks.yml:
   - Runs data-contract JSON validation on pull requests touching contract files.
 
