@@ -1,0 +1,8 @@
+resource_group_name = "rg-dpb-dev-security"
+location            = "westeurope"
+tenant_id           = "00000000-0000-0000-0000-000000000000"
+
+tags = {
+  environment = "dev"
+  platform    = "dataplatform-beta"
+}

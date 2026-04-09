@@ -2,4 +2,14 @@ terraform {
   required_version = ">= 1.6.0"
 }
 
-# Placeholder stack root. Add module calls as implementation progresses.
+module "key_vault" {
+  source = "../../../modules/key_vault"
+
+  key_vault_name                = "kv-dpb-prod-core"
+  resource_group_name           = var.resource_group_name
+  location                      = var.location
+  tenant_id                     = var.tenant_id
+  sku_name                      = "standard"
+  public_network_access_enabled = false
+  tags                          = var.tags
+}
