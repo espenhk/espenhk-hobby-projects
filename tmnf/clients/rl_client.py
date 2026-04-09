@@ -188,11 +188,11 @@ class RLClient(Client):
         Unlike on_simulation_begin (one-shot), this fires repeatedly so a
         drain+overwrite race between on_run_step and the RL thread cannot
         cause the finish step to be lost."""
-        print(f"[RLClient] on_simulation_step t={_time} phase={self._phase.name} "
+        print(f"[RLClient] on_simulation_step t={_time} running={self._running} "
               f"delivered={self._simulation_finish_delivered} "
               f"last_state={'yes' if self._last_step_state else 'no'}")
 
-        if self._phase != Phase.RUNNING:
+        if not self._running:
             print(f"[RLClient] on_simulation_step: not RUNNING — ignoring")
             return
         if self._simulation_finish_delivered:
@@ -225,6 +225,7 @@ class RLClient(Client):
             print(f"[RLClient] on_run_step t={_time}: respawn triggered → give_up()")
             iface.give_up()
             self._last_centerline_idx = None  # full scan on next tick after respawn
+            self._simulation_finish_delivered = False
             self._running = False
             return
 
@@ -236,22 +237,21 @@ class RLClient(Client):
         speed_ms = data.velocity.magnitude()
 
         if self._tick % 100 == 0:
-            print(f"[RLClient] tick={self._tick} t={_time} phase={self._phase.name} "
+            print(f"[RLClient] tick={self._tick} t={_time} running={self._running} "
                   f"speed={speed_ms:.2f}m/s progress={data.track_progress}")
-
 
         if not self._running:
             iface.set_input_state(brake=True)
             if speed_ms < VELOCITY_ZERO_THRESHOLD:
-            print(f"[RLClient] on_run_step t={_time}: BRAKING_START → RUNNING (episode ready)")
-            self._phase = Phase.RUNNING
-            step_state = StepState(
-                state_data=data,
-                yaw_error=self._compute_yaw_error(state, data),
-                done=False,
-            )
-            self._drain_and_put(step_state)
-            self._episode_ready.set()
+                print(f"[RLClient] on_run_step t={_time}: BRAKING_START → RUNNING (episode ready)")
+                self._running = True
+                step_state = StepState(
+                    state_data=data,
+                    yaw_error=self._compute_yaw_error(data),
+                    done=False,
+                )
+                self._drain_and_put(step_state)
+                self._episode_ready.set()
         else:
             # Pending auto-respawn from the previous tick's lap completion:
             # act on it here so the finish step was already delivered first.
@@ -259,6 +259,7 @@ class RLClient(Client):
                 self._finish_respawn_pending = False
                 self._episode_ready.clear()
                 iface.give_up()  # restart race from position zero
+                self._simulation_finish_delivered = False
                 self._running = False
                 return
 
@@ -293,7 +294,7 @@ class RLClient(Client):
 
             step_state = StepState(
                 state_data=data,
-                yaw_error=self._compute_yaw_error(state, data),
+                yaw_error=self._compute_yaw_error(data),
                 done=done,
                 finished=finished,
             )
