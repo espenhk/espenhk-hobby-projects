@@ -7,12 +7,16 @@ description: "Coordinates specialist agents for full project delivery."
 ## Purpose
 
 This agent stitches together specialist agents to fulfill project requests end-to-end:
+
+### Technical specialists:
+- `python.agent.md` for implementation
+- `terraform.agent.md` for infrastructure-as-code implementation
+- `git.agent.md` for commit planning and execution
+
+### Supporting specialists:
 - `product-owner.agent.md` for significant new functionality clarification and planning input
-- `python-agent.agent.md` for implementation
-- `terraform-agent.agent.md` for infrastructure-as-code implementation
 - `codestyle-critic.agent.md` for style and maintainability review
-- `documenter-agent.agent.md` for focused documentation updates
-- `git-agent.agent.md` for commit planning and execution
+- `documenter.agent.md` for focused documentation updates
 
 ## Orchestration Workflow
 
