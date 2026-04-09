@@ -147,10 +147,8 @@ def _run_probes(env: TMNFEnv, probe_in_game_s: float, speed: float) -> tuple[flo
 
     results = {}  # probe_idx -> reward
     probe_results = []
-    for i, action in enumerate(ACTIONS):
-        logger.info("Probe %d/%d: %s", i + 1, N_ACTIONS, ACTIONS[i][3])
-        if "coast" in action[3]:  # skip coast probes
-            continue
+    for i, (action_arr, action_name) in enumerate(_PROBE_ACTIONS):
+        logger.info("Probe %d/%d: %s", i + 1, len(_PROBE_ACTIONS), action_name)
         obs, _ = env.reset()
         reward, _, throttle_counts, total_steps, trace = _run_episode(env, _ConstantPolicy(action_arr), obs)
         results[i] = reward
@@ -280,9 +278,9 @@ def _print_episode_summary(
         outcome = "finished"
     else:
         outcome = "terminated"
-    print(
-        f"  episode end — {outcome}  steps={steps}  reward={total_reward:+.1f}"
-        f"  progress={progress:5.1f}%  laps={laps_completed}"
+    logger.info(
+        "episode end — %s  steps=%d  reward=%+.1f  progress=%5.1f%%  laps=%d",
+        outcome, steps, total_reward, progress, laps_completed
     )
 
 
