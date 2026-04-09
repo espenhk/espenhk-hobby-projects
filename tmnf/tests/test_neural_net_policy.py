@@ -8,21 +8,29 @@ from policies import NeuralNetPolicy
 
 class TestNeuralNetPolicy(unittest.TestCase):
 
+    def assert_action_vector(self, action):
+        self.assertIsInstance(action, np.ndarray)
+        self.assertEqual(action.shape, (3,))
+        self.assertGreaterEqual(float(action[0]), -1.0)
+        self.assertLessEqual(float(action[0]), 1.0)
+        self.assertIn(float(action[1]), {0.0, 1.0})
+        self.assertIn(float(action[2]), {0.0, 1.0})
+
     def test_action_in_range(self):
         p = NeuralNetPolicy(hidden_sizes=[8])
         obs = np.random.randn(15).astype(np.float32)
-        self.assertIn(p(obs), range(9))
+        self.assert_action_vector(p(obs))
 
     def test_deterministic(self):
         p = NeuralNetPolicy(hidden_sizes=[8])
         obs = np.random.randn(15).astype(np.float32)
-        self.assertEqual(p(obs), p(obs))
+        np.testing.assert_array_equal(p(obs), p(obs))
 
     def test_from_cfg_roundtrip(self):
         p = NeuralNetPolicy(hidden_sizes=[8, 8])
         obs = np.random.randn(15).astype(np.float32)
         p2 = NeuralNetPolicy.from_cfg(p.to_cfg())
-        self.assertEqual(p(obs), p2(obs))
+        np.testing.assert_allclose(p(obs), p2(obs))
 
     def test_hidden_sizes_preserved_in_cfg(self):
         p = NeuralNetPolicy(hidden_sizes=[32, 16])
@@ -32,7 +40,7 @@ class TestNeuralNetPolicy(unittest.TestCase):
         p = NeuralNetPolicy(hidden_sizes=[4])
         for _ in range(20):
             obs = np.random.randn(15).astype(np.float32) * 100
-            self.assertIn(p(obs), range(9))
+            self.assert_action_vector(p(obs))
 
     def test_mutated_has_different_weights(self):
         p = NeuralNetPolicy(hidden_sizes=[8])
@@ -45,10 +53,10 @@ class TestNeuralNetPolicy(unittest.TestCase):
         p = NeuralNetPolicy(hidden_sizes=[16, 8])
         cfg = p.to_cfg()
         weights = cfg["weights"]
-        # Layer dims: [15, 16, 8, 9]
+        # Layer dims: [15, 16, 8, 3]
         self.assertEqual(np.array(weights[0]).shape, (16, 15))
         self.assertEqual(np.array(weights[1]).shape, (8, 16))
-        self.assertEqual(np.array(weights[2]).shape, (9, 8))
+        self.assertEqual(np.array(weights[2]).shape, (3, 8))
 
 
 if __name__ == "__main__":

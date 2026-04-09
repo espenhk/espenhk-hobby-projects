@@ -82,7 +82,8 @@ def make_wlp(steer_weights=None, throttle_weights=None,
     cfg = {
         "steer_threshold":    steer_threshold,
         "throttle_threshold": throttle_threshold,
-        "steer_weights":    {names[i]: float(sw[i]) for i in range(n)},
-        "throttle_weights": {names[i]: float(tw[i]) for i in range(n)},
+        "steer_weights": {names[i]: float(sw[i]) for i in range(n)},
+        "accel_weights": {names[i]: float(tw[i]) for i in range(n)},
+        "brake_weights": {names[i]: float(-tw[i]) for i in range(n)},
     }
     return WeightedLinearPolicy.from_cfg(cfg)
