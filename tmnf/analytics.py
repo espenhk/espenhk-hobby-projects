@@ -85,6 +85,7 @@ class ExperimentData:
     reward_config_file: str    # path to the experiment's reward_config.yaml
     training_params: dict      # SPEED, N_SIMS, etc. from main()
     timings: dict              # start, end, total_s, probe_s, cold_start_s, greedy_s
+    track: str = ""            # centerline stem, e.g. "a03_centerline"
 
 
 # ---------------------------------------------------------------------------
@@ -603,6 +604,8 @@ def _summary_md(data: ExperimentData) -> str:
     lines.append("### Training\n\n")
     lines.append("| Parameter | Value |\n")
     lines.append("|-----------|-------|\n")
+    if data.track:
+        lines.append(f"| track | {data.track} |\n")
     for k, v in data.training_params.items():
         lines.append(f"| {k} | {v} |\n")
 
@@ -673,7 +676,8 @@ def save_experiment_results(data: ExperimentData, results_dir: str) -> None:
     """Generate all plots and write a single results.md report to *results_dir*."""
     os.makedirs(results_dir, exist_ok=True)
 
-    sections = [f"# Experiment: {data.experiment_name}\n\n", _timings_md(data), _summary_md(data)]
+    track_line = f"\n**Track:** {data.track}\n" if data.track else ""
+    sections = [f"# Experiment: {data.experiment_name}\n{track_line}\n", _timings_md(data), _summary_md(data)]
 
     if data.probe_results:
         plot_probe_rewards(data, results_dir)
