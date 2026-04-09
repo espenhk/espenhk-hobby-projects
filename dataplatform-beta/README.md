@@ -21,6 +21,7 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - docs/security-compliance.md: baseline security/compliance controls.
 - docs/operations-slos.md: SLI/SLO and alerting baseline.
 - docs/decision-log.md: ownership and closure tracking for open planning decisions.
+- docs/progress.md: implementation status against the plan backlog.
 - docs/powerbi-serving.md: Power BI delivery operating model.
 - powerbi/deployment/: workspace and pipeline config maps.
 - powerbi/domains/: domain PBIP artifacts.
