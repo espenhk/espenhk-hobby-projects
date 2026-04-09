@@ -7,11 +7,12 @@ TMInterface fires on_run_step() on its own internal thread.
 The RL training loop runs on the main (or another) thread.
 They communicate through:
 
-  action_idx   : the RL thread writes, the game thread reads (lock-protected)
-  _state_queue : the game thread writes one StepState per tick;
-                 the RL thread blocks on get() to receive it.
-  _respawn_event    : RL thread sets → game thread calls iface.respawn()
-  _episode_ready    : game thread sets → RL thread unblocks from reset()
+  _action          : the RL thread writes, the game thread reads (lock-protected)
+                     shape (3,) float32 — [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+  _state_queue     : the game thread writes one StepState per tick;
+                     the RL thread blocks on get() to receive it.
+  _respawn_event   : RL thread sets → game thread calls iface.respawn()
+  _episode_ready   : game thread sets → RL thread unblocks from reset()
 
 Because the game runs at high speed (e.g. 10×) and the policy evaluation
 takes some time, multiple game ticks may pass before the RL thread reads a
@@ -103,7 +104,8 @@ class RLClient(PhaseAwareClient):
         self._auto_respawn_on_finish = auto_respawn_on_finish
 
         # Shared state — written by RL thread, read by game thread
-        self._action_idx: int = 7  # default: accel + straight
+        # shape (3,): [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+        self._action: np.ndarray = _DEFAULT_ACTION.copy()
         self._action_lock = threading.Lock()
 
         # Shared state — written by game thread, read by RL thread
@@ -146,10 +148,14 @@ class RLClient(PhaseAwareClient):
         self._stop_event.set()
         self._episode_ready.set()  # unblock wait_episode_ready
 
-    def set_action(self, action_idx: int) -> None:
-        """Set the next action. Thread-safe."""
+    def set_action(self, action: np.ndarray) -> None:
+        """Set the next action. Thread-safe.
+
+        action: shape (3,) float32 — [steer ∈ [-1,1], accel ∈ {0,1}, brake ∈ {0,1}]
+        accel and brake are thresholded at 0.5 when applied to the game.
+        """
         with self._action_lock:
-            self._action_idx = action_idx
+            self._action = action
 
     def get_step_state(self) -> StepState:
         """Block until the game thread delivers the next state."""
@@ -268,14 +274,16 @@ class RLClient(PhaseAwareClient):
                 self._running = False
                 return
 
-            with self._action_lock:
-                action_idx = self._action_idx
-            accelerate, brake, steer_pct, _ = ACTIONS[action_idx]
-            iface.set_input_state(
-                accelerate=accelerate,
-                brake=brake,
-                steer=int(steer_pct / 100 * 65536),
-            )
+                with self._action_lock:
+                    action = self._action
+                steer_norm = float(np.clip(action[0], -1.0, 1.0))
+                accel = bool(float(action[1]) >= 0.5)
+                brake = bool(float(action[2]) >= 0.5)
+                iface.set_input_state(
+                    accelerate=accel,
+                    brake=brake,
+                    steer=int(steer_norm * 65536),
+                )
 
 
             finished  = data.track_progress is not None and data.track_progress >= _FINISH_THRESHOLD

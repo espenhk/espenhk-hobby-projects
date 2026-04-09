@@ -385,7 +385,7 @@ def plot_reward_trajectory(data: ExperimentData, results_dir: str) -> None:
 
 
 def plot_weight_heatmap(data: ExperimentData, results_dir: str) -> None:
-    """2×15 heatmap of steer/throttle weights from the saved policy YAML."""
+    """3×15 heatmap of steer/accel/brake weights from the saved policy YAML."""
 
     if not os.path.exists(data.weights_file):
         return
@@ -397,29 +397,30 @@ def plot_weight_heatmap(data: ExperimentData, results_dir: str) -> None:
         return  # non-WLP policy (neural_net, q-table, etc.) — skip heatmap
 
     obs_names = WeightedLinearPolicy.OBS_NAMES
-    steer_w    = np.array([cfg["steer_weights"][n]    for n in obs_names])
-    throttle_w = np.array([cfg["throttle_weights"][n] for n in obs_names])
-    matrix = np.vstack([steer_w, throttle_w])
+    steer_w = np.array([cfg["steer_weights"][n] for n in obs_names])
+    accel_w = np.array([cfg["accel_weights"][n] for n in obs_names])
+    brake_w = np.array([cfg["brake_weights"][n] for n in obs_names])
+    matrix  = np.vstack([steer_w, accel_w, brake_w])
 
     vmax = max(abs(matrix).max(), 1e-6)
 
-    fig, ax = plt.subplots(figsize=(13, 3))
+    fig, ax = plt.subplots(figsize=(13, 4))
     im = ax.imshow(matrix, cmap="RdBu", aspect="auto", vmin=-vmax, vmax=vmax)
     fig.colorbar(im, ax=ax, fraction=0.03, pad=0.02)
 
     ax.set_xticks(range(len(obs_names)))
     ax.set_xticklabels(obs_names, rotation=45, ha="right", fontsize=8)
-    ax.set_yticks([0, 1])
-    ax.set_yticklabels(["steer", "throttle"])
+    ax.set_yticks([0, 1, 2])
+    ax.set_yticklabels(["steer", "accel", "brake"])
     ax.set_title(f"{data.experiment_name} — Final Policy Weight Heatmap")
     fig.tight_layout()
     _save(fig, os.path.join(results_dir, "policy_weights_heatmap.png"))
 
 
 def plot_weight_evolution(data: ExperimentData, results_dir: str) -> None:
-    """Line plot of every steer/throttle weight across greedy simulations.
+    """Line plot of every steer/accel/brake weight across greedy simulations.
 
-    Each feature gets one line per sub-plot (steer top, throttle bottom).
+    Each feature gets one line per sub-plot (steer / accel / brake).
     Iterations where the policy improved are marked with a vertical grey band.
     """
 
@@ -432,13 +433,18 @@ def plot_weight_evolution(data: ExperimentData, results_dir: str) -> None:
     xs = [s.sim for s in sims]
     improvement_xs = [s.sim for s in sims if s.improved]
 
-    steer_matrix    = np.array([[s.weights["steer_weights"][n]    for n in obs_names] for s in sims])
-    throttle_matrix = np.array([[s.weights["throttle_weights"][n] for n in obs_names] for s in sims])
+    steer_matrix = np.array([[s.weights["steer_weights"][n] for n in obs_names] for s in sims])
+    accel_matrix = np.array([[s.weights["accel_weights"][n] for n in obs_names] for s in sims])
+    brake_matrix = np.array([[s.weights["brake_weights"][n] for n in obs_names] for s in sims])
 
-    fig, axes = plt.subplots(2, 1, figsize=(14, 8), sharex=True)
+    fig, axes = plt.subplots(3, 1, figsize=(14, 10), sharex=True)
     cmap = plt.cm.get_cmap("tab20", len(obs_names))
 
-    for ax, matrix, title in zip(axes, [steer_matrix, throttle_matrix], ["Steer weights", "Throttle weights"]):
+    for ax, matrix, title in zip(
+        axes,
+        [steer_matrix, accel_matrix, brake_matrix],
+        ["Steer weights", "Accel weights", "Brake weights"],
+    ):
         for ix in improvement_xs:
             ax.axvline(ix, color="grey", alpha=0.25, linewidth=1)
         for i, name in enumerate(obs_names):
