@@ -6,6 +6,7 @@ Usage (from tmnf/):
 
 Config format (YAML):
     base_name: "gs_v1"
+    track: a03_centerline       # stem of tracks/<track>.npy (default: a03_centerline)
     training_params:
         speed: 10.0
         n_sims: 50
@@ -18,6 +19,7 @@ Config format (YAML):
 
 Any param set to a list becomes a search axis; all others are fixed.
 One experiment is run per unique combination. Names encode only the varied params.
+Results are written to experiments/<track>/<name>/.
 """
 
 from __future__ import annotations
@@ -122,14 +124,15 @@ def _make_experiment_name(base_name: str, combo: dict[str, Any], varied_keys: li
 # Config loading and grid expansion
 # ---------------------------------------------------------------------------
 
-def _load_grid_config(path: str) -> tuple[str, dict[str, Any], dict[str, Any]]:
-    """Load grid config YAML. Returns (base_name, training_spec, reward_spec)."""
+def _load_grid_config(path: str) -> tuple[str, str, dict[str, Any], dict[str, Any]]:
+    """Load grid config YAML. Returns (base_name, track, training_spec, reward_spec)."""
     with open(path) as f:
         cfg = yaml.safe_load(f)
     base_name = cfg.get("base_name", "gs")
+    track = cfg.get("track", "a03_centerline")
     training_spec = cfg.get("training_params", {})
     reward_spec = cfg.get("reward_params", {})
-    return base_name, training_spec, reward_spec
+    return base_name, track, training_spec, reward_spec
 
 
 def _expand_grid(training_spec: dict[str, Any], reward_spec: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
@@ -208,13 +211,15 @@ def main() -> None:
                              "ignoring any existing weights file. Skips probe and cold-start.")
     args = parser.parse_args()
 
-    base_name, training_spec, reward_spec = _load_grid_config(args.config)
+    base_name, track, training_spec, reward_spec = _load_grid_config(args.config)
     combos, varied_keys = _expand_grid(training_spec, reward_spec)
+    centerline_file = f"tracks/{track}.npy"
 
     n = len(combos)
     print(f"\n{'='*60}")
     print(f"  Grid search: {n} combination(s)")
     print(f"  Base name:   {base_name}")
+    print(f"  Track:       {track}")
     if varied_keys:
         print(f"  Varied:      {', '.join(varied_keys)}")
     print(f"{'='*60}\n")
@@ -238,7 +243,7 @@ def main() -> None:
         print(f"  Run {i}/{n}: {name}")
         print(f"{'='*60}")
 
-        experiment_dir = f"experiments/{name}"
+        experiment_dir = f"experiments/{track}/{name}"
         weights_file   = f"{experiment_dir}/policy_weights.yaml"
         reward_cfg_file = f"{experiment_dir}/reward_config.yaml"
         training_params_file = f"{experiment_dir}/training_params.yaml"
@@ -274,6 +279,8 @@ def main() -> None:
             re_initialize=args.re_initialize,
             policy_type=t.get("policy_type", "hill_climbing"),
             policy_params=_build_policy_params(t),
+            centerline_file=centerline_file,
+            track=track,
         )
 
         save_experiment_results(data, results_dir=f"{experiment_dir}/results")
@@ -295,7 +302,7 @@ def main() -> None:
     print(f"{'='*60}\n")
 
     # Cross-experiment summary report
-    summary_dir = f"experiments/{base_name}__summary"
+    summary_dir = f"experiments/{track}/{base_name}__summary"
     save_grid_summary(all_runs, varied_keys, summary_dir, base_name)
     print(f"  Summary report: {summary_dir}/summary.md")
 

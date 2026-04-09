@@ -11,7 +11,6 @@ import datetime
 
 from tminterface.interface import TMInterface
 
-from clients import AdaptiveClient
 from clients.rl_client import ACTIONS, N_ACTIONS, get_action_description
 from policies import (
     BasePolicy,
@@ -33,30 +32,15 @@ from analytics import (
     save_experiment_results
 )
 
-def run_adaptive(speed: float) -> None:
-    """Follow the centreline using the hand-tuned PD controller."""
-    client = AdaptiveClient("tracks/a03_centerline.npy")
-    iface = TMInterface()
-    iface.execute_command(f"set speed {speed}")
-
-    print("Waiting for TMInterface connection...")
-    iface.register(client)
-    try:
-        while iface.running:
-            time.sleep(0)
-    except KeyboardInterrupt:
-        pass
-    iface.close()
-
-
 # ---------------------------------------------------------------------------
 # Env factory (shared setup)
 # ---------------------------------------------------------------------------
 
-def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0) -> TMNFEnv:
+def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0,
+              centerline_file: str = "tracks/a03_centerline.npy") -> TMNFEnv:
 
     return TMNFEnv(
-        centerline_file="tracks/a03_centerline.npy",
+        centerline_file=centerline_file,
         speed=speed,
         reward_config=RewardConfig.from_yaml(reward_config_file),
         max_episode_time_s=in_game_episode_s / speed,
@@ -268,6 +252,25 @@ def _run_episode(
     return total_reward, info, throttle_counts, steps, trace
 
 
+def _scaled_episode_time(sim: int, n_total: int, max_time_s: float) -> float:
+    """Return episode time for sim (1-indexed) using a 4-step schedule.
+
+    First 25%  → 1/4 of max_time_s
+    Next  25%  → 1/2
+    Next  25%  → 3/4
+    Final 25%  → full max_time_s
+    """
+    quarter = n_total / 4
+    if sim <= quarter:
+        return max_time_s * 0.25
+    elif sim <= 2 * quarter:
+        return max_time_s * 0.5
+    elif sim <= 3 * quarter:
+        return max_time_s * 0.75
+    else:
+        return max_time_s
+
+
 def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: int) -> None:
     b, c, a = throttle_counts
     print(
@@ -280,12 +283,14 @@ def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: i
 # Watch mode: run indefinitely, resetting every in_game_episode_s seconds
 # ---------------------------------------------------------------------------
 
-def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0, reward_config_file: str = "config/reward_config.yaml") -> None:
+def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0,
+                  reward_config_file: str = "config/reward_config.yaml",
+                  centerline_file: str = "tracks/a03_centerline.npy") -> None:
     """
     Repeatedly drive the track with *policy*, resetting every
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
     """
-    env = _make_env(speed, in_game_episode_s, reward_config_file)
+    env = _make_env(speed, in_game_episode_s, reward_config_file, centerline_file=centerline_file)
     time.sleep(1)
 
     run = 0
@@ -416,11 +421,13 @@ def _greedy_loop_hill_climb(
     """
 
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
     try:
         for sim in range(1, n_sims + 1):
+            env._max_episode_time_s = _scaled_episode_time(sim, n_sims, full_episode_time_s)
             candidate = best_policy.mutated(scale=mutation_scale, share=mutation_share)
 
-            print(f"--- Sim {sim}/{n_sims} --- (respawning)")
+            print(f"--- Sim {sim}/{n_sims} --- (respawning, episode_time={env._max_episode_time_s:.1f}s)")
             obs, _ = env.reset()
             reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
 
@@ -464,9 +471,11 @@ def _greedy_loop_q_learning(
 
     best_reward = float("-inf")
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
     try:
         for episode in range(1, n_episodes + 1):
-            print(f"--- Episode {episode}/{n_episodes} --- (respawning)")
+            env._max_episode_time_s = _scaled_episode_time(episode, n_episodes, full_episode_time_s)
+            print(f"--- Episode {episode}/{n_episodes} --- (respawning, episode_time={env._max_episode_time_s:.1f}s)")
             obs, _ = env.reset()
             reward, info, throttle_counts, total_steps, trace = _run_episode(env, policy, obs)
             policy.on_episode_end()
@@ -512,13 +521,16 @@ def _greedy_loop_genetic(
     pop_size    = len(policy._population)
     best_reward = policy._champion_reward
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
 
     print(f"  [Genetic] population_size={pop_size}, "
           f"total episodes = {n_generations} × {pop_size} = {n_generations * pop_size}")
 
     try:
         for gen in range(1, n_generations + 1):
-            print(f"--- Generation {gen}/{n_generations} --- evaluating {pop_size} individuals")
+            env._max_episode_time_s = _scaled_episode_time(gen, n_generations, full_episode_time_s)
+            print(f"--- Generation {gen}/{n_generations} --- evaluating {pop_size} individuals "
+                  f"(episode_time={env._max_episode_time_s:.1f}s)")
             rewards = []
             for idx, individual in enumerate(policy._population):
                 print(f"  Individual {idx + 1}/{pop_size} (respawning)", end="", flush=True)
@@ -574,6 +586,8 @@ def train_rl(
     re_initialize: bool = False,
     policy_type: str = "hill_climbing",
     policy_params: dict[str, Any] | None = None,
+    centerline_file: str = "tracks/a03_centerline.npy",
+    track: str = "",
 ) -> ExperimentData:
     """
     Train a driving policy via the selected algorithm.
@@ -600,7 +614,8 @@ def train_rl(
             input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
 
     print("Connecting to game...")
-    env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays)
+    env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays,
+                    centerline_file=centerline_file)
 
     probe_results  = []
     cold_start_data = []
@@ -695,6 +710,7 @@ def train_rl(
         reward_config_file=reward_config_file,
         training_params=training_params or {},
         timings=timings,
+        track=track,
     )
 
 
@@ -704,7 +720,7 @@ def train_rl(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="TMNF RL training")
-    parser.add_argument("experiment", help="Experiment name — files stored in experiments/<name>/")
+    parser.add_argument("experiment", help="Experiment name — files stored in experiments/<track>/<name>/")
     parser.add_argument("--no-interrupt", action="store_true",
                         help="Skip all 'Press Enter' prompts and run all phases automatically")
     parser.add_argument("--re-initialize", action="store_true",
@@ -712,7 +728,14 @@ def main() -> None:
                              "including probe and cold-start phases.")
     args = parser.parse_args()
 
-    experiment_dir  = f"experiments/{args.experiment}"
+    # Bootstrap: read track from master config before the experiment dir exists,
+    # then re-read the experiment-local copy once it has been created.
+    with open("config/training_params.yaml") as f:
+        master_p = yaml.safe_load(f)
+    track = master_p.get("track", "a03_centerline")
+    centerline_file = f"tracks/{track}.npy"
+
+    experiment_dir  = f"experiments/{track}/{args.experiment}"
     weights_file    = f"{experiment_dir}/policy_weights.yaml"
     reward_cfg_file = f"{experiment_dir}/reward_config.yaml"
 
@@ -728,6 +751,10 @@ def main() -> None:
 
     with open(training_params_file) as f:
         p = yaml.safe_load(f)
+
+    # Allow per-experiment overrides of track (if the copied config was edited).
+    track = p.get("track", track)
+    centerline_file = f"tracks/{track}.npy"
 
     data = train_rl(
         experiment_name=args.experiment,
@@ -747,6 +774,8 @@ def main() -> None:
         re_initialize=args.re_initialize,
         policy_type=p.get("policy_type", "hill_climbing"),
         policy_params=p.get("policy_params") or {},
+        centerline_file=centerline_file,
+        track=track,
     )
 
     save_experiment_results(data, results_dir=f"{experiment_dir}/results")
