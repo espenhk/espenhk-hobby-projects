@@ -9,16 +9,24 @@ from policies import WeightedLinearPolicy
 
 class TestWeightedLinearPolicy(unittest.TestCase):
 
+    def assert_action_vector(self, action):
+        self.assertIsInstance(action, np.ndarray)
+        self.assertEqual(action.shape, (3,))
+        self.assertGreaterEqual(float(action[0]), -1.0)
+        self.assertLessEqual(float(action[0]), 1.0)
+        self.assertIn(float(action[1]), {0.0, 1.0})
+        self.assertIn(float(action[2]), {0.0, 1.0})
+
     def test_action_in_range(self):
         p = make_wlp()
         for _ in range(10):
             obs = np.random.randn(15).astype(np.float32)
-            self.assertIn(p(obs), range(9))
+            self.assert_action_vector(p(obs))
 
     def test_deterministic(self):
         p = make_wlp()
         obs = np.ones(15, dtype=np.float32)
-        self.assertEqual(p(obs), p(obs))
+        np.testing.assert_array_equal(p(obs), p(obs))
 
     def test_accel_weights_dominate(self):
         # Large positive weight on speed_ms (index 0, scale 50) → throttle score ≫ threshold
@@ -26,20 +34,26 @@ class TestWeightedLinearPolicy(unittest.TestCase):
         tw[0] = 1000.0
         obs = np.array([50.0] + [0.0] * 14, dtype=np.float32)
         p = make_wlp(throttle_weights=tw)
-        self.assertIn(p(obs), {6, 7, 8})
+        action = p(obs)
+        self.assertEqual(float(action[1]), 1.0)
+        self.assertEqual(float(action[2]), 0.0)
 
     def test_brake_weights_dominate(self):
         tw = np.zeros(15, dtype=np.float32)
         tw[0] = -1000.0
         obs = np.array([50.0] + [0.0] * 14, dtype=np.float32)
         p = make_wlp(throttle_weights=tw)
-        self.assertIn(p(obs), {0, 1, 2})
+        action = p(obs)
+        self.assertEqual(float(action[1]), 0.0)
+        self.assertEqual(float(action[2]), 1.0)
 
     def test_coast_within_threshold(self):
         # All-zero weights → throttle score = 0 → within threshold → coast actions
         obs = np.ones(15, dtype=np.float32)
         p = make_wlp()
-        self.assertIn(p(obs), {3, 4, 5})
+        action = p(obs)
+        self.assertEqual(float(action[1]), 0.0)
+        self.assertEqual(float(action[2]), 0.0)
 
     def test_steer_left_action(self):
         # Large negative steer weight on lateral_offset (index 1) → steer score ≪ -threshold → left
@@ -50,7 +64,10 @@ class TestWeightedLinearPolicy(unittest.TestCase):
         tw[0] = 1000.0
         obs = np.array([50.0, 1.0] + [0.0] * 13, dtype=np.float32)
         p = make_wlp(steer_weights=sw, throttle_weights=tw)
-        self.assertEqual(p(obs), 6)
+        action = p(obs)
+        self.assertEqual(float(action[0]), -1.0)
+        self.assertEqual(float(action[1]), 1.0)
+        self.assertEqual(float(action[2]), 0.0)
 
     def test_steer_right_action(self):
         sw = np.zeros(15, dtype=np.float32)
@@ -59,14 +76,17 @@ class TestWeightedLinearPolicy(unittest.TestCase):
         tw[0] = 1000.0
         obs = np.array([50.0, 1.0] + [0.0] * 13, dtype=np.float32)
         p = make_wlp(steer_weights=sw, throttle_weights=tw)
-        self.assertEqual(p(obs), 8)
+        action = p(obs)
+        self.assertEqual(float(action[0]), 1.0)
+        self.assertEqual(float(action[1]), 1.0)
+        self.assertEqual(float(action[2]), 0.0)
 
     def test_from_cfg_roundtrip(self):
         p = make_wlp()
         cfg = p.to_cfg()
         p2 = WeightedLinearPolicy.from_cfg(cfg)
         obs = np.random.randn(15).astype(np.float32)
-        self.assertEqual(p(obs), p2(obs))
+        np.testing.assert_array_equal(p(obs), p2(obs))
 
     def test_mutated_weights_differ(self):
         sw = np.ones(15, dtype=np.float32)
@@ -83,7 +103,8 @@ class TestWeightedLinearPolicy(unittest.TestCase):
     def test_action_is_int(self):
         p = make_wlp()
         action = p(np.zeros(15, dtype=np.float32))
-        self.assertIsInstance(action, int)
+        self.assertIsInstance(action, np.ndarray)
+        self.assertEqual(action.shape, (3,))
 
 
 if __name__ == "__main__":

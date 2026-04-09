@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from policies import MCTSPolicy, WeightedLinearPolicy, _discretize_obs
+from policies import MCTSPolicy, WeightedLinearPolicy, _action_to_idx, _discretize_obs
 
 
 def _zero_obs() -> np.ndarray:
@@ -18,13 +18,13 @@ class TestMCTSPolicy(unittest.TestCase):
 
     def test_action_in_range(self):
         p = MCTSPolicy()
-        self.assertIn(p(_zero_obs()), range(9))
+        self.assertIn(_action_to_idx(p(_zero_obs())), range(9))
 
     def test_unseen_state_uses_random(self):
         # With an empty table every call is random — expect multiple distinct actions over many calls.
         # Probability of all 30 calls picking the same action: 9^{-29} ≈ 0.
         p = MCTSPolicy()
-        actions = {p(np.random.randn(15).astype(np.float32)) for _ in range(30)}
+        actions = {_action_to_idx(p(np.random.randn(15).astype(np.float32))) for _ in range(30)}
         self.assertGreater(len(actions), 1)
 
     def test_update_increments_visit_count(self):
@@ -49,7 +49,7 @@ class TestMCTSPolicy(unittest.TestCase):
         for _ in range(5):
             p.update(obs, action=3, reward= 100.0, next_obs=next_obs, done=True)
             p.update(obs, action=0, reward=-100.0, next_obs=next_obs, done=True)
-        self.assertEqual(p(obs), 3)
+        self.assertEqual(_action_to_idx(p(obs)), 3)
 
     def test_multiple_updates_accumulate_visits(self):
         p = MCTSPolicy()

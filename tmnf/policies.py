@@ -28,10 +28,6 @@ from constants import N_ACTIONS
 from obs_spec import OBS_NAMES, OBS_SCALES, obs_names_with_lidar, obs_scales_with_lidar
 from steering import PDHeadingController
 
-from constants import N_ACTIONS
-from obs_spec import OBS_NAMES, OBS_SCALES, obs_names_with_lidar, obs_scales_with_lidar
-from steering import PDHeadingController
-
 
 # ---------------------------------------------------------------------------
 # Discrete action set for Q-table policies (EpsilonGreedy, MCTS)
@@ -49,9 +45,6 @@ _DISCRETE_ACTIONS = np.array([
     [-1., 1., 0.],   #  6: accel + left
     [ 0., 1., 0.],   #  7: accel + straight
     [ 1., 1., 0.],   #  8: accel + right
-    [-1., 1., 1.],   #  9: accel+brake + left
-    [ 0., 1., 1.],   # 10: accel+brake + straight
-    [ 1., 1., 1.],   # 11: accel+brake + right
 ], dtype=np.float32)
 _N_DISCRETE_ACTIONS = len(_DISCRETE_ACTIONS)
 
@@ -60,6 +53,38 @@ def _action_to_idx(action: np.ndarray) -> int:
     """Map an action array back to its nearest index in _DISCRETE_ACTIONS."""
     diffs = np.abs(_DISCRETE_ACTIONS - action[np.newaxis, :]).sum(axis=1)
     return int(np.argmin(diffs))
+
+
+def _normalize_weight_cfg(cfg: dict, names: list[str]) -> dict:
+    """Return a weight config in the current steer/accel/brake format.
+
+    Older configs may still use a single throttle head. Those are mapped to
+    accel=throttle and brake=-throttle so existing saved policies and tests
+    continue to load.
+    """
+    normalized = {
+        k: v for k, v in cfg.items()
+        if k not in {"steer_weights", "accel_weights", "brake_weights", "throttle_weights"}
+    }
+
+    steer_weights = dict(cfg.get("steer_weights", {}))
+    if "accel_weights" in cfg or "brake_weights" in cfg:
+        accel_weights = dict(cfg.get("accel_weights", {}))
+        brake_weights = dict(cfg.get("brake_weights", {}))
+    else:
+        throttle_weights = dict(cfg.get("throttle_weights", {}))
+        accel_weights = {name: float(throttle_weights.get(name, 0.0)) for name in names}
+        brake_weights = {name: float(-throttle_weights.get(name, 0.0)) for name in names}
+
+    for name in names:
+        steer_weights.setdefault(name, 0.0)
+        accel_weights.setdefault(name, 0.0)
+        brake_weights.setdefault(name, 0.0)
+
+    normalized["steer_weights"] = {name: float(steer_weights[name]) for name in names}
+    normalized["accel_weights"] = {name: float(accel_weights[name]) for name in names}
+    normalized["brake_weights"] = {name: float(brake_weights[name]) for name in names}
+    return normalized
 
 
 # ---------------------------------------------------------------------------
@@ -199,16 +224,18 @@ class WeightedLinearPolicy(BasePolicy):
     # ------------------------------------------------------------------
 
     def to_flat(self) -> np.ndarray:
-        """Return [steer_weights | throttle_weights] as a single float32 vector."""
-        return np.concatenate([self._steer_w, self._throttle_w])
+        """Return [steer_weights | accel_weights | brake_weights] as one float32 vector."""
+        return np.concatenate([self._steer_w, self._accel_w, self._brake_w])
 
     def with_flat(self, flat: np.ndarray) -> "WeightedLinearPolicy":
-        """Return a new policy with weights replaced by flat vector (splits at n_obs_dims)."""
+        """Return a new policy with weights replaced by a flat vector."""
         n = 15 + self._n_lidar_rays
         names = self.get_obs_names(self._n_lidar_rays)
-        cfg = self.to_cfg()
-        cfg["steer_weights"]    = {names[i]: float(flat[i])   for i in range(n)}
-        cfg["throttle_weights"] = {names[i]: float(flat[n + i]) for i in range(n)}
+        cfg = {
+            "steer_weights": {names[i]: float(flat[i]) for i in range(n)},
+            "accel_weights": {names[i]: float(flat[n + i]) for i in range(n)},
+            "brake_weights": {names[i]: float(flat[2 * n + i]) for i in range(n)},
+        }
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
     def mutated(self, scale: float = 0.1, share: float = 1.0) -> "WeightedLinearPolicy":
@@ -242,9 +269,10 @@ class WeightedLinearPolicy(BasePolicy):
 
     def _apply_cfg(self, cfg: dict) -> None:
         names = self.get_obs_names(self._n_lidar_rays)
-        self._steer_w = np.array([cfg["steer_weights"][n] for n in names], dtype=np.float32)
-        self._accel_w = np.array([cfg["accel_weights"][n] for n in names], dtype=np.float32)
-        self._brake_w = np.array([cfg["brake_weights"][n] for n in names], dtype=np.float32)
+        normalized = _normalize_weight_cfg(cfg, names)
+        self._steer_w = np.array([normalized["steer_weights"][n] for n in names], dtype=np.float32)
+        self._accel_w = np.array([normalized["accel_weights"][n] for n in names], dtype=np.float32)
+        self._brake_w = np.array([normalized["brake_weights"][n] for n in names], dtype=np.float32)
 
     def _load_or_init(self) -> dict:
         names = self.get_obs_names(self._n_lidar_rays)
@@ -252,31 +280,12 @@ class WeightedLinearPolicy(BasePolicy):
             with open(self._weights_file) as f:
                 cfg = yaml.safe_load(f)
 
-            # Migrate old format (steer_weights + throttle_weights + thresholds)
-            # to new format (steer_weights + accel_weights + brake_weights).
-            if "throttle_weights" in cfg and "accel_weights" not in cfg:
-                throttle = cfg["throttle_weights"]
-                cfg["accel_weights"] = {k: v        for k, v in throttle.items()}
-                cfg["brake_weights"] = {k: -v       for k, v in throttle.items()}
-                cfg.pop("throttle_weights", None)
-                cfg.pop("steer_threshold",  None)
-                cfg.pop("throttle_threshold", None)
+            normalized = _normalize_weight_cfg(cfg, names)
+            if normalized != cfg:
                 with open(self._weights_file, "w") as f:
-                    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
-                print(f"[WeightedLinearPolicy] migrated old throttle_weights format → {self._weights_file}")
-
-            # Fill in any missing LIDAR keys with 0.0
-            migrated = False
-            for group in ("steer_weights", "accel_weights", "brake_weights"):
-                for n in names:
-                    if n not in cfg[group]:
-                        cfg[group][n] = 0.0
-                        migrated = True
-            if migrated:
-                with open(self._weights_file, "w") as f:
-                    yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
-                print(f"[WeightedLinearPolicy] migrated weights file with new LIDAR keys → {self._weights_file}")
-            return cfg
+                    yaml.dump(normalized, f, default_flow_style=False, sort_keys=False)
+                print(f"[WeightedLinearPolicy] migrated weights file → {self._weights_file}")
+            return normalized
 
         rng = np.random.default_rng()
         cfg = {
@@ -425,12 +434,12 @@ class QTablePolicy(BasePolicy):
     def _select_action(self, s: tuple) -> int:
         """Choose an action for state key s. Implemented by subclasses."""
 
-    def __call__(self, obs: np.ndarray) -> int:
+    def __call__(self, obs: np.ndarray) -> np.ndarray:
         s = _discretize_obs(obs, self._scales, self._n_bins)
         self._last_obs = obs
-        action = self._select_action(s)
-        self._last_action = action
-        return action
+        action_idx = self._select_action(s)
+        self._last_action = action_idx
+        return _DISCRETE_ACTIONS[action_idx].copy()
 
     def update(self, obs: np.ndarray, action: int, reward: float,
                next_obs: np.ndarray, done: bool) -> None:
@@ -463,8 +472,7 @@ class EpsilonGreedyPolicy(QTablePolicy):
     feature (default 3).  Q-values are updated online via the Bellman equation
     after every environment step.  Epsilon decays each episode.
 
-    Actions are selected from _DISCRETE_ACTIONS (12 entries including
-    brake+accel combinations and partial steering is covered by the ±1 range).
+    Actions are selected from _DISCRETE_ACTIONS (9 entries).
 
     Note: the Q-table is NOT persisted to policy_weights.yaml (it can be very
     large).  to_cfg() records only hyperparameters; the table lives in memory
@@ -510,17 +518,21 @@ class EpsilonGreedyPolicy(QTablePolicy):
             self._q_table[state_key] = np.zeros(self.N_ACTIONS, dtype=np.float32)
         return self._q_table[state_key]
 
+    def _select_action(self, state_key: tuple) -> int:
+        if np.random.random() < self._epsilon:
+            return int(np.random.randint(self.N_ACTIONS))
+        return int(np.argmax(self._q(state_key)))
+
     def __call__(self, obs: np.ndarray) -> np.ndarray:
         state_key = _discretize_obs(obs, self._scales, self._n_bins)
-        if np.random.random() < self._epsilon:
-            idx = int(np.random.randint(self.N_ACTIONS))
-        else:
-            idx = int(np.argmax(self._q(state_key)))
-        return _DISCRETE_ACTIONS[idx].copy()
+        self._last_obs = obs
+        action_idx = self._select_action(state_key)
+        self._last_action = action_idx
+        return _DISCRETE_ACTIONS[action_idx].copy()
 
-    def update(self, obs: np.ndarray, action: np.ndarray, reward: float,
+    def update(self, obs: np.ndarray, action: np.ndarray | int, reward: float,
                next_obs: np.ndarray, done: bool) -> None:
-        action_idx = _action_to_idx(action)
+        action_idx = int(action) if np.isscalar(action) else _action_to_idx(action)
         s  = _discretize_obs(obs, self._scales, self._n_bins)
         s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
         q_next  = 0.0 if done else float(np.max(self._q(s_)))
@@ -558,7 +570,7 @@ class MCTSPolicy(QTablePolicy):
 
     where N(s, a) is the visit count for (state, action) and N(s) = Σ_a N(s, a).
 
-    Actions are selected from _DISCRETE_ACTIONS (12 entries).
+    Actions are selected from _DISCRETE_ACTIONS (9 entries).
 
     NOTE: True Monte Carlo Tree Search requires cloning the environment state,
     which is not possible with TMInterface.  This is a UCT-style approximation
@@ -598,21 +610,18 @@ class MCTSPolicy(QTablePolicy):
             self._n_sa[s] = np.zeros(self.N_ACTIONS, dtype=np.float32)
         return self._n_sa[s]
 
-    def __call__(self, obs: np.ndarray) -> np.ndarray:
-        s   = _discretize_obs(obs, self._scales, self._n_bins)
+    def _select_action(self, s: tuple) -> int:
         n_s = self._n_s.get(s, 0)
         if n_s == 0:
-            idx = int(np.random.randint(self.N_ACTIONS))
-        else:
-            ucb = self._q(s) + self._c * np.sqrt(
-                math.log(n_s + 1) / (self._n(s) + 1e-8)
-            )
-            idx = int(np.argmax(ucb))
-        return _DISCRETE_ACTIONS[idx].copy()
+            return int(np.random.randint(self.N_ACTIONS))
+        ucb = self._q(s) + self._c * np.sqrt(
+            math.log(n_s + 1) / (self._n(s) + 1e-8)
+        )
+        return int(np.argmax(ucb))
 
-    def update(self, obs: np.ndarray, action: np.ndarray, reward: float,
+    def update(self, obs: np.ndarray, action: np.ndarray | int, reward: float,
                next_obs: np.ndarray, done: bool) -> None:
-        action_idx = _action_to_idx(action)
+        action_idx = int(action) if np.isscalar(action) else _action_to_idx(action)
         s  = _discretize_obs(obs, self._scales, self._n_bins)
         s_ = _discretize_obs(next_obs, self._scales, self._n_bins)
         q_next  = 0.0 if done else float(np.max(self._q(s_)))
@@ -701,9 +710,9 @@ class GeneticPolicy(BasePolicy):
         pop = []
         for _ in range(self._pop_size):
             cfg = {
-                "steer_weights": {n: float(rng.standard_normal()) for n in obs_names},
-                "accel_weights": {n: float(rng.standard_normal()) for n in obs_names},
-                "brake_weights": {n: float(rng.standard_normal()) for n in obs_names},
+                "steer_weights": {n: float(rng.standard_normal()) for n in names},
+                "accel_weights": {n: float(rng.standard_normal()) for n in names},
+                "brake_weights": {n: float(rng.standard_normal()) for n in names},
             }
             pop.append(WeightedLinearPolicy.from_cfg(cfg, self._n_lidar_rays))
         self._population = pop
@@ -758,6 +767,9 @@ class GeneticPolicy(BasePolicy):
     @staticmethod
     def _crossover(cfg1: dict, cfg2: dict) -> dict:
         """Uniform weight crossover: each weight is randomly drawn from parent 1 or 2."""
+        names = list(cfg1.get("steer_weights", {}).keys())
+        cfg1 = _normalize_weight_cfg(cfg1, names)
+        cfg2 = _normalize_weight_cfg(cfg2, names)
         result = {
             "steer_weights": {},
             "accel_weights": {},

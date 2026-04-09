@@ -3,7 +3,7 @@ import unittest
 
 import numpy as np
 
-from policies import EpsilonGreedyPolicy, WeightedLinearPolicy, _discretize_obs
+from policies import EpsilonGreedyPolicy, WeightedLinearPolicy, _action_to_idx, _discretize_obs
 
 
 def _zero_obs() -> np.ndarray:
@@ -18,7 +18,7 @@ class TestEpsilonGreedyPolicy(unittest.TestCase):
 
     def test_action_in_range(self):
         p = EpsilonGreedyPolicy(epsilon=1.0)
-        self.assertIn(p(_zero_obs()), range(9))
+        self.assertIn(_action_to_idx(p(_zero_obs())), range(9))
 
     def test_greedy_picks_best_q_action(self):
         p = EpsilonGreedyPolicy(epsilon=0.0)
@@ -27,7 +27,7 @@ class TestEpsilonGreedyPolicy(unittest.TestCase):
         p._q_table[key] = np.zeros(9, dtype=np.float32)
         p._q_table[key][1] = 10.0
         for _ in range(10):
-            self.assertEqual(p(obs), 1)
+            self.assertEqual(_action_to_idx(p(obs)), 1)
 
     def test_update_increases_q_for_positive_reward(self):
         p = EpsilonGreedyPolicy(epsilon=0.0, alpha=0.5, gamma=0.0)
