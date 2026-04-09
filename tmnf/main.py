@@ -34,22 +34,6 @@ from analytics import (
 
 
 # ---------------------------------------------------------------------------
-# Env factory (shared setup)
-# ---------------------------------------------------------------------------
-
-def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0,
-              centerline_file: str = "tracks/a03_centerline.npy") -> TMNFEnv:
-
-    return TMNFEnv(
-        centerline_file=centerline_file,
-        speed=speed,
-        reward_config=RewardConfig.from_yaml(reward_config_file),
-        max_episode_time_s=in_game_episode_s / speed,
-        n_lidar_rays=n_lidar_rays,
-    )
-
-
-# ---------------------------------------------------------------------------
 # Constant-action policy (used by probe phase)
 # ---------------------------------------------------------------------------
 
@@ -756,20 +740,40 @@ def train_rl(
 
     # Dispatch to the appropriate greedy loop
     if policy_type in ("hill_climbing", "neural_net"):
-        best_policy, best_reward, greedy_sims = _greedy_loop_hill_climb(
-            env, best_policy, best_reward, n_sims, mutation_scale, weights_file
+        best_policy, best_reward, greedy_sims = _greedy_loop(
+            env=env,
+            policy=best_policy,
+            policy_type=policy_type,
+            n_sims=n_sims,
+            mutation_scale=mutation_scale,
+            mutation_share=mutation_share,
+            best_reward=best_reward,
+            weights_file=weights_file,
         )
     elif policy_type in ("epsilon_greedy", "mcts"):
         best_policy, best_reward, greedy_sims = _greedy_loop_q_learning(
-            env, best_policy, n_sims, weights_file
+            env=env,
+            policy=best_policy,
+            n_episodes=n_sims,
+            weights_file=weights_file
         )
     elif policy_type == "genetic":
         best_policy, best_reward, greedy_sims = _greedy_loop_genetic(
-            env, best_policy, n_sims, weights_file  # type: ignore[arg-type]
+            env=env,
+            policy=best_policy, # type: ignore[arg-type]
+            n_generations=n_sims,
+            weights_file=weights_file
         )
     else:
         best_policy, best_reward, greedy_sims = _greedy_loop(
-            env, best_policy, policy_type, n_sims, mutation_scale, weights_file, best_reward
+            env=env,
+            policy=best_policy,
+            policy_type=policy_type,
+            n_sims=n_sims,
+            mutation_scale=mutation_scale,
+            mutation_share=mutation_share,
+            weights_file=weights_file,
+            best_reward=best_reward
         )
 
     env.close()
