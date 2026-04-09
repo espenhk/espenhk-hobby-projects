@@ -50,7 +50,7 @@ Repository secrets:
   - Manual workflow dispatch on main: promotes Test -> Prod with change ticket gate.
   - Runs post-promotion smoke checks.
 - ci/terraform-validate-plan.yml:
-  - Runs terraform fmt -check and terraform init/validate for dev/test/prod roots on pull requests.
+  - Runs terraform fmt -check and terraform init/validate for all dev/test/prod stack roots on pull requests.
 - ci/data-contract-checks.yml:
   - Runs data-contract JSON validation on pull requests touching contract files.
 
@@ -149,7 +149,7 @@ flowchart TD
 
 ## Terraform bootstrap (Power BI RBAC)
 
-cd dataplatform-beta/terraform/environments/dev
+cd dataplatform-beta/terraform/environments/dev/powerbi_rbac
 terraform init
 terraform plan -var-file=terraform.tfvars.example
 

@@ -1,5 +1,5 @@
 module "powerbi_rbac_core" {
-  source = "../../modules/powerbi_rbac"
+  source = "../../../modules/powerbi_rbac"
 
   group_prefix = "grp-pbi"
   domain       = "core"

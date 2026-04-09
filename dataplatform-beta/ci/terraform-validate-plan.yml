@@ -26,12 +26,16 @@ jobs:
           set -euo pipefail
           terraform fmt -recursive -check dataplatform-beta/terraform
 
-      - name: Terraform init and validate (all env roots)
+      - name: Terraform init and validate (all stack roots)
         run: |
           set -euo pipefail
           for env in dev test prod; do
-            pushd "dataplatform-beta/terraform/environments/$env" >/dev/null
-            terraform init -backend=false
-            terraform validate
-            popd >/dev/null
+            for stack_dir in dataplatform-beta/terraform/environments/$env/*; do
+              if [[ -d "$stack_dir" && -f "$stack_dir/main.tf" ]]; then
+                pushd "$stack_dir" >/dev/null
+                terraform init -backend=false
+                terraform validate
+                popd >/dev/null
+              fi
+            done
           done

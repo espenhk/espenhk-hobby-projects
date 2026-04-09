@@ -1,24 +1,27 @@
-# Terraform Scaffold for Power BI RBAC
+# Terraform Scaffold
 
-This scaffold creates Entra groups used by the Power BI workspace and deployment pipeline access model.
+This scaffold defines a stack-based Terraform layout per environment and currently implements the Power BI RBAC stack.
 
 ## Module
 - modules/powerbi_rbac
 
-## Environment Example
-- environments/dev/powerbi-rbac.tf
-- environments/test/powerbi-rbac.tf
-- environments/prod/powerbi-rbac.tf
+## Environment Stacks
+- environments/dev/<stack>
+- environments/test/<stack>
+- environments/prod/<stack>
+
+Current implemented stack:
+- powerbi_rbac
 
 ## Usage
 1. Configure AzureAD provider credentials.
 2. Update owners in the target environment tfvars file.
-3. Run terraform init/plan/apply in the target environment folder.
+3. Run terraform init/plan/apply in the target environment stack folder.
 
 Example:
-- dev: environments/dev/terraform.tfvars.example
-- test: environments/test/terraform.tfvars.example
-- prod: environments/prod/terraform.tfvars.example
+- dev: environments/dev/powerbi_rbac/terraform.tfvars.example
+- test: environments/test/powerbi_rbac/terraform.tfvars.example
+- prod: environments/prod/powerbi_rbac/terraform.tfvars.example
 
 ## Outputs
 - admins_group
