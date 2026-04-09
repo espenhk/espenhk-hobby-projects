@@ -1,7 +1,13 @@
 # Dataplatform Beta Plan
 
 ## Goal
-Build a Terraform-defined Azure Databricks data platform that supports batch and streaming data and is optimized to serve trusted, governed data to Power BI.
+Build a Terraform-defined Azure Databricks data platform that is batch-first, contract-driven, and optimized to serve trusted, governed data to Power BI.
+
+## How to Use This Plan
+- Read sections in order: scope -> architecture decisions -> roadmap -> backlog.
+- Treat "Phase 1 Decisions Locked" as non-negotiable unless explicitly changed by architecture review.
+- Treat "Remaining Open Decisions" as blockers to resolve before production go-live.
+- Use the 90-day roadmap as milestone planning and the backlog as sprint-level intake.
 
 ## Product Scope (Phase 1)
 - Provision a repeatable Azure + Databricks foundation across dev, test, and prod.
@@ -19,8 +25,17 @@ Out of scope in phase 1:
 ### Platform and Governance
 - Use Unity Catalog from day 1 for governance, lineage, and access control.
 - Use one Databricks workspace per environment (dev/test/prod).
-- Use separate ADLS Gen2 storage accounts (or strongly isolated containers) per environment.
+- Use separate ADLS Gen2 storage accounts per environment.
 - Use group-based access via Entra ID; avoid direct user grants on data objects.
+
+### Provider Strategy
+- Pin Terraform providers with bounded versions and commit lock files in environment roots.
+- Use explicit provider aliases for split planes:
+  - azurerm for Azure resources.
+  - azuread for Entra groups and identities.
+  - databricks.account for account-level resources.
+  - databricks.workspace for workspace-level resources.
+- Configure providers in root environment stacks and pass providers explicitly to modules.
 
 ### Data Design
 - Use Delta Lake and medallion layers: Raw -> Bronze -> Silver -> Gold.
@@ -32,9 +47,9 @@ Out of scope in phase 1:
 - Batch default:
   - Auto Loader for file increments.
   - Databricks Workflows scheduled runs.
-- Streaming targeted:
-  - Event Hubs (or Kafka-compatible) + Structured Streaming micro-batch.
-  - Start with one high-value near-real-time use case in first 90 days.
+- Streaming exception path:
+  - Use Event Hubs (or Kafka-compatible) + Structured Streaming micro-batch only when batch cannot meet SLA.
+  - Streaming requires explicit justification: latency target, event volume, checkpoint/recovery design, and named operational owner.
 
 ### Serving to Power BI (default strategy)
 - Primary mode: Import from curated Gold star schemas.
@@ -51,12 +66,19 @@ Out of scope in phase 1:
 - Adopt a strict naming standard:
   - Semantic model: sm_<domain>_<subject>
   - Report: rpt_<domain>_<audience>_<purpose>
-  - Workspace: pbi-dpb-<env>-<domain>
+  - Workspace (Phase 1 core): pbi-dpb-<env>-core
+
+Phase 2 note:
+- Additional domain-specific workspaces are allowed only after architecture review.
 
 Decision rule:
-- SLA >= 1 hour: Import.
-- SLA 5-60 minutes: DirectQuery pilot.
-- Fabric-first strategy + large semantic models: Direct Lake.
+
+| Condition | Recommended mode | Notes |
+|---|---|---|
+| SLA > 60 minutes | Import | Default mode for reliability and cost control. |
+| SLA 5-60 minutes | DirectQuery (pilot) | Require benchmark gate pass for latency, concurrency, and cost. |
+| SLA < 5 minutes | Architecture exception review | Do not implement by default in phase 1. |
+| Fabric-first strategy + large semantic models | Direct Lake | Use only when OneLake/Fabric is an explicit strategic standard. |
 
 ### Power BI Workspaces and Deployment Pipelines (phase 1 design)
 - Workspaces:
@@ -75,10 +97,17 @@ Decision rule:
   - Prod: dedicated capacity for isolation and SLA control.
 
 ### Pipeline Patterns
-- One workflow task per target Silver/Gold table.
-- Favor overwrite for Silver/Gold by default.
-- Allow MERGE only with explicit key guarantees and tests.
+- One workflow task per target table across Bronze, Silver, and Gold.
+- Favor incremental processing for Silver/Gold by default.
+- Allow overwrite only for bounded snapshots or deterministic rebuilds.
+- Allow MERGE only with explicit written justification, key guarantees, and automated tests.
 - Keep transformation logic pure (DataFrame in -> DataFrame out).
+
+### Streaming Runtime Standards (minimum)
+- Mandatory checkpoint location per stream, isolated by environment and pipeline.
+- Explicit watermark and late-arrival policy per event type.
+- Idempotent write strategy for retries and replay.
+- Replay runbook with source boundary, backfill window, and post-run validation checks.
 
 ### Power BI CI/CD Integration (GitHub + Azure)
 - Repository model:
@@ -92,21 +121,23 @@ Decision rule:
   - Validate PBIP file structure and metadata consistency.
   - Run semantic model checks (naming, measure formatting, banned patterns).
   - Run optional static checks for report references to missing fields/measures.
-- CD pipeline (merge to main and release tags):
-  - Publish PBIP artifacts to Dev workspace.
-  - Run smoke validation (dataset refresh trigger, report open check, key visual query checks).
-  - Promote Dev -> Test -> Prod through deployment pipeline with approvals.
-  - Block Prod promotion if refresh/validation gates fail.
+- CD pipeline (current state):
+  - Push to main: publish or sync PBIP artifacts to Dev (tenant-specific), then run smoke validation.
+  - Push to main: promote Dev -> Test with approval gates.
+  - workflow_dispatch on main only: promote Test -> Prod with change ticket and approval gates.
+  - Block promotion if refresh/validation gates fail.
 - Release governance:
   - Require change ticket reference for Prod promotions.
+  - Require main branch protection and required checks.
+  - Require GitHub environment approvals for Test and Prod promotions.
   - Persist deployment logs/artifacts for audit.
 
 ## Azure Security and Compliance Baseline
-- Hub-spoke networking with private endpoints for ADLS, Key Vault, Event Hubs, and monitoring paths.
-- Databricks secure networking posture (no public compute IPs where supported).
-- Enforce outbound controls and approved egress paths.
+- Enforce hub-spoke networking with private endpoints for ADLS, Key Vault, Event Hubs, Databricks, and monitoring paths.
+- Disable public network access on supported PaaS resources by default; exceptions require risk acceptance with expiry.
+- Enforce default-deny outbound controls with explicit allowlists.
 - Use Key Vault-backed secret management.
-- Enable diagnostic logs to central Log Analytics.
+- Enable diagnostic logs to central Log Analytics with defined retention.
 
 Compliance-ready controls (engineering baseline):
 - Data classification tags, owner tags, purpose tags, retention class tags.
@@ -129,59 +160,85 @@ Compliance-ready controls (engineering baseline):
   - Tier-1 freshness compliance: 99.0% monthly.
   - Tier-1 Power BI refresh within SLA: 99.0% monthly.
 
-## Terraform-First Repository Structure (proposed)
+SLI measurement policy (phase 1):
+- Batch availability SLI: successful scheduled runs / total scheduled runs (excluding approved maintenance windows).
+- Freshness SLI: on-time Gold table updates within contracted window.
+- Power BI refresh SLI: successful refreshes completed within target duration.
+- Streaming lag SLI: monitored minutes under lag threshold / total monitored minutes.
 
+Alert catalog minimum fields:
+- Trigger query and threshold.
+- Severity and duration.
+- Owner and escalation path.
+- Runbook URL.
+- Dedupe/suppression policy.
+
+## Terraform-First Repository Structure (target state)
+
+State model:
+- One state key per environment stack using <env>/<stack>.tfstate naming.
+- Stack split per environment: foundation, connectivity, security, data_platform, governance, observability, powerbi_rbac.
+- Locking required for all plan/apply operations.
+- Do not read remote state directly from modules; pass dependencies through root outputs and CI inputs.
+
+```text
 dataplatform-beta/
-- README.md
-- docs/
-  - architecture.md
-  - security-compliance.md
-  - operations-slos.md
-  - powerbi-serving.md
-- powerbi/
-  - domains/
-    - core/
-      - semantic-model/
-      - reports/
-  - deployment/
-    - workspace-map.yaml
-    - pipeline-rules.yaml
-- terraform/
-  - modules/
-    - landing_zone/
-    - network/
-    - databricks_workspace/
-    - unity_catalog/
-    - storage/
-    - private_endpoints/
-    - key_vault/
-    - monitor_alerting/
-    - budgets_tags_policy/
-  - environments/
-    - dev/
-    - test/
-    - prod/
-- databricks/
-  - jobs/
-  - pipelines/
-  - contracts/
-  - sql/
-- ci/
-  - terraform-validate-plan.yml
-  - data-contract-checks.yml
-  - powerbi-pr-validation.yml
-  - powerbi-release.yml
+├── README.md
+├── docs/
+│   ├── architecture.md
+│   ├── security-compliance.md
+│   ├── operations-slos.md
+│   └── powerbi-serving.md
+├── powerbi/
+│   ├── domains/
+│   │   └── core/
+│   │       ├── semantic-model/
+│   │       └── reports/
+│   └── deployment/
+│       ├── workspace-map.yaml
+│       └── pipeline-rules.yaml
+├── terraform/
+│   ├── modules/
+│   │   ├── landing_zone/
+│   │   ├── network/
+│   │   ├── databricks_workspace/
+│   │   ├── unity_catalog/
+│   │   ├── storage/
+│   │   ├── private_endpoints/
+│   │   ├── key_vault/
+│   │   ├── monitor_alerting/
+│   │   └── budgets_tags_policy/
+│   └── environments/
+│       ├── dev/
+│       ├── test/
+│       └── prod/
+├── databricks/
+│   ├── jobs/
+│   ├── pipelines/
+│   ├── contracts/
+│   └── sql/
+└── ci/
+    ├── terraform-validate-plan.yml
+    ├── data-contract-checks.yml
+    ├── powerbi-pr-validation.yml
+    └── powerbi-release.yml
+```
 
 ## 90-Day Roadmap
 
 ### Days 0-30
 - Establish Terraform landing zone and environment scaffolding.
-- Provision Databricks + storage + Unity Catalog + RBAC baseline in dev/test.
+- Provision Databricks + storage + Unity Catalog + RBAC baseline in dev/test/prod; keep prod workloads disabled until readiness gates pass.
 - Build first end-to-end batch pipeline to one Gold mart.
 - Create first PBIP semantic model and thin report from Gold.
 - Stand up pbi-dpb-dev-core, pbi-dpb-test-core, and pbi-dpb-prod-core workspaces.
 - Configure dpb-core-bi deployment pipeline and initial deployment rules.
 - Stand up baseline dashboards and P1/P2 alerts.
+
+Exit criteria:
+- Terraform plan/apply succeeds in dev and test with no manual post-steps.
+- One Gold mart feeds one PBIP semantic model and one thin report in Dev.
+- P1/P2 alert routes are tested and acknowledged by on-call owner.
 
 ### Days 31-60
 - Expand to 2-4 domains with reusable ingestion/transformation templates.
@@ -191,14 +248,27 @@ dataplatform-beta/
 - Add PBIP PR validation workflow and automatic publish to Dev on merge.
 - Add Test promotion gate with UAT approval and refresh smoke tests.
 
+Exit criteria:
+- At least 2 domains use shared ingestion/transformation templates.
+- Contract checks block merges on schema/contract violations.
+- Test promotion requires explicit UAT approval and passing refresh smoke tests.
+
 ### Days 61-90
-- Add one focused streaming use case from ingest to Gold.
+- Evaluate one candidate near-real-time use case and implement streaming only if batch cannot meet SLA.
 - Pilot DirectQuery for one near-real-time Power BI use case.
 - Run DR tabletop and one restore simulation.
 - Finalize production readiness checklist and incident runbooks.
 - Add Prod promotion gate with auditable approval and rollback checklist.
 
+Exit criteria:
+- Streaming pipeline meets agreed freshness target for pilot dataset.
+- DirectQuery pilot passes performance thresholds and stakeholder acceptance.
+- DR restore simulation and production readiness checklist are signed off.
+
 ## Initial Backlog (Execution-Ready)
+Execution note:
+- For each backlog item, assign owner, target sprint, and acceptance criteria before implementation starts.
+
 1. Bootstrap Terraform backend/state with locking and RBAC.
 2. Implement naming/tag standards and policy-as-code baseline.
 3. Deploy networking module with private connectivity pattern.
@@ -228,6 +298,22 @@ dataplatform-beta/
 2. First domain and first Tier-1 dataset for SLA commitment.
 3. Final service-level targets for first production Power BI domain.
 4. Identity and admin operating model boundary between platform and shared cloud ops.
+5. Dataset tiering criteria (Tier-1/Tier-2) and associated SLO targets.
+6. Data quality enforcement thresholds (block vs quarantine) and exception authority.
+7. Support operating model (hours, on-call ownership, escalation).
+
+## Agent Review Reconciliation (April 2026)
+Resolved in this revision:
+- Clarified workspace naming and phase-2 expansion rule.
+- Clarified CI/CD release policy and manual prod promotion expectations.
+- Converted streaming from implied default to explicit exception path.
+- Strengthened security baseline to default-private/default-deny posture.
+- Added SLI definitions and minimum alert-catalog requirements.
+- Added Terraform provider and state-model execution guidance.
+
+Still to finalize:
+- Tier-1 domain selection and SLO values.
+- Regional residency and compliance ownership approvals.
 
 ## Definition of Done for Planning Phase
 - Architecture, security, and operations choices documented and approved.
