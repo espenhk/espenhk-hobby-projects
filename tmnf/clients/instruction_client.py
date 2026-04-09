@@ -4,21 +4,11 @@ from tminterface.client import Client
 from tminterface.interface import TMInterface
 
 from clients.base import PhaseAwareClient
-from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD, PAUSE_DURATION_MS
 from instructions import InputState, apply_action, parse_instructions
 from track import Centerline
 from utils import StateData
 
 
-class Phase(Enum):
-    BRAKING_START = auto()
-    PAUSE_START   = auto()
-    RUNNING       = auto()
-    BRAKING_END   = auto()
-    PAUSE_END     = auto()
-    DONE          = auto()
-
-
 VELOCITY_ZERO_THRESHOLD = 0.5   # m/s
 PAUSE_DURATION_MS = 2_000       # game milliseconds
 
@@ -30,10 +20,6 @@ class Phase(Enum):
     BRAKING_END   = auto()
     PAUSE_END     = auto()
     DONE          = auto()
-
-
-VELOCITY_ZERO_THRESHOLD = 0.5   # m/s
-PAUSE_DURATION_MS = 2_000       # game milliseconds
 
 
 class InstructionClient(PhaseAwareClient):
