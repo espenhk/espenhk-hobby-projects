@@ -33,3 +33,9 @@ variable "owners_object_ids" {
   description = "Object IDs that should own the Entra groups."
   default     = []
 }
+
+variable "tags" {
+  type        = map(string)
+  description = "Tags to apply to created resources."
+  default     = {}
+}

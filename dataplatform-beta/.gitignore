@@ -5,3 +5,4 @@ __pycache__/
 *.tfstate.*
 crash.log
 *.tfplan
+.pytest_cache/

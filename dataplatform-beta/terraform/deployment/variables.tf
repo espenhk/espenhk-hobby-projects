@@ -40,3 +40,9 @@ variable "budget_amounts" {
     observability = 20
   }
 }
+
+variable "storage_account_suffix" {
+  type        = string
+  description = "Short suffix added to the storage account name to keep it globally unique. Use lowercase letters and digits only."
+  default     = "001"
+}

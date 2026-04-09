@@ -33,6 +33,21 @@ output "databricks_workspace_id" {
   value       = module.databricks_workspace.workspace_id
 }
 
+output "storage_account_name" {
+  description = "ADLS storage account name for medallion data and Databricks volumes."
+  value       = module.storage.storage_account_name
+}
+
+output "storage_filesystem_uris" {
+  description = "abfss URIs for medallion, checkpoint, and volume filesystems."
+  value       = module.storage.filesystem_uris
+}
+
+output "databricks_access_connector_id" {
+  description = "Databricks access connector used for storage-backed volumes."
+  value       = azurerm_databricks_access_connector.volumes.id
+}
+
 output "powerbi_groups" {
   description = "Power BI Entra group details."
   value = {

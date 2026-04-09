@@ -1,0 +1,22 @@
+resources:
+  jobs:
+    core_nordic_sales_nok:
+      name: core_nordic_sales_nok
+      tasks:
+        - task_key: bronze_to_silver
+          spark_python_task:
+            python_file: ../src/dataplatform_beta/example_products/core_nordic_sales_nok.py
+            parameters:
+              - --orders
+              - /Volumes/core/raw/core_nordic_sales_nok/orders.csv
+              - --fx-rates
+              - /Volumes/core/raw/core_nordic_sales_nok/fx_rates_to_nok.csv
+              - --output
+              - /Volumes/core/gold/core_nordic_sales_nok/gold_sales_monthly_nok.json
+          job_cluster_key: core_nordic_sales_cluster
+      job_clusters:
+        - job_cluster_key: core_nordic_sales_cluster
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1

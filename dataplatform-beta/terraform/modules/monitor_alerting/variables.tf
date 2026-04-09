@@ -22,6 +22,24 @@ variable "email_receivers" {
   default = []
 }
 
+variable "metric_alerts" {
+  description = "Metric alerts to create for platform dependencies that indicate probable breakage."
+  type = list(object({
+    name              = string
+    description       = string
+    severity          = number
+    scope_resource_id = string
+    metric_namespace  = string
+    metric_name       = string
+    aggregation       = string
+    operator          = string
+    threshold         = number
+    frequency         = string
+    window_size       = string
+  }))
+  default = []
+}
+
 variable "tags" {
   description = "Tags for monitor resources."
   type        = map(string)
