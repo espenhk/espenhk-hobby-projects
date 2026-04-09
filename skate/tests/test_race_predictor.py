@@ -4,7 +4,19 @@ Unit tests for the Ice Skating Race Predictor.
 import unittest
 from models.skater import Skater
 from models.race import Race
+from models.race_preset import RacePreset, LapInfo
 from engine.predictor import PredictionEngine
+
+
+def _make_preset(n_laps: int, dist_per_lap: int = 400) -> RacePreset:
+    """Build a uniform RacePreset for tests without loading a JSON file."""
+    laps = [LapInfo(lap_number=i + 1, distance=dist_per_lap) for i in range(n_laps)]
+    return RacePreset(
+        name="test",
+        total_distance=n_laps * dist_per_lap,
+        lap_distance=dist_per_lap,
+        laps=laps,
+    )
 
 
 class TestSkater(unittest.TestCase):
@@ -41,11 +53,11 @@ class TestSkater(unittest.TestCase):
         skater = Skater(name="Test")
         skater.add_lap_time(30.0)
         skater.add_lap_time(30.0)
-        
-        # Predict for 5 laps total
-        predicted = skater.predict_finish_time(5)
-        # 2 laps done (60s), 3 laps remaining (90s) = 150s
-        self.assertEqual(predicted, 150.0)
+
+        # 5 equal laps of 400m: 2 done (800m in 60s → 13.33 m/s), 3 remaining (1200m → 90s)
+        preset = _make_preset(n_laps=5, dist_per_lap=400)
+        predicted = skater.predict_finish_time(preset)
+        self.assertAlmostEqual(predicted, 150.0, places=5)
 
 
 class TestRace(unittest.TestCase):
@@ -55,7 +67,8 @@ class TestRace(unittest.TestCase):
         """Set up test fixtures."""
         self.skater1 = Skater(name="Alice")
         self.skater2 = Skater(name="Bob")
-        self.race = Race(total_laps=5, skaters=[self.skater1, self.skater2])
+        self.preset = _make_preset(n_laps=5)
+        self.race = Race(preset=self.preset, skaters=[self.skater1, self.skater2])
     
     def test_race_creation(self):
         """Test creating a race."""
