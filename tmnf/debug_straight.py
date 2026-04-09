@@ -28,17 +28,23 @@ INSTRUCTION_FILE = "runs/debug_straight.txt"
 CENTERLINE_FILE = "tracks/a03_centerline.npy"
 SPEED = 1.0  # real-time; increase if you want faster playback
 
-client = InstructionClient(
-    instruction_file=INSTRUCTION_FILE,
-    centerline_file=CENTERLINE_FILE,
-    speed=SPEED,
-)
-iface = TMInterface()
-print(f"Waiting for TMInterface connection...")
-iface.register(client)
-try:
-    while iface.running:
-        time.sleep(0)
-except KeyboardInterrupt:
-    pass
-iface.close()
+
+def main():
+    client = InstructionClient(
+        instruction_file=INSTRUCTION_FILE,
+        centerline_file=CENTERLINE_FILE,
+        speed=SPEED,
+    )
+    iface = TMInterface()
+    print(f"Waiting for TMInterface connection...")
+    iface.register(client)
+    try:
+        while iface.running:
+            time.sleep(0)
+    except KeyboardInterrupt:
+        pass
+    iface.close()
+
+
+if __name__ == "__main__":
+    main()
