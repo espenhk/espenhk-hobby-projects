@@ -30,12 +30,12 @@ import numpy as np
 from tminterface.client import Client
 from tminterface.interface import TMInterface
 
-from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD
 from track import Centerline
 from utils import StateData
 
 
 _UP = np.array([0.0, 1.0, 0.0])
+VELOCITY_ZERO_THRESHOLD = 0.5   # m/s — wait for car to stop before starting episode
 
 # Hard-limit lateral offset before the client itself declares the episode done.
 # This is a safety net — the env's crash_threshold_m (default 10 m) triggers first.
@@ -92,7 +92,7 @@ class RLClient(Client):
         self._respawn_event = threading.Event()
         self._episode_ready = threading.Event()
 
-        self._phase = Phase.BRAKING_START
+        self._running = False   # False = braking to a stop, True = episode running
         self._registered_event = threading.Event()
         self._stop_event = threading.Event()
 
@@ -164,9 +164,9 @@ class RLClient(Client):
 
     def on_simulation_begin(self, iface: TMInterface) -> None:
         """Fires when TMInterface starts replay validation after the car finishes.
-        If we were in RUNNING phase, treat it as a finish event and deliver a
-        synthetic finish step so the RL thread is not left waiting indefinitely."""
-        if self._phase != Phase.RUNNING:
+        If we were running, treat it as a finish event and deliver a synthetic
+        finish step so the RL thread is not left waiting indefinitely."""
+        if not self._running:
             return  # Our own give_up() respawn — ignore
         if self._last_step_state is None:
             return  # No cached state to synthesize from
@@ -188,8 +188,8 @@ class RLClient(Client):
         if self._respawn_event.is_set():
             self._respawn_event.clear()
             iface.give_up()
-            self._phase = Phase.BRAKING_START
             self._last_centerline_idx = None  # full scan on next tick after respawn
+            self._running = False
             return
 
         state = iface.get_simulation_state()
@@ -198,56 +198,54 @@ class RLClient(Client):
         self._last_centerline_idx = data._centerline_idx
         speed_ms = data.velocity.magnitude()
 
-        match self._phase:
-            case Phase.BRAKING_START:
-                iface.set_input_state(brake=True)
-                if speed_ms < VELOCITY_ZERO_THRESHOLD:
-                    self._phase = Phase.RUNNING
-                    step_state = StepState(
-                        state_data=data,
-                        yaw_error=self._compute_yaw_error(data),
-                        done=False,
-                    )
-                    self._drain_and_put(step_state)
-                    self._episode_ready.set()
-
-            case Phase.RUNNING:
-                # Pending auto-respawn from the previous tick's lap completion:
-                # act on it here so the finish step was already delivered first.
-                if self._finish_respawn_pending:
-                    self._finish_respawn_pending = False
-                    self._episode_ready.clear()
-                    iface.give_up()   # restart race from position zero
-                    self._phase = Phase.BRAKING_START
-                    return
-
-                with self._action_lock:
-                    action_idx = self._action_idx
-                accelerate, brake, steer_pct, _ = ACTIONS[action_idx]
-                iface.set_input_state(
-                    accelerate=accelerate,
-                    brake=brake,
-                    steer=int(steer_pct / 100 * 65536),
-                )
-
-                finished  = data.track_progress is not None and data.track_progress >= 1.0
-                hard_crash = (data.lateral_offset is not None
-                              and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M)
-
-                if finished and self._auto_respawn_on_finish:
-                    # Deliver the finish step with done=False; respawn next tick.
-                    self._finish_respawn_pending = True
-                    done = False
-                else:
-                    done = finished or hard_crash
-
+        if not self._running:
+            iface.set_input_state(brake=True)
+            if speed_ms < VELOCITY_ZERO_THRESHOLD:
+                self._running = True
                 step_state = StepState(
                     state_data=data,
-                    yaw_error=self._compute_yaw_error(data),
-                    done=done,
-                    finished=finished,
+                    yaw_error=self._compute_yaw_error(state, data),
+                    done=False,
                 )
                 self._drain_and_put(step_state)
+                self._episode_ready.set()
+        else:
+            # Pending auto-respawn from the previous tick's lap completion:
+            # act on it here so the finish step was already delivered first.
+            if self._finish_respawn_pending:
+                self._finish_respawn_pending = False
+                self._episode_ready.clear()
+                iface.give_up()   # restart race from position zero
+                self._running = False
+                return
+
+            with self._action_lock:
+                action_idx = self._action_idx
+            accelerate, brake, steer_pct, _ = ACTIONS[action_idx]
+            iface.set_input_state(
+                accelerate=accelerate,
+                brake=brake,
+                steer=int(steer_pct / 100 * 65536),
+            )
+
+            finished  = data.track_progress is not None and data.track_progress >= 1.0
+            hard_crash = (data.lateral_offset is not None
+                          and abs(data.lateral_offset) > _HARD_CRASH_THRESHOLD_M)
+
+            if finished and self._auto_respawn_on_finish:
+                # Deliver the finish step with done=False; respawn next tick.
+                self._finish_respawn_pending = True
+                done = False
+            else:
+                done = finished or hard_crash
+
+            step_state = StepState(
+                state_data=data,
+                yaw_error=self._compute_yaw_error(state, data),
+                done=done,
+                finished=finished,
+            )
+            self._drain_and_put(step_state)
 
     # ------------------------------------------------------------------
     # Internal helpers
