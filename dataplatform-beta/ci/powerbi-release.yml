@@ -9,6 +9,11 @@ on:
       - "dataplatform-beta/powerbi/deployment/**"
       - "dataplatform-beta/ci/powerbi-release.yml"
   workflow_dispatch:
+    inputs:
+      change_ticket:
+        description: "Approved change ticket (for example CHG-1234)"
+        required: true
+        type: string
 
 permissions:
   id-token: write
@@ -25,6 +30,7 @@ env:
   PBI_DEV_REPORT_ID: ${{ vars.PBI_DEV_REPORT_ID }}
   PBI_TEST_REPORT_ID: ${{ vars.PBI_TEST_REPORT_ID }}
   PBI_PROD_REPORT_ID: ${{ vars.PBI_PROD_REPORT_ID }}
+  PBI_CHANGE_TICKET: ${{ github.event.inputs.change_ticket }}
 
 jobs:
   publish-dev:
@@ -144,7 +150,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${{ github.event.head_commit.message }}" || (echo "Missing commit message" && exit 1)
+          python dataplatform-beta/scripts/powerbi/validate_release_metadata.py
 
       - name: Promote Test to Prod
         shell: bash

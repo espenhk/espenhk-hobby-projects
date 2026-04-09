@@ -78,6 +78,9 @@ Required repository variables:
 - PBI_TEST_REPORT_ID
 - PBI_PROD_REPORT_ID
 
+Required manual input for production promotion:
+- change_ticket (workflow dispatch input, format CHG-<digits> or RFC-<digits>)
+
 Required repository secrets:
 - AZURE_CLIENT_ID
 - AZURE_TENANT_ID
