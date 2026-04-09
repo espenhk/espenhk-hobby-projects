@@ -30,7 +30,7 @@ env:
   PBI_DEV_REPORT_ID: ${{ vars.PBI_DEV_REPORT_ID }}
   PBI_TEST_REPORT_ID: ${{ vars.PBI_TEST_REPORT_ID }}
   PBI_PROD_REPORT_ID: ${{ vars.PBI_PROD_REPORT_ID }}
-  PBI_CHANGE_TICKET: ${{ github.event.inputs.change_ticket }}
+  PBI_CHANGE_TICKET: ${{ github.event.inputs.change_ticket || '' }}
 
 jobs:
   publish-dev:
@@ -120,6 +120,7 @@ jobs:
             --report-id "$PBI_TEST_REPORT_ID"
 
   promote-prod:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     environment: powerbi-prod
     needs: promote-test

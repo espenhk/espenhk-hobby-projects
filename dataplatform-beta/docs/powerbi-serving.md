@@ -81,6 +81,10 @@ Required repository variables:
 Required manual input for production promotion:
 - change_ticket (workflow dispatch input, format CHG-<digits> or RFC-<digits>)
 
+Production promotion behavior:
+- Prod promotion is manual-only and runs through workflow_dispatch.
+- Push-to-main runs Dev publish/smoke checks and Test promotion only.
+
 Required repository secrets:
 - AZURE_CLIENT_ID
 - AZURE_TENANT_ID
