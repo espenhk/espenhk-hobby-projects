@@ -18,6 +18,7 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - docs/architecture.md: architecture overview and component responsibilities.
 - docs/security-compliance.md: baseline security/compliance controls.
 - docs/operations-slos.md: SLI/SLO and alerting baseline.
+- docs/decision-log.md: ownership and closure tracking for open planning decisions.
 - docs/powerbi-serving.md: Power BI delivery operating model.
 - powerbi/deployment/: workspace and pipeline config maps.
 - powerbi/domains/: domain PBIP artifacts.
@@ -26,6 +27,7 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - scripts/contracts/: data-contract validation helpers.
 - databricks/contracts/: versioned data contracts for CI enforcement.
 - terraform/: IaC scaffold for Power BI RBAC groups.
+- docs/runbooks/: incident and operations runbooks.
 
 ## GitHub configuration required
 Repository variables:
