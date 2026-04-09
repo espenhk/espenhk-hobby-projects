@@ -15,18 +15,43 @@ locals {
     prod = ["10.42.0.0/16"]
   }
 
+  # Subnets include Databricks delegation and NSG requirements
   subnets = {
     dev = {
-      snet-databricks-public  = { address_prefixes = ["10.40.1.0/24"] }
-      snet-databricks-private = { address_prefixes = ["10.40.2.0/24"] }
+      snet-databricks-public = {
+        address_prefixes   = ["10.40.1.0/24"]
+        service_delegation = "Microsoft.Databricks/workspaces"
+        create_nsg         = true
+      }
+      snet-databricks-private = {
+        address_prefixes   = ["10.40.2.0/24"]
+        service_delegation = "Microsoft.Databricks/workspaces"
+        create_nsg         = true
+      }
     }
     test = {
-      snet-databricks-public  = { address_prefixes = ["10.41.1.0/24"] }
-      snet-databricks-private = { address_prefixes = ["10.41.2.0/24"] }
+      snet-databricks-public = {
+        address_prefixes   = ["10.41.1.0/24"]
+        service_delegation = "Microsoft.Databricks/workspaces"
+        create_nsg         = true
+      }
+      snet-databricks-private = {
+        address_prefixes   = ["10.41.2.0/24"]
+        service_delegation = "Microsoft.Databricks/workspaces"
+        create_nsg         = true
+      }
     }
     prod = {
-      snet-databricks-public  = { address_prefixes = ["10.42.1.0/24"] }
-      snet-databricks-private = { address_prefixes = ["10.42.2.0/24"] }
+      snet-databricks-public = {
+        address_prefixes   = ["10.42.1.0/24"]
+        service_delegation = "Microsoft.Databricks/workspaces"
+        create_nsg         = true
+      }
+      snet-databricks-private = {
+        address_prefixes   = ["10.42.2.0/24"]
+        service_delegation = "Microsoft.Databricks/workspaces"
+        create_nsg         = true
+      }
     }
   }
 }
@@ -70,6 +95,52 @@ module "monitor_alerting" {
     }
   ]
   tags = local.tags
+}
+
+# ── Data Platform — Databricks Workspace ───────────────────────────────────────
+module "databricks_workspace" {
+  source = "../modules/databricks_workspace"
+
+  workspace_name      = "dbw-dpb-${local.env}-core"
+  resource_group_name = "rg-dpb-${local.env}-data"
+  location            = local.location
+  sku                 = local.env == "prod" ? "premium" : "standard"
+
+  virtual_network_id  = module.network.vnet_id
+  public_subnet_name  = "snet-databricks-public"
+  private_subnet_name = "snet-databricks-private"
+
+  public_subnet_nsg_association_id  = module.network.subnet_nsg_association_ids["snet-databricks-public"]
+  private_subnet_nsg_association_id = module.network.subnet_nsg_association_ids["snet-databricks-private"]
+
+  tags = local.tags
+}
+
+# ── Cost Governance — Budgets ──────────────────────────────────────────────────
+module "budgets" {
+  source = "../modules/budgets_tags_policy"
+
+  action_group_id   = module.monitor_alerting.action_group_id
+  budget_start_date = var.budget_start_date
+
+  resource_group_budgets = {
+    network = {
+      resource_group_id = "subscriptions/${var.subscription_id}/resourceGroups/rg-dpb-${local.env}-network"
+      amount_gbp        = var.budget_amounts.network
+    }
+    security = {
+      resource_group_id = "subscriptions/${var.subscription_id}/resourceGroups/rg-dpb-${local.env}-security"
+      amount_gbp        = var.budget_amounts.security
+    }
+    data = {
+      resource_group_id = "subscriptions/${var.subscription_id}/resourceGroups/rg-dpb-${local.env}-data"
+      amount_gbp        = var.budget_amounts.data
+    }
+    observability = {
+      resource_group_id = "subscriptions/${var.subscription_id}/resourceGroups/rg-dpb-${local.env}-observability"
+      amount_gbp        = var.budget_amounts.observability
+    }
+  }
 }
 
 # ── Power BI RBAC ──────────────────────────────────────────────────────────────

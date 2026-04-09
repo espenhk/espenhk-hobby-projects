@@ -3,9 +3,19 @@
 #
 # All naming and address spaces are derived automatically from the workspace.
 
-tenant_id   = "00000000-0000-0000-0000-000000000000"
-alert_email = "alerts@example.com"
+tenant_id       = "00000000-0000-0000-0000-000000000000"
+subscription_id = "00000000-0000-0000-0000-000000000000"
+alert_email     = "alerts@example.com"
 
 powerbi_group_owner_object_ids = [
   "00000000-0000-0000-0000-000000000000",
 ]
+
+budget_start_date = "2026-04-01T00:00:00Z"
+
+budget_amounts = {
+  network       = 50
+  security      = 20
+  data          = 200
+  observability = 20
+}

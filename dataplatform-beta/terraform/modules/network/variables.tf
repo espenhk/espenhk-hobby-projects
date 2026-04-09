@@ -21,7 +21,9 @@ variable "address_space" {
 variable "subnets" {
   description = "Subnet definitions by subnet name."
   type = map(object({
-    address_prefixes = list(string)
+    address_prefixes   = list(string)
+    service_delegation = optional(string, null)
+    create_nsg         = optional(bool, false)
   }))
 }
 

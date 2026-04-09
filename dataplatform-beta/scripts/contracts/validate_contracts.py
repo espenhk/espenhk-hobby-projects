@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -29,6 +30,11 @@ ALLOWED_TYPES = {
     "date",
     "timestamp",
 }
+_DECIMAL_RE = re.compile(r"^decimal\(\d+,\s*\d+\)$")
+
+
+def _is_valid_type(type_str: str) -> bool:
+    return type_str in ALLOWED_TYPES or bool(_DECIMAL_RE.match(type_str))
 
 
 def _load(path: Path) -> dict:
@@ -66,9 +72,9 @@ def _validate_contract(path: Path, payload: dict) -> list[str]:
             if name in field_names:
                 errors.append(f"duplicate schema field name: {name}")
             field_names.add(name)
-            if field["type"] not in ALLOWED_TYPES:
+            if not _is_valid_type(field["type"]):
                 errors.append(
-                    f"schema[{idx}].type '{field['type']}' not in {sorted(ALLOWED_TYPES)}"
+                    f"schema[{idx}].type '{field['type']}' not in {sorted(ALLOWED_TYPES)} and not decimal(p,s)"
                 )
             if not isinstance(field["nullable"], bool):
                 errors.append(f"schema[{idx}].nullable must be a boolean")

@@ -23,6 +23,16 @@ output "monitor_action_group_id" {
   value       = module.monitor_alerting.action_group_id
 }
 
+output "databricks_workspace_url" {
+  description = "Databricks workspace URL."
+  value       = module.databricks_workspace.workspace_url
+}
+
+output "databricks_workspace_id" {
+  description = "Databricks workspace resource ID."
+  value       = module.databricks_workspace.workspace_id
+}
+
 output "powerbi_groups" {
   description = "Power BI Entra group details."
   value = {
