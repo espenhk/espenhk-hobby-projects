@@ -160,13 +160,18 @@ class WeightedLinearPolicy(BasePolicy):
     # Mutation
     # ------------------------------------------------------------------
 
-    def mutated(self, scale: float = 0.1) -> "WeightedLinearPolicy":
-        """Return a new policy with small Gaussian perturbation applied to all weights."""
+    def mutated(self, scale: float = 0.1, share: float = 1.0) -> "WeightedLinearPolicy":
+        """Return a new policy with Gaussian perturbation applied to a random subset of weights.
+
+        share: probability [0, 1] that each individual weight is perturbed.
+               1.0 = all weights mutated (original behaviour).
+        """
         rng = np.random.default_rng()
         cfg = self.to_cfg()
         for group in ("steer_weights", "throttle_weights"):
             for k in cfg[group]:
-                cfg[group][k] += float(rng.normal(-scale, scale))
+                if share >= 1.0 or rng.random() < share:
+                    cfg[group][k] += float(rng.normal(0, scale))
         return WeightedLinearPolicy.from_cfg(cfg, n_lidar_rays=self._n_lidar_rays)
 
     # ------------------------------------------------------------------
@@ -540,12 +545,14 @@ class GeneticPolicy(BasePolicy):
         population_size: int = 10,
         elite_k: int = 3,
         mutation_scale: float = 0.1,
+        mutation_share: float = 1.0,
         n_lidar_rays: int = 0,
     ) -> None:
-        self._pop_size      = population_size
-        self._elite_k       = min(elite_k, population_size)
+        self._pop_size       = population_size
+        self._elite_k        = min(elite_k, population_size)
         self._mutation_scale = mutation_scale
-        self._n_lidar_rays  = n_lidar_rays
+        self._mutation_share = mutation_share
+        self._n_lidar_rays   = n_lidar_rays
         self._population: list[WeightedLinearPolicy] = []
         self._champion: WeightedLinearPolicy | None = None
         self._champion_reward: float = float("-inf")
@@ -556,6 +563,7 @@ class GeneticPolicy(BasePolicy):
             population_size = cfg.get("population_size", 10),
             elite_k         = cfg.get("elite_k", 3),
             mutation_scale  = cfg.get("mutation_scale", 0.1),
+            mutation_share  = cfg.get("mutation_share", 1.0),
             n_lidar_rays    = n_lidar_rays,
         )
         champion_w = cfg.get("champion_weights")
@@ -585,7 +593,7 @@ class GeneticPolicy(BasePolicy):
         """Seed the population by mutating the given champion."""
         self._champion = champion
         self._population = [
-            champion.mutated(self._mutation_scale)
+            champion.mutated(self._mutation_scale, self._mutation_share)
             for _ in range(self._pop_size)
         ]
 
@@ -621,7 +629,7 @@ class GeneticPolicy(BasePolicy):
             i2     = int(rng_idx.integers(self._elite_k))
             child_cfg = self._crossover(elites[i1].to_cfg(), elites[i2].to_cfg())
             child     = WeightedLinearPolicy.from_cfg(child_cfg, self._n_lidar_rays)
-            new_pop.append(child.mutated(self._mutation_scale))
+            new_pop.append(child.mutated(self._mutation_scale, self._mutation_share))
 
         self._population = new_pop
         return improved
@@ -647,6 +655,7 @@ class GeneticPolicy(BasePolicy):
             "population_size":  self._pop_size,
             "elite_k":          self._elite_k,
             "mutation_scale":   float(self._mutation_scale),
+            "mutation_share":   float(self._mutation_share),
             "champion_reward":  float(self._champion_reward),
             "champion_weights": self._champion.to_cfg() if self._champion else {},
         }

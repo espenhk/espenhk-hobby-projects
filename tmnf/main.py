@@ -115,6 +115,8 @@ def _make_policy(
             elite_k         = elite_k,
             mutation_scale  = policy_params.get("mutation_scale",
                               policy_params.get("_mutation_scale_fallback", 0.1)),
+            mutation_share  = policy_params.get("mutation_share",
+                              policy_params.get("_mutation_share_fallback", 1.0)),
             n_lidar_rays    = n_lidar_rays,
         )
         if os.path.exists(weights_file) and not re_initialize:
@@ -313,6 +315,7 @@ def _cold_start_search(
     probe_best_reward: float,
     weights_file: str,
     mutation_scale: float,
+    mutation_share: float = 1.0,
     n_restarts: int = 5,
     sims_per_restart: int = 10,
     n_lidar_rays: int = 0,
@@ -352,7 +355,7 @@ def _cold_start_search(
         sim_results = []
 
         for sim in range(1, sims_per_restart + 1):
-            candidate = local_best_policy.mutated(scale=mutation_scale)
+            candidate = local_best_policy.mutated(scale=mutation_scale, share=mutation_share)
             print(f"  Restart {restart} sim {sim}/{sims_per_restart} (respawning)", end="", flush=True)
             obs, _ = env.reset()
             reward, _, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
@@ -409,6 +412,7 @@ def _greedy_loop_hill_climb(
     n_sims: int,
     mutation_scale: float,
     weights_file: str,
+    mutation_share: float = 1.0,
 ) -> tuple[BasePolicy, float, list[GreedySimResult]]:
     """
     Hill-climbing greedy loop (hill_climbing and neural_net policy types).
@@ -421,7 +425,7 @@ def _greedy_loop_hill_climb(
     try:
         for sim in range(1, n_sims + 1):
             env._max_episode_time_s = _scaled_episode_time(sim, n_sims, full_episode_time_s)
-            candidate = best_policy.mutated(scale=mutation_scale)
+            candidate = best_policy.mutated(scale=mutation_scale, share=mutation_share)
 
             print(f"--- Sim {sim}/{n_sims} --- (respawning, episode_time={env._max_episode_time_s:.1f}s)")
             obs, _ = env.reset()
@@ -572,6 +576,7 @@ def train_rl(
     weights_file: str = "config/policy_weights.yaml",
     reward_config_file: str = "config/reward_config.yaml",
     mutation_scale: float = 0.1,
+    mutation_share: float = 1.0,
     probe_in_game_s: float = 8.0,
     cold_start_restarts: int = 5,
     cold_start_sims: int = 10,
@@ -626,6 +631,7 @@ def train_rl(
         time.sleep(1)
         best_policy, best_reward, cold_start_data = _cold_start_search(
             env, probe_best, weights_file, mutation_scale,
+            mutation_share=mutation_share,
             n_restarts=cold_start_restarts, sims_per_restart=cold_start_sims,
             n_lidar_rays=n_lidar_rays,
         )
@@ -637,7 +643,8 @@ def train_rl(
             weights_file   = weights_file,
             n_lidar_rays   = n_lidar_rays,
             policy_params  = {**policy_params,
-                              "_mutation_scale_fallback": mutation_scale},
+                              "_mutation_scale_fallback": mutation_scale,
+                              "_mutation_share_fallback": mutation_share},
             re_initialize  = re_initialize,
         )
         best_reward = float("-inf")
@@ -645,7 +652,7 @@ def train_rl(
     print(f"\n{'='*60}")
     print(f"  Training — {n_sims} sims/generations, speed={speed}x, "
           f"episode={in_game_episode_s}s in-game")
-    print(f"  policy_type={policy_type}  mutation_scale={mutation_scale}")
+    print(f"  policy_type={policy_type}  mutation_scale={mutation_scale}  mutation_share={mutation_share}")
     print(f"  weights → {weights_file}")
     print(f"{'='*60}")
     if not no_interrupt:
@@ -656,7 +663,8 @@ def train_rl(
     # Dispatch to the appropriate greedy loop
     if policy_type in ("hill_climbing", "neural_net"):
         best_policy, best_reward, greedy_sims = _greedy_loop_hill_climb(
-            env, best_policy, best_reward, n_sims, mutation_scale, weights_file
+            env, best_policy, best_reward, n_sims, mutation_scale, weights_file,
+            mutation_share=mutation_share,
         )
     elif policy_type in ("epsilon_greedy", "mcts"):
         best_policy, best_reward, greedy_sims = _greedy_loop_q_learning(
@@ -756,6 +764,7 @@ def main() -> None:
         weights_file=weights_file,
         reward_config_file=reward_cfg_file,
         mutation_scale=p["mutation_scale"],
+        mutation_share=p.get("mutation_share", 1.0),
         probe_in_game_s=p["probe_s"],
         cold_start_restarts=p["cold_restarts"],
         cold_start_sims=p["cold_sims"],
