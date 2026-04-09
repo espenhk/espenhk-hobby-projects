@@ -1,0 +1,165 @@
+name: powerbi-release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "dataplatform-beta/powerbi/**"
+      - "dataplatform-beta/powerbi/deployment/**"
+      - "dataplatform-beta/ci/powerbi-release.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  PBI_PIPELINE_ID: ${{ vars.PBI_PIPELINE_ID }}
+  PBI_DEV_WORKSPACE_ID: ${{ vars.PBI_DEV_WORKSPACE_ID }}
+  PBI_TEST_WORKSPACE_ID: ${{ vars.PBI_TEST_WORKSPACE_ID }}
+  PBI_PROD_WORKSPACE_ID: ${{ vars.PBI_PROD_WORKSPACE_ID }}
+  PBI_DEV_DATASET_ID: ${{ vars.PBI_DEV_DATASET_ID }}
+  PBI_TEST_DATASET_ID: ${{ vars.PBI_TEST_DATASET_ID }}
+  PBI_PROD_DATASET_ID: ${{ vars.PBI_PROD_DATASET_ID }}
+  PBI_DEV_REPORT_ID: ${{ vars.PBI_DEV_REPORT_ID }}
+  PBI_TEST_REPORT_ID: ${{ vars.PBI_TEST_REPORT_ID }}
+  PBI_PROD_REPORT_ID: ${{ vars.PBI_PROD_REPORT_ID }}
+
+jobs:
+  publish-dev:
+    runs-on: ubuntu-latest
+    environment: powerbi-dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Acquire Power BI access token
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
+          echo "PBI_ACCESS_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: Validate PBIP conventions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/validate_pbip.py
+
+      - name: Run Dev smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/smoke_check.py \
+            --workspace-id "$PBI_DEV_WORKSPACE_ID" \
+            --dataset-id "$PBI_DEV_DATASET_ID" \
+            --report-id "$PBI_DEV_REPORT_ID"
+
+  promote-test:
+    runs-on: ubuntu-latest
+    environment: powerbi-test
+    needs: publish-dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Acquire Power BI access token
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
+          echo "PBI_ACCESS_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: Promote Dev to Test
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/pipeline_promote.py \
+            --pipeline-id "$PBI_PIPELINE_ID" \
+            --source-stage-order 0 \
+            --target-stage-order 1
+
+      - name: Run Test smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/smoke_check.py \
+            --workspace-id "$PBI_TEST_WORKSPACE_ID" \
+            --dataset-id "$PBI_TEST_DATASET_ID" \
+            --report-id "$PBI_TEST_REPORT_ID"
+
+  promote-prod:
+    runs-on: ubuntu-latest
+    environment: powerbi-prod
+    needs: promote-test
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Acquire Power BI access token
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN=$(az account get-access-token --resource https://analysis.windows.net/powerbi/api --query accessToken -o tsv)
+          echo "PBI_ACCESS_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+
+      - name: Verify change ticket reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${{ github.event.head_commit.message }}" || (echo "Missing commit message" && exit 1)
+
+      - name: Promote Test to Prod
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/pipeline_promote.py \
+            --pipeline-id "$PBI_PIPELINE_ID" \
+            --source-stage-order 1 \
+            --target-stage-order 2
+
+      - name: Run Prod smoke checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/smoke_check.py \
+            --workspace-id "$PBI_PROD_WORKSPACE_ID" \
+            --dataset-id "$PBI_PROD_DATASET_ID" \
+            --report-id "$PBI_PROD_REPORT_ID"
