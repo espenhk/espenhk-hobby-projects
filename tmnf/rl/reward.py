@@ -17,9 +17,11 @@ class RewardConfig:
         Positive weights add reward (encourage the behaviour).
         Negative weights subtract reward (penalise the behaviour).
 
-    The canonical values live in config/reward_config.yaml (copied into each
-    experiment directory on first run).  There are no Python defaults here —
-    the YAML is the single source of truth.  Load via RewardConfig.from_yaml().
+    The canonical training values live in config/reward_config.yaml (copied into
+    each experiment directory on first run).
+
+    Python defaults are kept for backward compatibility and lightweight unit tests.
+    Training should still load YAML via RewardConfig.from_yaml().
 
     Parameters
     ----------
@@ -56,18 +58,18 @@ class RewardConfig:
         The env ends the episode when |lateral_offset| exceeds this (metres).
     """
 
-    progress_weight:    float
-    centerline_weight:  float
-    centerline_exp:     float
-    speed_weight:       float
-    step_penalty:       float
-    finish_bonus:       float
-    finish_time_weight: float
-    par_time_s:         float
-    accel_bonus:        float
-    airborne_penalty:   float
-    lidar_wall_weight:  float
-    crash_threshold_m:  float
+    progress_weight:    float = 10.0
+    centerline_weight:  float = -0.5
+    centerline_exp:     float = 2.0
+    speed_weight:       float = 0.05
+    step_penalty:       float = -0.01
+    finish_bonus:       float = 100.0
+    finish_time_weight: float = -0.1
+    par_time_s:         float = 60.0
+    accel_bonus:        float = 0.5
+    airborne_penalty:   float = -1.0
+    lidar_wall_weight:  float = 0.0
+    crash_threshold_m:  float = 25.0
 
     @classmethod
     def from_yaml(cls, path: str) -> RewardConfig:

@@ -15,6 +15,10 @@ class Vec3:
     def magnitude(self) -> float:
         return (self.x**2 + self.y**2 + self.z**2) ** 0.5
 
+    def compute_speed(self) -> float:
+        """Backward-compatible alias for magnitude()."""
+        return self.magnitude()
+
 
 class Quat:
     # TMInterface stores quat as [w, x, y, z]
