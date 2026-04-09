@@ -5,13 +5,17 @@ from tminterface.interface import TMInterface
 
 logger = logging.getLogger(__name__)
 
-from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD, PAUSE_DURATION_MS
+from clients.base import Phase, PhaseAwareClient
 from instructions import InputState, apply_action, parse_instructions
 from track import Centerline
 from utils import StateData
 
 
-class InstructionClient(Client):
+VELOCITY_ZERO_THRESHOLD = 0.5   # m/s
+PAUSE_DURATION_MS = 2_000       # game milliseconds
+
+
+class InstructionClient(PhaseAwareClient):
     """Use a file like runs/example_run.txt to give simple instructions of when to steer, accelerate etc."""
 
     def __init__(self, instruction_file: str, centerline_file: str | None = None, speed: float = 1.0) -> None:
@@ -19,8 +23,6 @@ class InstructionClient(Client):
         self.speed = speed
         self.instructions = parse_instructions(instruction_file)
         self.centerline = Centerline(centerline_file) if centerline_file else None
-        self._phase = Phase.BRAKING_START
-        self._phase_start_ms: int = 0
         self._next_idx: int = 0
         self._input = InputState()
         self._ticks_idx = 0

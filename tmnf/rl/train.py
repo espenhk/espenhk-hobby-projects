@@ -33,19 +33,19 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 
-from rl.env import TMNFEnv
-from rl.reward import RewardConfig
+from rl.env import make_env
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-CENTERLINE_FILE  = "tracks/a03_centerline.npy"
+EXPERIMENT_DIR   = "experiments/ppo_default"
+CENTERLINE_FILE  = os.environ.get("TMNF_TRACK", "tracks/a03_centerline.npy")
 SPEED            = 10.0      # game speed multiplier
+IN_GAME_EPISODE_S = 20.0     # in-game seconds per episode
 TOTAL_TIMESTEPS  = 500_000
 CHECKPOINT_FREQ  = 5_000     # save a checkpoint every N steps
-MAX_EPISODE_TIME = 120.0     # seconds (real-time at 1× speed) before truncation
 
 RUNS_DIR         = "runs"
 CHECKPOINT_DIR   = os.path.join(RUNS_DIR, "checkpoints")
@@ -64,15 +64,10 @@ def main() -> None:
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
     os.makedirs(TB_LOG_DIR, exist_ok=True)
 
-    reward_config = RewardConfig.from_yaml(
-        os.path.join(os.path.dirname(__file__), "..", "config", "reward_config.yaml")
-    )
-
-    env = TMNFEnv(
-        centerline_file=CENTERLINE_FILE,
+    env = make_env(
+        experiment_dir=EXPERIMENT_DIR,
         speed=SPEED,
-        reward_config=reward_config,
-        max_episode_time_s=MAX_EPISODE_TIME,
+        in_game_episode_s=IN_GAME_EPISODE_S,
     )
     # Monitor wraps the env to log episode rewards/lengths automatically.
     env = Monitor(env, filename=os.path.join(RUNS_DIR, "monitor.csv"))
@@ -89,7 +84,7 @@ def main() -> None:
         gamma=0.99,
         gae_lambda=0.95,
         clip_range=0.2,
-        # Small network — state space is simple (15 features).
+        # Small network — state space is simple (BASE_OBS_DIM features).
         policy_kwargs={"net_arch": [64, 64]},
         tensorboard_log=TB_LOG_DIR,
         verbose=1,

@@ -36,6 +36,7 @@ training_params:
   elite_k: [3, 5]
   population_size: 20
   mutation_scale: [0.01, 0.05]
+  mutation_share: 1.0
 
 reward_params:
   progress_weight: 10000.0

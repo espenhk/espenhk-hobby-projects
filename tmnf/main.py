@@ -12,10 +12,9 @@ import datetime
 
 logger = logging.getLogger(__name__)
 
-from tminterface.interface import TMInterface
 
-from clients import AdaptiveClient
-from clients.rl_client import ACTIONS, N_ACTIONS, get_action_description
+from clients.rl_client import ACTIONS
+from constants import N_ACTIONS
 from policies import (
     BasePolicy,
     WeightedLinearPolicy,
@@ -24,7 +23,7 @@ from policies import (
     MCTSPolicy,
     GeneticPolicy,
 )
-from rl.env import TMNFEnv
+from rl.env import TMNFEnv, make_env
 from rl.reward import RewardConfig
 from analytics import (
     ProbeResult,
@@ -35,36 +34,6 @@ from analytics import (
     ExperimentData,
     save_experiment_results
 )
-
-def run_adaptive(speed: float) -> None:
-    """Follow the centreline using the hand-tuned PD controller."""
-    client = AdaptiveClient("tracks/a03_centerline.npy")
-    iface = TMInterface()
-    iface.execute_command(f"set speed {speed}")
-
-    logger.info("Waiting for TMInterface connection...")
-    iface.register(client)
-    try:
-        while iface.running:
-            time.sleep(0)
-    except KeyboardInterrupt:
-        pass
-    iface.close()
-
-
-# ---------------------------------------------------------------------------
-# Env factory (shared setup)
-# ---------------------------------------------------------------------------
-
-def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0) -> TMNFEnv:
-
-    return TMNFEnv(
-        centerline_file="tracks/a03_centerline.npy",
-        speed=speed,
-        reward_config=RewardConfig.from_yaml(reward_config_file),
-        max_episode_time_s=in_game_episode_s / speed,
-        n_lidar_rays=n_lidar_rays,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -97,8 +66,7 @@ def _make_policy(
     if policy_type == "hill_climbing":
         if os.path.exists(weights_file) and not re_initialize:
             return WeightedLinearPolicy(weights_file, n_lidar_rays)
-        # Random init (cold-start will handle this path normally)
-        rng = __import__("numpy").random.default_rng()
+        rng = np.random.default_rng()
         obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
         cfg = {
             "steer_threshold":    0.5,
@@ -120,7 +88,6 @@ def _make_policy(
         return NeuralNetPolicy(hidden_sizes=hidden, n_lidar_rays=n_lidar_rays)
 
     elif policy_type == "epsilon_greedy":
-        # Q-table always starts fresh (no meaningful file resume)
         return EpsilonGreedyPolicy.from_cfg(policy_params, n_lidar_rays)
 
     elif policy_type == "mcts":
@@ -134,6 +101,8 @@ def _make_policy(
             elite_k         = elite_k,
             mutation_scale  = policy_params.get("mutation_scale",
                               policy_params.get("_mutation_scale_fallback", 0.1)),
+            mutation_share  = policy_params.get("mutation_share",
+                              policy_params.get("_mutation_share_fallback", 1.0)),
             n_lidar_rays    = n_lidar_rays,
         )
         if os.path.exists(weights_file) and not re_initialize:
@@ -191,9 +160,44 @@ def _run_probes(env: TMNFEnv, probe_in_game_s: float, speed: float) -> tuple[flo
 # Single episode
 # ---------------------------------------------------------------------------
 
-_TRACE_SAMPLE_EVERY = 2  # record position every N steps
-_WARMUP_STEPS = 100       # 1 in-game second of forced straight acceleration at episode start
-_WARMUP_ACTION = 7        # action 7: accelerate + straight
+_TRACE_SAMPLE_EVERY = 2   # record position every N steps
+_WARMUP_STEPS = 100        # 1 in-game second of forced straight acceleration at episode start
+_WARMUP_ACTION = 7         # action 7: accelerate + straight
+
+
+def _record_step(
+    action: int,
+    info: dict,
+    steps: int,
+    throttle_counts: list[int],
+    turning_steps_ref: list[int],
+    pos_x: list[float],
+    pos_z: list[float],
+    throttle_state: list[int],
+) -> None:
+    t = action // 3   # 0=brake, 1=coast, 2=accel
+    throttle_counts[t] += 1
+    throttle_state.append(t)
+    if action % 3 != 1:
+        turning_steps_ref[0] += 1
+    if steps % _TRACE_SAMPLE_EVERY == 0:
+        pos_x.append(info.get("pos_x", 0.0))
+        pos_z.append(info.get("pos_z", 0.0))
+
+
+def _print_episode_summary(info: dict, steps: int, total_reward: float, truncated: bool) -> None:
+    reason = (
+        "finished"  if info.get("finished") else
+        "truncated" if truncated            else
+        "crashed"
+    )
+    laps = info.get("laps_completed", 0)
+    lap_str = f"  laps={laps}" if laps > 0 else ""
+    logger.info(
+        "Done (%s) — steps=%d  progress=%.3f%s  total_reward=%.1f",
+        reason, steps, info.get('track_progress', 0), lap_str, total_reward
+    )
+
 
 def _run_episode(
     env: TMNFEnv,
@@ -212,12 +216,11 @@ def _run_episode(
         total_steps     — int
         trace           — RunTrace
     """
-
     total_reward = 0.0
     steps = 0
-    info = {}
-    throttle_counts = [0, 0, 0]   # brake / coast / accel
-    turning_steps   = 0            # any action with steer != straight (action % 3 != 1)
+    info: dict[str, Any] = {}
+    throttle_counts = [0, 0, 0]
+    turning_steps = [0]   # wrapped in list so _record_step can mutate it
     pos_x: list[float] = []
     pos_z: list[float] = []
     throttle_state: list[int] = []
@@ -230,42 +233,40 @@ def _run_episode(
         total_reward += reward
         steps += 1
 
-        # Feed online policies the transition (skip warmup to avoid poisoning Q-table
-        # with forced behaviour that doesn't reflect the policy's decisions)
         if not in_warmup:
             policy.update(prev_obs, action, reward, next_obs, terminated or truncated)
 
         prev_obs = next_obs
-        obs      = next_obs
+        obs = next_obs
 
-        t = action // 3   # 0=brake, 1=coast, 2=accel
-        throttle_counts[t] += 1
-        throttle_state.append(t)
-        if action % 3 != 1:
-            turning_steps += 1
-
-        if steps % _TRACE_SAMPLE_EVERY == 0:
-            pos_x.append(info["pos_x"])
-            pos_z.append(info["pos_z"])
+        _record_step(action, info, steps, throttle_counts, turning_steps, pos_x, pos_z, throttle_state)
 
         if terminated or truncated:
-            reason = (
-                "finished"  if info["finished"]  else
-                "truncated" if truncated          else
-                "crashed"
-            )
-            laps = info.get("laps_completed", 0)
-            lap_str = f"  laps={laps}" if laps > 0 else ""
-            logger.info(
-                "Done (%s) — steps=%d  progress=%.3f%s  total_reward=%.1f",
-                reason, steps, info["track_progress"], lap_str, total_reward,
-            )
-            #_print_action_stats(throttle_counts, turning_steps, steps)
+            _print_episode_summary(info, steps, total_reward, truncated)
             break
 
     trace = RunTrace(pos_x=pos_x, pos_z=pos_z,
                      throttle_state=throttle_state, total_reward=total_reward)
     return total_reward, info, throttle_counts, steps, trace
+
+
+def _scaled_episode_time(sim: int, n_total: int, max_time_s: float) -> float:
+    """Return episode time for sim (1-indexed) using a 4-step schedule.
+
+    First 25%  → 1/4 of max_time_s
+    Next  25%  → 1/2
+    Next  25%  → 3/4
+    Final 25%  → full max_time_s
+    """
+    quarter = n_total / 4
+    if sim <= quarter:
+        return max_time_s * 0.25
+    elif sim <= 2 * quarter:
+        return max_time_s * 0.5
+    elif sim <= 3 * quarter:
+        return max_time_s * 0.75
+    else:
+        return max_time_s
 
 
 def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: int) -> None:
@@ -282,12 +283,19 @@ def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: i
 # Watch mode: run indefinitely, resetting every in_game_episode_s seconds
 # ---------------------------------------------------------------------------
 
-def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0, reward_config_file: str = "config/reward_config.yaml") -> None:
+def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0,
+                  reward_config_file: str = "config/reward_config.yaml",
+                  centerline_file: str = "tracks/a03_centerline.npy") -> None:
     """
     Repeatedly drive the track with *policy*, resetting every
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
     """
-    env = _make_env(speed, in_game_episode_s, reward_config_file)
+    env = TMNFEnv(
+        centerline_file="tracks/a03_centerline.npy",
+        speed=speed,
+        reward_config=RewardConfig.from_yaml(reward_config_file),
+        max_episode_time_s=in_game_episode_s / speed,
+    )
     time.sleep(1)
 
     run = 0
@@ -312,6 +320,7 @@ def _cold_start_search(
     probe_best_reward: float,
     weights_file: str,
     mutation_scale: float,
+    mutation_share: float = 1.0,
     n_restarts: int = 5,
     sims_per_restart: int = 10,
     n_lidar_rays: int = 0,
@@ -333,8 +342,6 @@ def _cold_start_search(
     for restart in range(1, n_restarts + 1):
         logger.info("-- Restart %d/%d: random init --", restart, n_restarts)
 
-        # Generate a fresh random policy in memory — do NOT touch weights_file here
-        # so the best result from previous restarts is always preserved on disk.
         rng = np.random.default_rng()
         obs_names = WeightedLinearPolicy.get_obs_names(n_lidar_rays)
         random_cfg = {
@@ -348,7 +355,7 @@ def _cold_start_search(
         sim_results = []
 
         for sim in range(1, sims_per_restart + 1):
-            candidate = local_best_policy.mutated(scale=mutation_scale)
+            candidate = local_best_policy.mutated(scale=mutation_scale, share=mutation_share)
             logger.debug("Restart %d sim %d/%d (respawning)", restart, sim, sims_per_restart)
             obs, _ = env.reset()
             reward, _, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
@@ -376,8 +383,6 @@ def _cold_start_search(
             best_reward=local_best_reward, beat_probe_floor=beat,
         ))
 
-        # Save after every restart so the file always holds the best seen so far.
-        # An interruption between restarts will never lose completed work.
         if overall_best_policy is not None:
             overall_best_policy.save(weights_file)
 
@@ -386,7 +391,6 @@ def _cold_start_search(
             break
 
     if overall_best_policy is None:
-        # Only reachable if n_restarts == 0; create a random fallback.
         overall_best_policy = WeightedLinearPolicy(weights_file)
         overall_best_policy.save(weights_file)
     logger.info("Cold-start complete — best reward: %+.1f  Weights saved to %s",
@@ -395,50 +399,130 @@ def _cold_start_search(
 
 
 # ---------------------------------------------------------------------------
-# Greedy loops (one per training strategy)
+# Unified greedy loop (hill_climbing, neural_net, epsilon_greedy, mcts)
+#
+# hill_climbing / neural_net:  mutate the current best, keep if improved
+# epsilon_greedy / mcts:       run the policy as-is; it updates its Q-table
+#                              in-place via policy.update() inside _run_episode
 # ---------------------------------------------------------------------------
 
-def _greedy_loop_hill_climb(
+_MUTATION_POLICIES = {"hill_climbing", "neural_net"}
+_ONLINE_POLICIES   = {"epsilon_greedy", "mcts"}
+
+
+def _greedy_loop(
     env: TMNFEnv,
-    best_policy: BasePolicy,
-    best_reward: float,
+    policy: BasePolicy,
+    policy_type: str,
     n_sims: int,
     mutation_scale: float,
     weights_file: str,
+    best_reward: float = float("-inf"),
+    learning_rate: float = 0.01,
+    mutation_share: float = 1.0,
 ) -> tuple[BasePolicy, float, list[GreedySimResult]]:
     """
-    Hill-climbing greedy loop (hill_climbing and neural_net policy types).
-    Mutate the current best policy, evaluate, keep if improved.
+    ES gradient-estimation loop for WeightedLinearPolicy (hill_climbing policy type).
+
+    Each sim evaluates two mirrored perturbations (+ε, −ε) and updates the weight
+    vector using the reward difference as a gradient signal:
+
+        θ += lr * (R⁺ − R⁻) * ε
+
+    This means every episode pair contributes to the update, even when neither
+    candidate beats the current best. Based on OpenAI Evolution Strategies
+    (Salimans et al. 2017).
+
+    Falls back to single-candidate greedy for policies without flat-weight support
+    (neural_net).
+
     Returns (best_policy, best_reward, greedy_sims).
     """
+    if not isinstance(best_policy, WeightedLinearPolicy):
+        # Fallback: single-candidate greedy for neural_net and others
+        greedy_sims = []
+        try:
+            for sim in range(1, n_sims + 1):
+                candidate = best_policy.mutated(scale=mutation_scale)
+                logger.info("--- Sim %d/%d --- (respawning)", sim, n_sims)
+                obs, _ = env.reset()
+                reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
+                improved = reward > best_reward
+                if improved:
+                    prev_best   = best_reward
+                    best_reward = reward
+                    best_policy = candidate
+                    best_policy.save(weights_file)
+                    verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
+                else:
+                    verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
+                logger.info("  >> %s", verdict)
+                greedy_sims.append(GreedySimResult(
+                    sim=sim, reward=reward, improved=improved,
+                    throttle_counts=list(throttle_counts), total_steps=total_steps,
+                    trace=trace, weights=candidate.to_cfg(),
+                    final_track_progress=info.get("track_progress", 0.0),
+                    laps_completed=info.get("laps_completed", 0),
+                ))
+        except KeyboardInterrupt:
+            logger.warning("Training interrupted.")
+        return best_policy, best_reward, greedy_sims
 
+    # ES gradient update loop
+    rng = np.random.default_rng()
+    theta = best_policy.to_flat()
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
     try:
         for sim in range(1, n_sims + 1):
-            candidate = best_policy.mutated(scale=mutation_scale)
+            eps = rng.standard_normal(len(theta)).astype(np.float32) * mutation_scale
 
-            logger.info("--- Sim %d/%d --- (respawning)", sim, n_sims)
+            policy_plus  = best_policy.with_flat(theta + eps)
+            policy_minus = best_policy.with_flat(theta - eps)
+
+            logger.debug("--- Sim %d/%d (+) --- (respawning)", sim, n_sims)
+            env._max_episode_time_s = _scaled_episode_time(sim, n_sims, full_episode_time_s)
+            candidate = best_policy.mutated(scale=mutation_scale, share=mutation_share)
+
+            logger.debug("--- Sim %d/%d --- (respawning, episode_time=%.1fs)", sim, n_sims, env._max_episode_time_s)
             obs, _ = env.reset()
-            reward, info, throttle_counts, total_steps, trace = _run_episode(env, candidate, obs)
+            r_plus, info_plus, tc_plus, steps_plus, trace_plus = _run_episode(env, policy_plus, obs)
 
-            improved = reward > best_reward
-            if improved:
-                prev_best   = best_reward
-                best_reward = reward
-                best_policy = candidate
-                best_policy.save(weights_file)
-                verdict = f"NEW BEST  {reward:+.1f}  (was {prev_best:+.1f})"
+            logger.debug("--- Sim %d/%d (-) --- (respawning)", sim, n_sims)
+            obs, _ = env.reset()
+            r_minus, info_minus, tc_minus, steps_minus, trace_minus = _run_episode(env, policy_minus, obs)
+
+            # Gradient step — always update regardless of improvement
+            theta += learning_rate * (r_plus - r_minus) * eps
+
+            # Track best-seen candidate for checkpointing
+            improved = False
+            if r_plus >= r_minus:
+                best_r, best_info, best_tc, best_steps, best_trace, best_candidate = (
+                    r_plus, info_plus, tc_plus, steps_plus, trace_plus, policy_plus)
             else:
-                verdict = f"no improvement  candidate={reward:+.1f}  best={best_reward:+.1f}"
+                best_r, best_info, best_tc, best_steps, best_trace, best_candidate = (
+                    r_minus, info_minus, tc_minus, steps_minus, trace_minus, policy_minus)
+
+            if best_r > best_reward:
+                prev_best   = best_reward
+                best_reward = best_r
+                best_policy = best_candidate
+                best_policy.save(weights_file)
+                improved = True
+                verdict = f"NEW BEST  {best_r:+.1f}  (was {prev_best:+.1f})  gradient_signal={r_plus - r_minus:+.1f}"
+            else:
+                verdict = (f"no improvement  +ε={r_plus:+.1f}  −ε={r_minus:+.1f}  "
+                           f"best={best_reward:+.1f}  gradient_signal={r_plus - r_minus:+.1f}")
 
             logger.info("  >> %s", verdict)
             greedy_sims.append(GreedySimResult(
-                sim=sim, reward=reward, improved=improved,
-                throttle_counts=list(throttle_counts), total_steps=total_steps,
-                trace=trace,
-                weights=candidate.to_cfg(),
-                final_track_progress=info.get("track_progress", 0.0),
-                laps_completed=info.get("laps_completed", 0),
+                sim=sim, reward=best_r, improved=improved,
+                throttle_counts=list(best_tc), total_steps=best_steps,
+                trace=best_trace,
+                weights=best_candidate.to_cfg(),
+                final_track_progress=best_info.get("track_progress", 0.0),
+                laps_completed=best_info.get("laps_completed", 0),
             ))
     except KeyboardInterrupt:
         logger.warning("Training interrupted.")
@@ -461,9 +545,11 @@ def _greedy_loop_q_learning(
 
     best_reward = float("-inf")
     greedy_sims = []
+    full_episode_time_s = env._max_episode_time_s
     try:
         for episode in range(1, n_episodes + 1):
-            logger.info("--- Episode %d/%d --- (respawning)", episode, n_episodes)
+            env._max_episode_time_s = _scaled_episode_time(episode, n_episodes, full_episode_time_s)
+            logger.info("--- Episode %d/%d --- (respawning, episode_time={env._max_episode_time_s:.1f}s)", episode, n_episodes)
             obs, _ = env.reset()
             reward, info, throttle_counts, total_steps, trace = _run_episode(env, policy, obs)
             policy.on_episode_end()
@@ -493,6 +579,10 @@ def _greedy_loop_q_learning(
     return policy, best_reward, greedy_sims
 
 
+# ---------------------------------------------------------------------------
+# Genetic greedy loop (structurally different: N_pop episodes per generation)
+# ---------------------------------------------------------------------------
+
 def _greedy_loop_genetic(
     env: TMNFEnv,
     policy: GeneticPolicy,
@@ -500,28 +590,33 @@ def _greedy_loop_genetic(
     weights_file: str,
 ) -> tuple[GeneticPolicy, float, list[GreedySimResult]]:
     """
-    Genetic algorithm greedy loop.
+    Genetic algorithm loop.
     Each "sim" is one generation: evaluate all population members, then evolve.
     Total episodes = n_generations × population_size.
-    Returns (policy, best_reward, greedy_sims).
     """
-
-    pop_size    = len(policy._population)
-    best_reward = policy._champion_reward
-    greedy_sims = []
+    pop_size    = len(policy.population)
+    best_reward = policy.champion_reward
+    greedy_sims: list[GreedySimResult] = []
+    full_episode_time_s = env._max_episode_time_s
 
     logger.info("[Genetic] population_size=%d, total episodes = %d × %d = %d",
                 pop_size, n_generations, pop_size, n_generations * pop_size)
 
     try:
         for gen in range(1, n_generations + 1):
-            logger.info("--- Generation %d/%d --- evaluating %d individuals", gen, n_generations, pop_size)
+            env._max_episode_time_s = _scaled_episode_time(gen, n_generations, full_episode_time_s)
+            logger.info("--- Generation %d/%d --- evaluating %d individuals "
+                  f"(episode_time={env._max_episode_time_s:.1f}s)", gen, n_generations, pop_size)
             rewards = []
-            for idx, individual in enumerate(policy._population):
+            total_steps = 0
+            trace = None
+            info: dict[str, Any] = {}
+            for idx, individual in enumerate(policy.population):
                 logger.debug("Individual %d/%d (respawning)", idx + 1, pop_size)
                 obs, _ = env.reset()
-                reward, info, _, total_steps, trace = _run_episode(env, individual, obs)
+                reward, info, _, steps, trace = _run_episode(env, individual, obs)
                 rewards.append(reward)
+                total_steps += steps
 
             improved = policy.evaluate_and_evolve(rewards)
             gen_best = max(rewards)
@@ -530,9 +625,9 @@ def _greedy_loop_genetic(
 
             if improved:
                 policy.save(weights_file)
-                verdict = f"NEW BEST champion  reward={policy._champion_reward:+.1f}"
+                verdict = f"NEW BEST champion  reward={policy.champion_reward:+.1f}"
             else:
-                verdict = f"no improvement  gen_best={gen_best:+.1f}  champion={policy._champion_reward:+.1f}"
+                verdict = f"no improvement  gen_best={gen_best:+.1f}  champion={policy.champion_reward:+.1f}"
 
             logger.info("  >> %s", verdict)
             greedy_sims.append(GreedySimResult(
@@ -561,6 +656,7 @@ def train_rl(
     weights_file: str = "config/policy_weights.yaml",
     reward_config_file: str = "config/reward_config.yaml",
     mutation_scale: float = 0.1,
+    mutation_share: float = 1.0,
     probe_in_game_s: float = 8.0,
     cold_start_restarts: int = 5,
     cold_start_sims: int = 10,
@@ -570,6 +666,8 @@ def train_rl(
     re_initialize: bool = False,
     policy_type: str = "hill_climbing",
     policy_params: dict[str, Any] | None = None,
+    centerline_file: str = "tracks/a03_centerline.npy",
+    track: str = "",
 ) -> ExperimentData:
     """
     Train a driving policy via the selected algorithm.
@@ -580,28 +678,31 @@ def train_rl(
       epsilon_greedy — tabular Q-learning with epsilon-greedy exploration
       mcts           — UCT-style online Q-learner with UCB1 action selection
       genetic        — population of linear policies, evolutionary selection
-
-    Returns an ExperimentData object with all collected metrics.
     """
 
     policy_params = policy_params or {}
     t_start = datetime.datetime.now()
 
-    # Cold-start only applies to hill_climbing (needs a baseline reward floor)
     cold_start = (not os.path.exists(weights_file) or re_initialize)
     cold_start = cold_start and (policy_type == "hill_climbing")
 
-    if cold_start:
-        if not no_interrupt:
-            input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
+    if cold_start and not no_interrupt:
+        input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
 
     logger.info("Connecting to game...")
-    env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays)
+    experiment_dir = os.path.dirname(weights_file)
+    env = make_env(
+        experiment_dir=experiment_dir,
+        speed=speed,
+        in_game_episode_s=in_game_episode_s,
+        n_lidar_rays=n_lidar_rays,
+        centerline_file=centerline_file
+    )
 
-    probe_results  = []
-    cold_start_data = []
-    probe_best     = None
-    t_after_probe  = t_after_cold = None
+    probe_results: list[ProbeResult] = []
+    cold_start_data: list[ColdStartRestartResult] = []
+    probe_best = None
+    t_after_probe = t_after_cold = None
 
     if cold_start:
         probe_best, probe_results = _run_probes(env, probe_in_game_s=probe_in_game_s, speed=speed)
@@ -612,12 +713,12 @@ def train_rl(
         time.sleep(1)
         best_policy, best_reward, cold_start_data = _cold_start_search(
             env, probe_best, weights_file, mutation_scale,
+            mutation_share=mutation_share,
             n_restarts=cold_start_restarts, sims_per_restart=cold_start_sims,
             n_lidar_rays=n_lidar_rays,
         )
         t_after_cold = datetime.datetime.now()
     else:
-        # Build the policy via the factory (handles all types)
         best_policy = _make_policy(
             policy_type    = policy_type,
             weights_file   = weights_file,
@@ -630,8 +731,8 @@ def train_rl(
 
     logger.info("=== Training — %d sims/generations, speed=%sx, episode=%ss in-game ===",
                 n_sims, speed, in_game_episode_s)
-    logger.info("    policy_type=%s  mutation_scale=%s  weights → %s",
-                policy_type, mutation_scale, weights_file)
+    logger.info("    policy_type=%s  mutation_scale=%s  mutation_share=%s  weights → %s",
+                policy_type, mutation_scale, mutation_share, weights_file)
     if not no_interrupt:
         input("\n  [GREEDY PHASE]  Press Enter to start optimisation...\n")
     time.sleep(1)
@@ -639,23 +740,44 @@ def train_rl(
 
     # Dispatch to the appropriate greedy loop
     if policy_type in ("hill_climbing", "neural_net"):
-        best_policy, best_reward, greedy_sims = _greedy_loop_hill_climb(
-            env, best_policy, best_reward, n_sims, mutation_scale, weights_file
+        best_policy, best_reward, greedy_sims = _greedy_loop(
+            env=env,
+            policy=best_policy,
+            policy_type=policy_type,
+            n_sims=n_sims,
+            mutation_scale=mutation_scale,
+            mutation_share=mutation_share,
+            best_reward=best_reward,
+            weights_file=weights_file,
         )
     elif policy_type in ("epsilon_greedy", "mcts"):
         best_policy, best_reward, greedy_sims = _greedy_loop_q_learning(
-            env, best_policy, n_sims, weights_file
+            env=env,
+            policy=best_policy,
+            n_episodes=n_sims,
+            weights_file=weights_file
         )
     elif policy_type == "genetic":
         best_policy, best_reward, greedy_sims = _greedy_loop_genetic(
-            env, best_policy, n_sims, weights_file  # type: ignore[arg-type]
+            env=env,
+            policy=best_policy, # type: ignore[arg-type]
+            n_generations=n_sims,
+            weights_file=weights_file
         )
     else:
-        raise ValueError(f"Unknown policy_type: {policy_type!r}")
+        best_policy, best_reward, greedy_sims = _greedy_loop(
+            env=env,
+            policy=best_policy,
+            policy_type=policy_type,
+            n_sims=n_sims,
+            mutation_scale=mutation_scale,
+            mutation_share=mutation_share,
+            weights_file=weights_file,
+            best_reward=best_reward
+        )
 
     env.close()
 
-    # Summary
     logger.info("=== Training complete — best total reward: %+.1f ===", best_reward)
     logger.info("  %4s  %8s  Result", "Sim", "Reward")
     for s in greedy_sims:
@@ -668,9 +790,9 @@ def train_rl(
         "start":        t_start.strftime(fmt),
         "end":          t_end.strftime(fmt),
         "total_s":      (t_end - t_start).total_seconds(),
-        "probe_s":      (t_after_probe - t_start).total_seconds()         if t_after_probe else None,
-        "cold_start_s": (t_after_cold  - t_after_probe).total_seconds()   if t_after_cold and t_after_probe else None,
-        "greedy_s":     (t_end         - t_greedy_start).total_seconds(),
+        "probe_s":      (t_after_probe - t_start).total_seconds()        if t_after_probe else None,
+        "cold_start_s": (t_after_cold - t_after_probe).total_seconds()   if t_after_cold and t_after_probe else None,
+        "greedy_s":     (t_end - t_greedy_start).total_seconds(),
     }
 
     return ExperimentData(
@@ -683,6 +805,7 @@ def train_rl(
         reward_config_file=reward_config_file,
         training_params=training_params or {},
         timings=timings,
+        track=track,
     )
 
 
@@ -692,7 +815,7 @@ def train_rl(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="TMNF RL training")
-    parser.add_argument("experiment", help="Experiment name — files stored in experiments/<name>/")
+    parser.add_argument("experiment", help="Experiment name — files stored in experiments/<track>/<name>/")
     parser.add_argument("--no-interrupt", action="store_true",
                         help="Skip all 'Press Enter' prompts and run all phases automatically")
     parser.add_argument("--re-initialize", action="store_true",
@@ -709,7 +832,20 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
 
-    experiment_dir  = f"experiments/{args.experiment}"
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    # Bootstrap: read track from master config before the experiment dir exists,
+    # then re-read the experiment-local copy once it has been created.
+    with open("config/training_params.yaml") as f:
+        master_p = yaml.safe_load(f)
+    track = master_p.get("track", "a03_centerline")
+    centerline_file = f"tracks/{track}.npy"
+
+    experiment_dir  = f"experiments/{track}/{args.experiment}"
     weights_file    = f"{experiment_dir}/policy_weights.yaml"
     reward_cfg_file = f"{experiment_dir}/reward_config.yaml"
 
@@ -726,6 +862,10 @@ def main() -> None:
     with open(training_params_file) as f:
         p = yaml.safe_load(f)
 
+    # Allow per-experiment overrides of track (if the copied config was edited).
+    track = p.get("track", track)
+    centerline_file = f"tracks/{track}.npy"
+
     data = train_rl(
         experiment_name=args.experiment,
         speed=p["speed"],
@@ -734,6 +874,7 @@ def main() -> None:
         weights_file=weights_file,
         reward_config_file=reward_cfg_file,
         mutation_scale=p["mutation_scale"],
+        mutation_share=p.get("mutation_share", 1.0),
         probe_in_game_s=p["probe_s"],
         cold_start_restarts=p["cold_restarts"],
         cold_start_sims=p["cold_sims"],
@@ -743,6 +884,8 @@ def main() -> None:
         re_initialize=args.re_initialize,
         policy_type=p.get("policy_type", "hill_climbing"),
         policy_params=p.get("policy_params") or {},
+        centerline_file=centerline_file,
+        track=track,
     )
 
     save_experiment_results(data, results_dir=f"{experiment_dir}/results")

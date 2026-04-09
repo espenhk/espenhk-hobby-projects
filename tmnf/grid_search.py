@@ -6,6 +6,7 @@ Usage (from tmnf/):
 
 Config format (YAML):
     base_name: "gs_v1"
+    track: a03_centerline       # stem of tracks/<track>.npy (default: a03_centerline)
     training_params:
         speed: 10.0
         n_sims: 50
@@ -18,6 +19,7 @@ Config format (YAML):
 
 Any param set to a list becomes a search axis; all others are fixed.
 One experiment is run per unique combination. Names encode only the varied params.
+Results are written to experiments/<track>/<name>/.
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ _ABBREV = {
     "n_sims":          "nsims",
     "in_game_episode_s": "ep",
     "mutation_scale":  "ms",
+    "mutation_share":  "mshare",
     "probe_s":         "probe",
     "cold_restarts":   "cr",
     "cold_sims":       "cs",
@@ -124,14 +127,15 @@ def _make_experiment_name(base_name: str, combo: dict[str, Any], varied_keys: li
 # Config loading and grid expansion
 # ---------------------------------------------------------------------------
 
-def _load_grid_config(path: str) -> tuple[str, dict[str, Any], dict[str, Any]]:
-    """Load grid config YAML. Returns (base_name, training_spec, reward_spec)."""
+def _load_grid_config(path: str) -> tuple[str, str, dict[str, Any], dict[str, Any]]:
+    """Load grid config YAML. Returns (base_name, track, training_spec, reward_spec)."""
     with open(path) as f:
         cfg = yaml.safe_load(f)
     base_name = cfg.get("base_name", "gs")
+    track = cfg.get("track", "a03_centerline")
     training_spec = cfg.get("training_params", {})
     reward_spec = cfg.get("reward_params", {})
-    return base_name, training_spec, reward_spec
+    return base_name, track, training_spec, reward_spec
 
 
 def _expand_grid(training_spec: dict[str, Any], reward_spec: dict[str, Any]) -> tuple[list[dict[str, Any]], list[str]]:
@@ -219,12 +223,25 @@ def main() -> None:
         datefmt="%H:%M:%S",
     )
 
-    base_name, training_spec, reward_spec = _load_grid_config(args.config)
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    base_name, track, training_spec, reward_spec = _load_grid_config(args.config)
     combos, varied_keys = _expand_grid(training_spec, reward_spec)
+    centerline_file = f"tracks/{track}.npy"
 
     n = len(combos)
-    logger.info("=== Grid search: %d combination(s)  base=%s%s ===",
-                n, base_name, f"  varied: {', '.join(varied_keys)}" if varied_keys else "")
+    logger.info(f"  Grid search: {n} combination(s)")
+    logger.info(f"  Base name:   {base_name}")
+    logger.info(f"  Track:       {track}")
+    if varied_keys:
+        logger.info(f"  Varied:      {', '.join(varied_keys)}")
+    if varied_keys:
+        logger.info("  Varied:      %s", ', '.join(varied_keys))
+    logger.info("%s", "="*60)
 
     # Log all experiment names upfront so the user knows what's coming
     names = []
@@ -242,7 +259,7 @@ def main() -> None:
 
         logger.info("=== Run %d/%d: %s ===", i, n, name)
 
-        experiment_dir = f"experiments/{name}"
+        experiment_dir = f"experiments/{track}/{name}"
         weights_file   = f"{experiment_dir}/policy_weights.yaml"
         reward_cfg_file = f"{experiment_dir}/reward_config.yaml"
         training_params_file = f"{experiment_dir}/training_params.yaml"
@@ -268,6 +285,7 @@ def main() -> None:
             weights_file=weights_file,
             reward_config_file=reward_cfg_file,
             mutation_scale=t["mutation_scale"],
+            mutation_share=t.get("mutation_share", 1.0),
             probe_in_game_s=t.get("probe_s", 0),
             cold_start_restarts=t.get("cold_restarts", 0),
             cold_start_sims=t.get("cold_sims", 0),
@@ -277,6 +295,8 @@ def main() -> None:
             re_initialize=args.re_initialize,
             policy_type=t.get("policy_type", "hill_climbing"),
             policy_params=_build_policy_params(t),
+            centerline_file=centerline_file,
+            track=track,
         )
 
         save_experiment_results(data, results_dir=f"{experiment_dir}/results")
@@ -295,7 +315,7 @@ def main() -> None:
         logger.info("  %-50s  %+12.1f", exp_name, best)
 
     # Cross-experiment summary report
-    summary_dir = f"experiments/{base_name}__summary"
+    summary_dir = f"experiments/{track}/{base_name}__summary"
     save_grid_summary(all_runs, varied_keys, summary_dir, base_name)
     logger.info("Summary report: %s/summary.md", summary_dir)
 
