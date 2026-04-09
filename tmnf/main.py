@@ -429,7 +429,6 @@ _ONLINE_POLICIES   = {"epsilon_greedy", "mcts"}
 def _greedy_loop(
     env: TMNFEnv,
     policy: BasePolicy,
-    policy_type: str,
     n_sims: int,
     mutation_scale: float,
     weights_file: str,
@@ -763,7 +762,6 @@ def train_rl(
         best_policy, best_reward, greedy_sims = _greedy_loop(
             env=env,
             policy=best_policy,
-            policy_type=policy_type,
             n_sims=n_sims,
             mutation_scale=mutation_scale,
             mutation_share=mutation_share,
@@ -788,7 +786,6 @@ def train_rl(
         best_policy, best_reward, greedy_sims = _greedy_loop(
             env=env,
             policy=best_policy,
-            policy_type=policy_type,
             n_sims=n_sims,
             mutation_scale=mutation_scale,
             mutation_share=mutation_share,

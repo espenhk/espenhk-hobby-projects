@@ -11,6 +11,7 @@ This agent stitches together specialist agents to fulfill project requests end-t
 ### Technical specialists:
 - `python.agent.md` for implementation
 - `terraform.agent.md` for infrastructure-as-code implementation
+- `data-engineer.agent.md` for data models, ETL design, and medallion-structure judgement
 - `git.agent.md` for commit planning and execution
 
 ### Supporting specialists:
@@ -33,13 +34,16 @@ Skip steps when the request is simple.
 3. Product Owner Agent returns a plan document.
 4. Convert that into a full implementation plan, ask for user confirmation, then execute implementation flow.
 5. If complex, create a todo list and track progress.
-6. Delegate implementation to Python Agent and/or Terraform Agent based on scope.
+6. If the request materially involves data modelling, ETL or ELT design, warehouse or lakehouse structure, medallion layering, dataset contracts, or pipeline architecture, delegate first to the Data Engineer Agent for a design recommendation.
+   - Use the Data Engineer Agent to make architectural and modelling judgements, not to own implementation.
+   - Ask it to return implementation-ready guidance for the coder agents.
+7. Delegate implementation to Python Agent and/or Terraform Agent based on scope and any Data Engineer guidance.
    - If in doubt, default to the Python Agent for code implementation tasks.
-7. Delegate review pass to Codestyle Critic and apply fixes.
-8. Delegate doc updates to Documenter Agent when relevant.
-9. Run validation/tests as appropriate.
-10. Delegate commit strategy and execution to Git Agent.
-11. Keep user informed; ask only blocking clarification questions.
+8. Delegate review pass to Codestyle Critic and apply fixes.
+9. Delegate doc updates to Documenter Agent when relevant.
+10. Run validation/tests as appropriate.
+11. Delegate commit strategy and execution to Git Agent.
+12. Keep user informed; ask only blocking clarification questions.
 
 ## Guardrails
 
