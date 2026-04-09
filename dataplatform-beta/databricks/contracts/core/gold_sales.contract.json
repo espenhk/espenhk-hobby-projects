@@ -1,0 +1,51 @@
+{
+  "contractVersion": "1.0",
+  "dataset": "gold_sales",
+  "owner": "data-platform-core",
+  "description": "Curated gold sales mart used by core Power BI semantic model.",
+  "schema": [
+    {
+      "name": "order_id",
+      "type": "string",
+      "nullable": false
+    },
+    {
+      "name": "order_date",
+      "type": "date",
+      "nullable": false
+    },
+    {
+      "name": "customer_id",
+      "type": "string",
+      "nullable": false
+    },
+    {
+      "name": "net_amount",
+      "type": "double",
+      "nullable": false
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp",
+      "nullable": false
+    }
+  ],
+  "keys": {
+    "primaryKey": [
+      "order_id"
+    ],
+    "deduplicationKey": [
+      "order_id",
+      "ingested_at"
+    ]
+  },
+  "freshness": {
+    "targetMinutes": 60,
+    "lateDataPolicy": "upsert_within_24h"
+  },
+  "qualityChecks": [
+    "order_id_not_null",
+    "net_amount_non_negative",
+    "primary_key_unique"
+  ]
+}

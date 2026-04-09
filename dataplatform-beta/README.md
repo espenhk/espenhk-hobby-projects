@@ -7,16 +7,21 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - PBIP repository structure for semantic models and reports.
 - Deployment config contracts for workspaces and pipeline rules.
 - GitHub Actions workflows for PBIP validation and release orchestration.
+- GitHub Actions workflows for Terraform fmt/init/validate and data-contract checks.
 - Python utility scripts for PBIP validation, smoke checks, and deployment pipeline promotion.
+- Python utility script for data-contract validation.
 - Terraform module scaffold for Entra groups used by Power BI RBAC.
+- Initial dataset contract scaffolding under databricks/contracts.
 
 ## Directory map
 - PLAN.md: platform plan and decisions.
 - docs/powerbi-serving.md: Power BI delivery operating model.
 - powerbi/deployment/: workspace and pipeline config maps.
 - powerbi/domains/: domain PBIP artifacts.
-- ci/: GitHub Actions workflows for Power BI.
-- scripts/powerbi/: automation helpers used by workflows.
+- ci/: GitHub Actions workflows for Power BI, Terraform, and data contracts.
+- scripts/powerbi/: Power BI automation helpers used by workflows.
+- scripts/contracts/: data-contract validation helpers.
+- databricks/contracts/: versioned data contracts for CI enforcement.
 - terraform/: IaC scaffold for Power BI RBAC groups.
 
 ## GitHub configuration required
@@ -44,11 +49,19 @@ Repository secrets:
   - Push to main: validates PBIP conventions, updates Dev, runs Dev smoke checks, promotes Dev -> Test.
   - Manual workflow dispatch on main: promotes Test -> Prod with change ticket gate.
   - Runs post-promotion smoke checks.
+- ci/terraform-validate-plan.yml:
+  - Runs terraform fmt -check and terraform init/validate for dev/test/prod roots on pull requests.
+- ci/data-contract-checks.yml:
+  - Runs data-contract JSON validation on pull requests touching contract files.
 
 ## Local validation
 Run PBIP validation:
 
 python dataplatform-beta/scripts/powerbi/validate_pbip.py
+
+Run data-contract validation:
+
+python dataplatform-beta/scripts/contracts/validate_contracts.py
 
 ## Architecture and flow diagrams
 Mermaid source diagrams are in docs/architecture-flow-diagrams.md and embedded here for quick review.
