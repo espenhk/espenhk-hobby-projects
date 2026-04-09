@@ -39,7 +39,7 @@ from rl.reward import RewardConfig
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-CENTERLINE_FILE  = "tracks/a03_centerline.npy"
+CENTERLINE_FILE  = os.environ.get("TMNF_TRACK", "tracks/a03_centerline.npy")
 SPEED            = 10.0      # game speed multiplier
 TOTAL_TIMESTEPS  = 500_000
 CHECKPOINT_FREQ  = 5_000     # save a checkpoint every N steps

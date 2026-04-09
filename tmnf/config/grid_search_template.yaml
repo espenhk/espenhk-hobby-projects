@@ -22,6 +22,7 @@ training_params:
   n_sims: 50
   in_game_episode_s: 30.0
   mutation_scale: 0.05
+  mutation_share: 1.0       # fraction of weights perturbed per mutation (1.0 = all, 0.2 = ~6/30)
   probe_s: 8.0
   cold_restarts: 20
   cold_sims: 5
