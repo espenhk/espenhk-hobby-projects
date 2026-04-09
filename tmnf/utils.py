@@ -90,10 +90,9 @@ class StateData:
         self.track_forward = None   # unit np.ndarray of track direction at car position
         self._centerline_idx = None  # nearest centerline point index (for windowed search)
         if centerline is not None:
-            pos = get_position(state)
             (self.track_progress, self.lateral_offset, self.vertical_offset,
              self.track_forward, self._centerline_idx) = centerline.project_with_forward(
-                pos, hint_idx=hint_idx
+                self.position, hint_idx=hint_idx
             )
 
     def __str__(self) -> str:

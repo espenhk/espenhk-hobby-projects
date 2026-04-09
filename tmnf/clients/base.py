@@ -4,9 +4,18 @@ Provides the shared phase state machine fields and _transition() helper so
 each concrete client only implements the phase-specific driving logic.
 """
 
+from enum import Enum, auto
+
 from tminterface.client import Client
 
-from clients.phase import Phase
+
+class Phase(Enum):
+    BRAKING_START = auto()
+    PAUSE_START   = auto()
+    RUNNING       = auto()
+    BRAKING_END   = auto()
+    PAUSE_END     = auto()
+    DONE          = auto()
 
 
 class PhaseAwareClient(Client):

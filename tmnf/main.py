@@ -9,9 +9,9 @@ import yaml
 import numpy as np
 import datetime
 
-from tminterface.interface import TMInterface
 
-from clients.rl_client import ACTIONS, N_ACTIONS, get_action_description
+from clients.rl_client import ACTIONS
+from constants import N_ACTIONS
 from policies import (
     BasePolicy,
     WeightedLinearPolicy,
@@ -31,22 +31,6 @@ from analytics import (
     ExperimentData,
     save_experiment_results
 )
-
-
-def run_adaptive(speed: float) -> None:
-    """Follow the centreline using the hand-tuned PD controller."""
-    client = AdaptiveClient("tracks/a03_centerline.npy")
-    iface = TMInterface()
-    iface.execute_command(f"set speed {speed}")
-
-    print("Waiting for TMInterface connection...")
-    iface.register(client)
-    try:
-        while iface.running:
-            time.sleep(0)
-    except KeyboardInterrupt:
-        pass
-    iface.close()
 
 
 # ---------------------------------------------------------------------------

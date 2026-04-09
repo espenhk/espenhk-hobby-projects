@@ -53,7 +53,7 @@ import gymnasium as gym
 from gymnasium import spaces
 from tminterface.interface import TMInterface
 
-from clients.rl_client import ACTIONS, RLClient, StepState, StepState
+from clients.rl_client import ACTIONS, RLClient, StepState
 from constants import N_ACTIONS
 from obs_spec import BASE_OBS_DIM
 from rl.reward import RewardConfig, RewardCalculator

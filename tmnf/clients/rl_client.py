@@ -30,8 +30,6 @@ import numpy as np
 from tminterface.interface import TMInterface
 
 from clients.base import PhaseAwareClient
-from clients.phase import Phase, VELOCITY_ZERO_THRESHOLD
-from constants import N_ACTIONS, STEER_SCALE, UP_VECTOR
 from steering import angle_diff
 from track import Centerline
 from utils import StateData
@@ -327,9 +325,9 @@ class RLClient(PhaseAwareClient):
                   f"progress={step_state.state_data.track_progress}")
         self._state_queue.put(step_state)
 
-    def _compute_yaw_error(self, raw_state: Any, data: StateData) -> float:
+    def _compute_yaw_error(self, data: StateData) -> float:
         """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
-        pos = get_position(raw_state)
-        track_fwd = self.centerline.forward_at(pos)
+        assert data.track_forward is not None  # always set when centerline is provided
+        track_fwd = data.track_forward
         track_yaw = math.atan2(float(track_fwd[0]), float(track_fwd[2]))
         return angle_diff(track_yaw, data.rotation.yaw())
