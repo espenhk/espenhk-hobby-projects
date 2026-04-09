@@ -36,10 +36,11 @@ from analytics import (
 # Env factory (shared setup)
 # ---------------------------------------------------------------------------
 
-def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0) -> TMNFEnv:
+def _make_env(speed: float, in_game_episode_s: float, reward_config_file: str, n_lidar_rays: int = 0,
+              centerline_file: str = "tracks/a03_centerline.npy") -> TMNFEnv:
 
     return TMNFEnv(
-        centerline_file="tracks/a03_centerline.npy",
+        centerline_file=centerline_file,
         speed=speed,
         reward_config=RewardConfig.from_yaml(reward_config_file),
         max_episode_time_s=in_game_episode_s / speed,
@@ -261,12 +262,14 @@ def _print_action_stats(throttle_counts: list[int], turning_steps: int, steps: i
 # Watch mode: run indefinitely, resetting every in_game_episode_s seconds
 # ---------------------------------------------------------------------------
 
-def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0, reward_config_file: str = "config/reward_config.yaml") -> None:
+def run_rl_policy(speed: float, policy: BasePolicy, in_game_episode_s: float = 20.0,
+                  reward_config_file: str = "config/reward_config.yaml",
+                  centerline_file: str = "tracks/a03_centerline.npy") -> None:
     """
     Repeatedly drive the track with *policy*, resetting every
     *in_game_episode_s* in-game seconds.  Ctrl+C to stop.
     """
-    env = _make_env(speed, in_game_episode_s, reward_config_file)
+    env = _make_env(speed, in_game_episode_s, reward_config_file, centerline_file=centerline_file)
     time.sleep(1)
 
     run = 0
@@ -552,6 +555,8 @@ def train_rl(
     re_initialize: bool = False,
     policy_type: str = "hill_climbing",
     policy_params: dict[str, Any] | None = None,
+    centerline_file: str = "tracks/a03_centerline.npy",
+    track: str = "",
 ) -> ExperimentData:
     """
     Train a driving policy via the selected algorithm.
@@ -578,7 +583,8 @@ def train_rl(
             input("\n  [PROBE PHASE]  Press Enter to connect and start probe runs...")
 
     print("Connecting to game...")
-    env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays)
+    env = _make_env(speed, in_game_episode_s, reward_config_file, n_lidar_rays=n_lidar_rays,
+                    centerline_file=centerline_file)
 
     probe_results  = []
     cold_start_data = []
@@ -670,6 +676,7 @@ def train_rl(
         reward_config_file=reward_config_file,
         training_params=training_params or {},
         timings=timings,
+        track=track,
     )
 
 
@@ -679,7 +686,7 @@ def train_rl(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="TMNF RL training")
-    parser.add_argument("experiment", help="Experiment name — files stored in experiments/<name>/")
+    parser.add_argument("experiment", help="Experiment name — files stored in experiments/<track>/<name>/")
     parser.add_argument("--no-interrupt", action="store_true",
                         help="Skip all 'Press Enter' prompts and run all phases automatically")
     parser.add_argument("--re-initialize", action="store_true",
@@ -687,7 +694,14 @@ def main() -> None:
                              "including probe and cold-start phases.")
     args = parser.parse_args()
 
-    experiment_dir  = f"experiments/{args.experiment}"
+    # Bootstrap: read track from master config before the experiment dir exists,
+    # then re-read the experiment-local copy once it has been created.
+    with open("config/training_params.yaml") as f:
+        master_p = yaml.safe_load(f)
+    track = master_p.get("track", "a03_centerline")
+    centerline_file = f"tracks/{track}.npy"
+
+    experiment_dir  = f"experiments/{track}/{args.experiment}"
     weights_file    = f"{experiment_dir}/policy_weights.yaml"
     reward_cfg_file = f"{experiment_dir}/reward_config.yaml"
 
@@ -703,6 +717,10 @@ def main() -> None:
 
     with open(training_params_file) as f:
         p = yaml.safe_load(f)
+
+    # Allow per-experiment overrides of track (if the copied config was edited).
+    track = p.get("track", track)
+    centerline_file = f"tracks/{track}.npy"
 
     data = train_rl(
         experiment_name=args.experiment,
@@ -721,6 +739,8 @@ def main() -> None:
         re_initialize=args.re_initialize,
         policy_type=p.get("policy_type", "hill_climbing"),
         policy_params=p.get("policy_params") or {},
+        centerline_file=centerline_file,
+        track=track,
     )
 
     save_experiment_results(data, results_dir=f"{experiment_dir}/results")
