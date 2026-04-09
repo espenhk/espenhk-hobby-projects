@@ -90,6 +90,7 @@ class RewardCalculator:
         elapsed_s: float,
         accelerating: bool = False,
         lidar_rays: np.ndarray | None = None,
+        n_ticks: int = 1,
     ) -> float:
         cfg = self.config
         reward = 0.0
@@ -107,11 +108,12 @@ class RewardCalculator:
         reward += cfg.speed_weight * curr.velocity.magnitude()
 
         # Acceleration bonus: nudge the policy away from coasting.
+        # Scaled by n_ticks because the action was held for that many game ticks.
         if accelerating:
-            reward += cfg.accel_bonus
+            reward += cfg.accel_bonus * n_ticks
 
-        # Time cost: constant small penalty per tick.
-        reward += cfg.step_penalty
+        # Time cost: constant small penalty per tick, scaled by ticks covered.
+        reward += cfg.step_penalty * n_ticks
 
         # Finish: one-time bonus + time-relative bonus.
         if finished:

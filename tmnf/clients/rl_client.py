@@ -25,14 +25,13 @@ import math
 import queue
 import threading
 from dataclasses import dataclass
-from typing import Any
 
 import numpy as np
 from tminterface.client import Client
 from tminterface.interface import TMInterface
 
 from track import Centerline
-from utils import StateData, get_position
+from utils import StateData
 
 
 _UP = np.array([0.0, 1.0, 0.0])
@@ -71,6 +70,7 @@ class StepState:
     yaw_error: float   # signed radians: track heading minus car heading, in [-π, π]
     done: bool         # True if game client detected a hard termination condition
     finished: bool = False  # True when car crossed the finish line
+    ticks_this_step: int = 1  # game ticks covered by this RL step (≥1; >1 when events were skipped)
 
 
 class RLClient(Client):
@@ -101,6 +101,12 @@ class RLClient(Client):
         # is delivered to the RL thread before the respawn is triggered.
         self._finish_respawn_pending: bool = False
         self._last_step_state: StepState | None = None
+
+        # Cached nearest centerline index from the previous tick.  Passed as
+        # hint_idx to project_with_forward() so it only searches a local window
+        # (O(window)) instead of the full centerline (O(N)) every tick.
+        # Reset to None on respawn so the first tick does a full scan.
+        self._last_centerline_idx: int | None = None
 
     # ------------------------------------------------------------------
     # RL-thread API
@@ -182,11 +188,14 @@ class RLClient(Client):
         if self._respawn_event.is_set():
             self._respawn_event.clear()
             iface.give_up()
+            self._last_centerline_idx = None  # full scan on next tick after respawn
             self._running = False
             return
 
         state = iface.get_simulation_state()
-        data = StateData(state, centerline=self.centerline)
+        data = StateData(state, centerline=self.centerline,
+                         hint_idx=self._last_centerline_idx)
+        self._last_centerline_idx = data._centerline_idx
         speed_ms = data.velocity.magnitude()
 
         if not self._running:
@@ -243,18 +252,27 @@ class RLClient(Client):
     # ------------------------------------------------------------------
 
     def _drain_and_put(self, step_state: StepState) -> None:
-        """Replace any unread state in the queue with the newest one."""
+        """Replace any unread state in the queue with the newest one.
+
+        If the RL thread hadn't yet read the previous state, carry its tick
+        count forward so the new state's ticks_this_step reflects every game
+        tick that fired since the last successful read.
+        """
         self._last_step_state = step_state
         try:
-            self._state_queue.get_nowait()
+            evicted = self._state_queue.get_nowait()
+            step_state.ticks_this_step += evicted.ticks_this_step
         except queue.Empty:
             pass
         self._state_queue.put(step_state)
 
-    def _compute_yaw_error(self, raw_state: Any, data: StateData) -> float:
-        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π]."""
-        pos = get_position(raw_state)
-        track_fwd = self.centerline.forward_at(pos)
+    def _compute_yaw_error(self, data: StateData) -> float:
+        """Signed heading error: track yaw minus car yaw, wrapped to [-π, π].
+
+        Uses the forward direction already computed by StateData.project_with_forward()
+        — no second centerline scan needed.
+        """
+        track_fwd = data.track_forward
         track_yaw = math.atan2(float(track_fwd[0]), float(track_fwd[2]))
         car_yaw = data.rotation.yaw()
         diff = (track_yaw - car_yaw + math.pi) % (2 * math.pi) - math.pi
