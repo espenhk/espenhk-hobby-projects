@@ -11,8 +11,11 @@ are simply not written.
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
+
+logger = logging.getLogger(__name__)
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.cm as cm
@@ -721,7 +724,7 @@ def save_experiment_results(data: ExperimentData, results_dir: str) -> None:
         f.writelines(sections)
 
     n = len(os.listdir(results_dir))
-    print(f"  Saved {n} file(s) to {results_dir}/ (report: results.md)")
+    logger.info("Saved %d file(s) to %s/ (report: results.md)", n, results_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -980,4 +983,4 @@ def save_grid_summary(
         f.writelines(lines)
 
     n = len(os.listdir(summary_dir))
-    print(f"  Saved {n} file(s) to {summary_dir}/ (report: summary.md)")
+    logger.info("Saved %d file(s) to %s/ (report: summary.md)", n, summary_dir)

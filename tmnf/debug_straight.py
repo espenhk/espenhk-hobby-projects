@@ -18,9 +18,12 @@ finish/simulation events. Pair with RLClient (via main.py) to also see
 the respawn debug output.
 """
 
+import logging
 import time
 
 from tminterface.interface import TMInterface
+
+logger = logging.getLogger(__name__)
 
 from clients.instruction_client import InstructionClient
 
@@ -36,7 +39,7 @@ def main():
         speed=SPEED,
     )
     iface = TMInterface()
-    print(f"Waiting for TMInterface connection...")
+    logger.info("Waiting for TMInterface connection...")
     iface.register(client)
     try:
         while iface.running:

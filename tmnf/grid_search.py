@@ -26,12 +26,15 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import logging
 import os
 from typing import Any
 
 import yaml
 from analytics import save_experiment_results, save_grid_summary
 from main import train_rl
+
+logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
@@ -209,28 +212,43 @@ def main() -> None:
     parser.add_argument("--re-initialize", action="store_true",
                         help="Start each run from fresh random small-positive weights, "
                              "ignoring any existing weights file. Skips probe and cold-start.")
+    parser.add_argument("--log-level", default="INFO",
+                        choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                        help="Logging verbosity (default: INFO)")
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
 
     base_name, track, training_spec, reward_spec = _load_grid_config(args.config)
     combos, varied_keys = _expand_grid(training_spec, reward_spec)
     centerline_file = f"tracks/{track}.npy"
 
     n = len(combos)
-    print(f"\n{'='*60}")
-    print(f"  Grid search: {n} combination(s)")
-    print(f"  Base name:   {base_name}")
-    print(f"  Track:       {track}")
+    logger.info(f"  Grid search: {n} combination(s)")
+    logger.info(f"  Base name:   {base_name}")
+    logger.info(f"  Track:       {track}")
     if varied_keys:
-        print(f"  Varied:      {', '.join(varied_keys)}")
-    print(f"{'='*60}\n")
+        logger.info(f"  Varied:      {', '.join(varied_keys)}")
+    if varied_keys:
+        logger.info("  Varied:      %s", ', '.join(varied_keys))
+    logger.info("%s", "="*60)
 
-    # Print all experiment names upfront so the user knows what's coming
+    # Log all experiment names upfront so the user knows what's coming
     names = []
     for c in combos:
         name = _make_experiment_name(base_name, c["_flat"], varied_keys)
         names.append(name)
-        print(f"  {name}")
-    print()
+        logger.info("  %s", name)
 
 
     all_runs = []   # list of (name, ExperimentData) for the summary
@@ -239,9 +257,7 @@ def main() -> None:
         t = combo["training_params"]
         r = combo["reward_params"]
 
-        print(f"\n{'='*60}")
-        print(f"  Run {i}/{n}: {name}")
-        print(f"{'='*60}")
+        logger.info("=== Run %d/%d: %s ===", i, n, name)
 
         experiment_dir = f"experiments/{track}/{name}"
         weights_file   = f"{experiment_dir}/policy_weights.yaml"
@@ -287,24 +303,21 @@ def main() -> None:
         all_runs.append((name, data))
 
         best = max((s.reward for s in data.greedy_sims), default=float("-inf"))
-        print(f"\n  [{i}/{n}] {name}  best_reward={best:+.1f}\n")
+        logger.info("[%d/%d] %s  best_reward=%+.1f", i, n, name, best)
 
-    # Final summary table (console)
-    print(f"\n{'='*60}")
-    print(f"  Grid search complete — {n} run(s)")
-    print(f"  {'Experiment':<50}  {'Best Reward':>12}")
-    print(f"  {'-'*64}")
+    # Final summary table
+    logger.info("=== Grid search complete — %d run(s) ===", n)
+    logger.info("  %-50s  %12s", "Experiment", "Best Reward")
     for exp_name, exp_data in sorted(
         all_runs, key=lambda x: -max((s.reward for s in x[1].greedy_sims), default=float("-inf"))
     ):
         best = max((s.reward for s in exp_data.greedy_sims), default=float("-inf"))
-        print(f"  {exp_name:<50}  {best:>+12.1f}")
-    print(f"{'='*60}\n")
+        logger.info("  %-50s  %+12.1f", exp_name, best)
 
     # Cross-experiment summary report
     summary_dir = f"experiments/{track}/{base_name}__summary"
     save_grid_summary(all_runs, varied_keys, summary_dir, base_name)
-    print(f"  Summary report: {summary_dir}/summary.md")
+    logger.info("Summary report: %s/summary.md", summary_dir)
 
 
 if __name__ == "__main__":

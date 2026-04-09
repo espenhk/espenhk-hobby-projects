@@ -35,6 +35,9 @@ from steering import angle_diff
 from track import Centerline
 from utils import StateData
 
+import logging
+
+logger = logging.getLogger(__name__)
 
 _UP = np.array([0.0, 1.0, 0.0])
 VELOCITY_ZERO_THRESHOLD = 0.5  # m/s — wait for car to stop before starting episode
@@ -187,7 +190,7 @@ class RLClient(PhaseAwareClient):
     # ------------------------------------------------------------------
 
     def on_registered(self, iface: TMInterface) -> None:
-        print(f"[RLClient] Connected. Running at {self.speed}x speed.")
+        logger.info("Connected. RLClient running at %sx speed.", self.speed)
         iface.execute_command(f"set speed {self.speed}")
         self._registered_event.set()
 
@@ -196,17 +199,17 @@ class RLClient(PhaseAwareClient):
         Unlike on_simulation_begin (one-shot), this fires repeatedly so a
         drain+overwrite race between on_run_step and the RL thread cannot
         cause the finish step to be lost."""
-        print(f"[RLClient] on_simulation_step t={_time} running={self._running} "
-              f"delivered={self._simulation_finish_delivered} "
-              f"last_state={'yes' if self._last_step_state else 'no'}")
+        logger.debug("[RLClient] on_simulation_step t=%d running=%s delivered=%s last_state=%s",
+                    _time, self._running, self._simulation_finish_delivered,
+                    'yes' if self._last_step_state else 'no')
 
         if not self._running:
-            print(f"[RLClient] on_simulation_step: not RUNNING — ignoring")
+            logger.debug("[RLClient] on_simulation_step: not RUNNING — ignoring")
             return
         if self._simulation_finish_delivered:
             return  # already delivered; wait for respawn
         if self._last_step_state is None:
-            print(f"[RLClient] on_simulation_step: no last_step_state — cannot synthesize")
+            logger.debug("[RLClient] on_simulation_step: no last_step_state — cannot synthesize")
             return
 
         synthetic = StepState(
@@ -218,11 +221,11 @@ class RLClient(PhaseAwareClient):
         )
         self._drain_and_put(synthetic)
         self._simulation_finish_delivered = True
-        print(f"[RLClient] on_simulation_step: delivered synthetic finish step")
+        logger.debug("[RLClient] on_simulation_step: delivered synthetic finish step")
 
         if self._auto_respawn_on_finish:
             self._finish_respawn_pending = True
-            print(f"[RLClient] on_simulation_step: auto-respawn pending set")
+            logger.debug("[RLClient] on_simulation_step: auto-respawn pending set")
 
     def on_run_step(self, iface: TMInterface, _time: int) -> None:
         self._tick += 1
@@ -230,7 +233,7 @@ class RLClient(PhaseAwareClient):
         # Handle a pending respawn request from the RL thread.
         if self._respawn_event.is_set():
             self._respawn_event.clear()
-            print(f"[RLClient] on_run_step t={_time}: respawn triggered → give_up()")
+            logger.debug("[RLClient] on_run_step t=%d: respawn triggered → give_up()", _time)
             iface.give_up()
             self._last_centerline_idx = None  # full scan on next tick after respawn
             self._simulation_finish_delivered = False
@@ -245,13 +248,13 @@ class RLClient(PhaseAwareClient):
         speed_ms = data.velocity.magnitude()
 
         if self._tick % 100 == 0:
-            print(f"[RLClient] tick={self._tick} t={_time} running={self._running} "
-                  f"speed={speed_ms:.2f}m/s progress={data.track_progress}")
+            logger.debug("[RLClient] tick=%d t=%d running=%s speed=%.2fm/s progress=%s",
+                        self._tick, _time, self._running, speed_ms, data.track_progress)
 
         if not self._running:
             iface.set_input_state(brake=True)
             if speed_ms < VELOCITY_ZERO_THRESHOLD:
-                print(f"[RLClient] on_run_step t={_time}: BRAKING_START → RUNNING (episode ready)")
+                logger.debug("[RLClient] on_run_step t=%d: BRAKING_START → RUNNING (episode ready)", _time)
                 self._running = True
                 step_state = StepState(
                     state_data=data,
@@ -290,15 +293,14 @@ class RLClient(PhaseAwareClient):
             )
 
             if finished:
-                print(f"[RLClient] on_run_step t={_time}: finish detected "
-                      f"(progress={data.track_progress:.4f} >= {_FINISH_THRESHOLD}) "
-                      f"auto_respawn={self._auto_respawn_on_finish}")
+                logger.info("[RLClient] on_run_step t=%d: finish detected (progress=%.4f >= %.2f) auto_respawn=%s",
+                           _time, data.track_progress, _FINISH_THRESHOLD, self._auto_respawn_on_finish)
                 
             if finished and self._auto_respawn_on_finish:
                 # Deliver the finish step with done=False; respawn next tick.
                 self._finish_respawn_pending = True
                 done = False
-                print(f"[RLClient] on_run_step t={_time}: auto-respawn pending set")
+                logger.debug("[RLClient] on_run_step t=%d: auto-respawn pending set", _time)
             else:
                 done = finished or hard_crash
 
@@ -328,9 +330,8 @@ class RLClient(PhaseAwareClient):
         except queue.Empty:
             pass
         if step_state.done or step_state.finished or self._tick % 100 == 0:
-            print(f"[RLClient] _drain_and_put: finished={step_state.finished} "
-                  f"done={step_state.done} "
-                  f"progress={step_state.state_data.track_progress}")
+            logger.debug("[RLClient] _drain_and_put: finished=%s done=%s progress=%s",
+                        step_state.finished, step_state.done, step_state.state_data.track_progress)
         self._state_queue.put(step_state)
 
     def _compute_yaw_error(self, data: StateData) -> float:

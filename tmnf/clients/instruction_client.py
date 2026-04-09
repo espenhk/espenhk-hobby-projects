@@ -1,5 +1,9 @@
+import logging
+
 from tminterface.client import Client
 from tminterface.interface import TMInterface
+
+logger = logging.getLogger(__name__)
 
 from clients.base import Phase, PhaseAwareClient
 from instructions import InputState, apply_action, parse_instructions
@@ -24,7 +28,7 @@ class InstructionClient(PhaseAwareClient):
         self._ticks_idx = 0
 
     def on_registered(self, iface: TMInterface) -> None:
-        print(f"Connected. Running {len(self.instructions)} instruction(s) at speed {self.speed}x.")
+        logger.info("Connected. Running %d instruction(s) at speed %sx.", len(self.instructions), self.speed)
         iface.execute_command(f"set speed {self.speed}")
 
     def on_run_step(self, iface: TMInterface, _time: int) -> None:
@@ -34,7 +38,7 @@ class InstructionClient(PhaseAwareClient):
 
         self._ticks_idx += 1
         if self._ticks_idx % 100 == 0:
-            print(data)
+            logger.debug("%s", data)
 
         match self._phase:
             case Phase.BRAKING_START:
@@ -56,7 +60,7 @@ class InstructionClient(PhaseAwareClient):
                     and self.instructions[self._next_idx].time_s <= elapsed_s
                 ):
                     instr = self.instructions[self._next_idx]
-                    print(f"[t={elapsed_s:.2f}s] {instr.action}")
+                    logger.debug("[t=%.2fs] %s", elapsed_s, instr.action)
                     apply_action(instr.action, self._input)
                     self._next_idx += 1
 
@@ -73,7 +77,7 @@ class InstructionClient(PhaseAwareClient):
                 self._input = InputState()
                 if _time - self._phase_start_ms >= PAUSE_DURATION_MS:
                     self._transition(Phase.DONE, _time)
-                    print("Run complete.")
+                    logger.info("Run complete.")
 
             case Phase.DONE:
                 self._input = InputState()
@@ -83,3 +87,8 @@ class InstructionClient(PhaseAwareClient):
             brake=self._input.brake,
             steer=self._input.steer,
         )
+
+    def _transition(self, phase: Phase, current_time_ms: int) -> None:
+        logger.debug("Phase: %s -> %s", self._phase.name, phase.name)
+        self._phase = phase
+        self._phase_start_ms = current_time_ms

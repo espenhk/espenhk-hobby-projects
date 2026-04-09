@@ -8,9 +8,11 @@ Usage:
 """
 
 import argparse
-import sys
+import logging
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 from pygbx import Gbx, GbxType
 from scipy.interpolate import splev, splprep
 
@@ -61,23 +63,31 @@ def main() -> None:
     parser.add_argument("replay", help="Path to .Replay.Gbx file")
     parser.add_argument("--output", default="runs/centerline.npy", help="Output .npy path (default: runs/centerline.npy)")
     parser.add_argument("--spacing", type=float, default=2.0, help="Point spacing in metres (default: 2.0)")
+    parser.add_argument("--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"],
+                        help="Logging verbosity (default: INFO)")
     args = parser.parse_args()
 
-    print(f"Reading {args.replay!r} ...")
+    logging.basicConfig(
+        level=getattr(logging, args.log_level),
+        format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+    )
+
+    logger.info("Reading %r ...", args.replay)
     try:
         positions = extract_positions(args.replay)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
+        logger.error("%s", e)
+        raise SystemExit(1)
 
-    print(f"Extracted {len(positions)} raw sample positions.")
+    logger.info("Extracted %d raw sample positions.", len(positions))
 
     centerline = resample_centerline(positions, args.spacing)
-    print(f"Resampled to {len(centerline)} points at ~{args.spacing} m spacing.")
-    print(f"Total track length: {np.linalg.norm(np.diff(centerline, axis=0), axis=1).sum():.1f} m")
+    logger.info("Resampled to %d points at ~%s m spacing.", len(centerline), args.spacing)
+    logger.info("Total track length: %.1f m", np.linalg.norm(np.diff(centerline, axis=0), axis=1).sum())
 
     np.save(args.output, centerline)
-    print(f"Saved centerline to {args.output!r}  shape={centerline.shape}")
+    logger.info("Saved centerline to %r  shape=%s", args.output, centerline.shape)
 
 
 if __name__ == "__main__":

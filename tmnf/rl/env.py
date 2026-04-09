@@ -43,11 +43,14 @@ Notes on threading
 
 from __future__ import annotations
 
+import logging
 import os
 import time
 import threading
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 import numpy as np
 import gymnasium as gym
@@ -132,12 +135,12 @@ class TMNFEnv(gym.Env):
         self._keepalive = threading.Thread(target=self._run_iface_loop, daemon=True)
         self._keepalive.start()
 
-        print("Waiting for TMInterface connection...")
+        logger.info("Waiting for TMInterface connection...")
         if not self._client.wait_registered(timeout=15.0):
             raise RuntimeError(
                 "TMInterface did not connect within 15 s — is the game running?"
             )
-        print("Connected.")
+        logger.info("Connected.")
 
         # Episode tracking
         self._prev_state = None
@@ -278,13 +281,10 @@ class TMNFEnv(gym.Env):
         """
         skipped = self._ep_total_ticks - self._ep_rl_steps
         avg = self._ep_total_ticks / self._ep_rl_steps if self._ep_rl_steps else 0.0
-        print(
-            f"[skip] ep_step {self._total_rl_steps} | "
-            f"rl_steps={self._ep_rl_steps}  "
-            f"game_ticks={self._ep_total_ticks}  "
-            f"skipped={skipped}  "
-            f"avg={avg:.2f}  "
-            f"max={self._ep_max_skip}"
+        logger.info(
+            "[skip] ep_step %d | rl_steps=%d  game_ticks=%d  skipped=%d  avg=%.2f  max=%d",
+            self._total_rl_steps, self._ep_rl_steps, self._ep_total_ticks,
+            skipped, avg, self._ep_max_skip
         )
 
     def _make_obs(self, step: StepState) -> np.ndarray:

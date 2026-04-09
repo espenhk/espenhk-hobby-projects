@@ -4,9 +4,12 @@ Provides the shared phase state machine fields and _transition() helper so
 each concrete client only implements the phase-specific driving logic.
 """
 
+import logging
 from enum import Enum, auto
 
 from tminterface.client import Client
+
+logger = logging.getLogger(__name__)
 
 
 class Phase(Enum):
@@ -33,6 +36,6 @@ class PhaseAwareClient(Client):
 
     def _transition(self, phase: Phase, current_time_ms: int) -> None:
         """Log and apply a phase transition."""
-        print(f"Phase: {self._phase.name} -> {phase.name}")
+        logger.debug("Phase: %s -> %s", self._phase.name, phase.name)
         self._phase = phase
         self._phase_start_ms = current_time_ms
