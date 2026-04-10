@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           cd dataplatform-beta/terraform/deployment
-          terraform init -backend=false
+          terraform init -input=false
 
       - name: Select workspace
         run: |
