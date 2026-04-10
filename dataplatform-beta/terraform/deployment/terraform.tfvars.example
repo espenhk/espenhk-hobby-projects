@@ -19,3 +19,10 @@ budget_amounts = {
   data          = 200
   observability = 20
 }
+
+# Databricks workspace coordinates — leave empty on first apply (workspace does not
+# exist yet).  After the workspace is created, copy these values from the Terraform
+# outputs and re-apply so the Databricks provider can authenticate and Unity Catalog
+# resources can be provisioned.
+databricks_workspace_url             = ""
+databricks_workspace_resource_id     = ""

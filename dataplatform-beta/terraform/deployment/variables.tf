@@ -65,3 +65,19 @@ variable "unity_catalog_schema_name" {
   description = "Unity Catalog schema that contains published exchange references."
   default     = "published"
 }
+
+# Databricks workspace coordinates — populated after a first apply that
+# creates the workspace, then passed here so the Databricks provider block
+# can be fully resolved at plan time without referencing computed module outputs.
+variable "databricks_workspace_url" {
+  type        = string
+  description = "HTTPS URL of the Databricks workspace (e.g. https://adb-xxx.azuredatabricks.net). Leave empty before the workspace exists."
+  default     = ""
+}
+
+variable "databricks_workspace_resource_id" {
+  type        = string
+  description = "Azure resource ID of the Databricks workspace. Leave empty before the workspace exists."
+  default     = ""
+  sensitive   = true
+}
