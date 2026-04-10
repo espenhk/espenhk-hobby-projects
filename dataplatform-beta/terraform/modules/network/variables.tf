@@ -27,6 +27,18 @@ variable "subnets" {
   }))
 }
 
+variable "private_endpoints" {
+  description = "Private endpoints to create in the VNet and link to private DNS zones."
+  type = map(object({
+    name                  = string
+    subnet_name           = string
+    target_resource_id    = string
+    subresource_names     = list(string)
+    private_dns_zone_name = string
+  }))
+  default = {}
+}
+
 variable "tags" {
   type        = map(string)
   description = "Tags for network resources."

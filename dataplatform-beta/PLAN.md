@@ -177,7 +177,7 @@ Alert catalog minimum fields:
 
 State model:
 - One state key per environment stack using <env>/<stack>.tfstate naming.
-- Stack split per environment: foundation, connectivity, security, data_platform, governance, observability, powerbi_rbac.
+- Stack split per environment: foundation, connectivity, security, data_platform, governance, observability, powerbi.
 - Locking required for all plan/apply operations.
 - Do not read remote state directly from modules; pass dependencies through root outputs and CI inputs.
 
@@ -201,13 +201,14 @@ dataplatform-beta/
 │   ├── modules/
 │   │   ├── landing_zone/
 │   │   ├── network/
-│   │   ├── databricks_workspace/
+│   │   ├── databricks/
 │   │   ├── unity_catalog/
 │   │   ├── storage/
-│   │   ├── private_endpoints/
 │   │   ├── key_vault/
 │   │   ├── monitor_alerting/
-│   │   └── budgets_tags_policy/
+│   │   ├── budget/
+│   │   ├── foundry/
+│   │   └── powerbi/
 │   └── environments/
 │       ├── dev/
 │       ├── test/

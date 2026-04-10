@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/azuread"
       version = ">= 2.47.0"
     }
+    databricks = {
+      source  = "databricks/databricks"
+      version = ">= 1.50.0"
+    }
   }
 
   backend "azurerm" {}
@@ -20,3 +24,8 @@ provider "azurerm" {
 }
 
 provider "azuread" {}
+
+provider "databricks" {
+  host                        = startswith(module.databricks.workspace_url, "https://") ? module.databricks.workspace_url : "https://${module.databricks.workspace_url}"
+  azure_workspace_resource_id = module.databricks.workspace_id
+}

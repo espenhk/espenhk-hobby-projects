@@ -1,3 +1,3 @@
-# databricks_workspace module
+# databricks module
 
 Placeholder module for workspace provisioning and cluster policy baseline.

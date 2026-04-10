@@ -3,7 +3,7 @@
 This scaffold defines a stack-based Terraform layout per environment and currently implements the Power BI RBAC stack.
 
 ## Module
-- modules/powerbi_rbac
+- modules/powerbi
 
 ## Environment Stacks
 - environments/dev/<stack>
@@ -11,7 +11,7 @@ This scaffold defines a stack-based Terraform layout per environment and current
 - environments/prod/<stack>
 
 Current implemented stack:
-- powerbi_rbac
+- powerbi
 
 ## Usage
 1. Configure AzureAD provider credentials.
@@ -19,9 +19,9 @@ Current implemented stack:
 3. Run terraform init/plan/apply in the target environment stack folder.
 
 Example:
-- dev: environments/dev/powerbi_rbac/terraform.tfvars.example
-- test: environments/test/powerbi_rbac/terraform.tfvars.example
-- prod: environments/prod/powerbi_rbac/terraform.tfvars.example
+- dev: environments/dev/powerbi/terraform.tfvars.example
+- test: environments/test/powerbi/terraform.tfvars.example
+- prod: environments/prod/powerbi/terraform.tfvars.example
 
 ## Outputs
 - admins_group

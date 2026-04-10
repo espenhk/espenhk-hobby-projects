@@ -16,6 +16,7 @@ flowchart LR
     EH[Event Hubs]
     AL[Databricks Auto Loader]
     DBX[Azure Databricks]
+    FDRY[Azure AI Foundry]
     UC[Unity Catalog]
     ADLS[ADLS Gen2\nDelta Lake]
     KV[Key Vault]
@@ -36,12 +37,15 @@ flowchart LR
   AL --> DBX
   DBX <--> ADLS
   UC -. governance and lineage .- DBX
-  KV -. secrets .- DBX
+  KV -. secrets and connection contract .- DBX
+  KV -. connection contract .- FDRY
   ENTRA -. RBAC .- UC
+  DBX --> FDRY
   DBX --> WS
   WS --> PIPE
   PIPE --> USERS
   DBX --> LA
+  FDRY --> LA
   WS --> LA
 ```
 
@@ -53,13 +57,20 @@ flowchart LR
   RAW --> BRONZE[Bronze\nStandardized Delta]
   BRONZE --> SILVER[Silver\nValidated and Conformed]
   SILVER --> GOLD[Gold\nStar Schemas and Data Marts]
+  GOLD --> FX[foundry-exchange\nApproved Gold Publish]
 
   BRONZE --> Q[Quarantine\nInvalid Records + Reason Codes]
   SILVER --> Q
 
-  ORCH[Databricks Workflows\nSchedules + Job Dependencies] -. orchestrates .-> BRONZE
+  ORCH[Databricks Workflows\nSchedules + Job Dependencies] -. orchestrates .-> RAW
+  ORCH -. orchestrates .-> BRONZE
   ORCH -. orchestrates .-> SILVER
   ORCH -. orchestrates .-> GOLD
+  ORCH -. publish step .-> FX
+
+  UC[Unity Catalog External Location] -. governs .-> FX
+  KV[Key Vault Connection Contract] -. connects .-> FX
+  FX --> FDRY[Azure AI Foundry]
 
   GOLD --> SM[PBIP Semantic Models]
   SM --> RPT[Thin Reports]
@@ -96,4 +107,18 @@ flowchart TD
 
   PROD_SMOKE --> EVIDENCE[Deployment Evidence\nrun id, approver, timestamp]
   APPLY_PROD --> EVIDENCE
+```
+
+## 4) Example Databricks Asset Bundle workflow
+
+```mermaid
+flowchart LR
+  SRC[Orders CSV + FX CSV] --> RAW[raw\nPython task]
+  RAW --> BRONZE[bronze\nPython task]
+  BRONZE --> SILVER[silver\nPython task]
+  SILVER --> GOLD[gold\nPython task]
+  GOLD --> PUBLISH[publish_approved_gold\nPython task]
+  PUBLISH --> FX[foundry-exchange]
+  GOLD --> BI[Power BI import path]
+  FX --> FDRY[Azure AI Foundry]
 ```

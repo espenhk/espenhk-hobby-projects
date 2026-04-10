@@ -10,17 +10,18 @@ Branch: feat/dataplatform-beta-pbip
 | CI gates for Terraform and contracts | Done | Added `ci/terraform-validate-plan.yml` and `ci/data-contract-checks.yml`. |
 | PBIP validation and release workflows | Done | Implemented and previously committed in this branch. |
 | Workspace and deployment mapping | Done | `powerbi/deployment/workspace-map.yaml` and `pipeline-rules.yaml`. |
-| Power BI RBAC IaC | Done | `terraform/modules/powerbi_rbac` and env stack wiring across dev/test/prod. |
-| Terraform environment stack split | Done | Split into `foundation`, `connectivity`, `security`, `data_platform`, `governance`, `observability`, `powerbi_rbac`. |
+| Power BI RBAC IaC | Done | `terraform/modules/powerbi` and env stack wiring across dev/test/prod. |
+| Terraform environment stack split | Done | Split into `foundation`, `connectivity`, `security`, `data_platform`, `governance`, `observability`, `powerbi`. |
 | Observability stack baseline | Done | Implemented `monitor_alerting` module and wired action groups for dev/test/prod. |
 | Security stack baseline | Done | Implemented `key_vault` module and wired key vault baselines for dev/test/prod. |
 | Contract scaffolding | Done | Added contract validator and initial `gold_sales.contract.json`. |
 | Architecture/operations docs and runbooks | Done | Added architecture, security, SLO docs, decision log, and runbooks. |
+| Staged example ETL + DAB bundle | Done | Split `core_nordic_sales_nok` into raw/bronze/silver/gold modules and added a Databricks Asset Bundle workflow YAML. |
 
 ## In Progress / Remaining
 
-1. Networking module implementation (`network`, `private_endpoints`) is scaffold-only.
-2. Data platform module implementation (`databricks_workspace`, `unity_catalog`, `storage`) is scaffold-only.
+1. Networking module implementation (`network`) is active, including private endpoint and private DNS resources.
+2. Data platform module implementation (`databricks`, `unity_catalog`, `storage`) is active for workspace and exchange-path baseline.
 3. Publish-to-Dev PBIP mechanism is tenant-specific and still needs concrete implementation.
 4. Open PLAN decisions in `docs/decision-log.md` still need owners and due dates.
 

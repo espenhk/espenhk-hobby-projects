@@ -48,6 +48,7 @@ Guidelines:
 - Default serving mode: Import from Databricks Gold schemas.
 - Pilot mode: DirectQuery for low-latency needs.
 - Connection details are bound by environment rules from deployment config files.
+- Gold outputs approved for AI and agent use are separately published to the `foundry-exchange` filesystem and are not the default Power BI serving path.
 
 ## CI/CD Flow
 1. Pull request validation

@@ -1,6 +1,16 @@
 import unittest
 from pathlib import Path
 
+from dataplatform_beta.example_products.core_nordic_sales_nok_bronze import to_bronze_orders
+from dataplatform_beta.example_products.core_nordic_sales_nok_common import (
+    build_fx_lookup,
+    deserialize_bronze_rows,
+    deserialize_silver_rows,
+    serialize_rows,
+)
+from dataplatform_beta.example_products.core_nordic_sales_nok_gold import to_gold_sales_monthly_nok
+from dataplatform_beta.example_products.core_nordic_sales_nok_raw import run_raw_stage
+from dataplatform_beta.example_products.core_nordic_sales_nok_silver import to_silver_sales_lines
 from dataplatform_beta.example_products.core_nordic_sales_nok import run_pipeline
 
 
@@ -104,6 +114,33 @@ class TestCoreNordicSalesNok(unittest.TestCase):
         ]
 
         self.assertEqual(_stringify_money(self.result["gold_rows"]), expected)
+
+    def test_split_stage_modules_round_trip_across_json_boundaries(self):
+        sample_dir = (
+            Path(__file__).resolve().parents[1]
+            / "databricks"
+            / "sample_data"
+            / "core_nordic_sales_nok"
+        )
+
+        raw_stage = run_raw_stage(
+            sample_dir / "orders.csv",
+            sample_dir / "fx_rates_to_nok.csv",
+        )
+        bronze_rows, _ = to_bronze_orders(raw_stage["raw_orders"])
+        bronze_round_trip = deserialize_bronze_rows(serialize_rows(bronze_rows))
+
+        silver_rows, _ = to_silver_sales_lines(
+            bronze_round_trip,
+            build_fx_lookup(raw_stage["raw_fx_rates"]),
+        )
+        silver_round_trip = deserialize_silver_rows(serialize_rows(silver_rows))
+        gold_rows = to_gold_sales_monthly_nok(silver_round_trip)
+
+        self.assertEqual(
+            _stringify_money(gold_rows),
+            _stringify_money(self.result["gold_rows"]),
+        )
 
 
 if __name__ == "__main__":

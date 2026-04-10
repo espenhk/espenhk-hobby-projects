@@ -1,6 +1,6 @@
 # dataplatform-beta
 
-Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD workflows, and Terraform foundations.
+Azure Databricks data platform baseline with PBIP-first Power BI delivery, Azure AI Foundry exchange integration, CI/CD workflows, and Terraform-managed platform foundations.
 
 ## What is implemented
 - Planning baseline: architecture, security, operations, and 90-day roadmap.
@@ -10,10 +10,14 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - GitHub Actions workflows for Terraform fmt/init/validate and data-contract checks.
 - Python utility scripts for PBIP validation, smoke checks, and deployment pipeline promotion.
 - Python utility script for data-contract validation.
-- Terraform module scaffold for Entra groups used by Power BI RBAC.
-- Terraform monitor_alerting module and observability stack wiring for dev/test/prod action groups.
-- Terraform key_vault module and security stack wiring for dev/test/prod key vault baselines.
-- Terraform network module and connectivity stack wiring for dev/test/prod VNets and subnets.
+- Terraform module for Entra groups used by Power BI RBAC.
+- Terraform monitor_alerting module with action groups, Log Analytics, built-in baseline alerts, and saved searches.
+- Terraform key_vault module with Foundry-to-Databricks connection contract secret support.
+- Terraform network module with VNets, subnets, private endpoints, and private DNS zones.
+- Terraform Databricks, Foundry, Unity Catalog, and storage baseline wiring.
+- Databricks publish step that promotes approved Gold outputs into `foundry-exchange`.
+- Split example ETL for `core_nordic_sales_nok` with explicit raw, bronze, silver, and gold Python stages.
+- Databricks Asset Bundle scaffold in `databricks/databricks.yml` with a YAML workflow for `raw -> bronze -> silver -> gold -> publish_approved_gold`.
 - Initial dataset contract scaffolding under databricks/contracts.
 
 ## Directory map
@@ -30,7 +34,9 @@ Azure Databricks data platform scaffold with PBIP-first Power BI delivery, CI/CD
 - scripts/powerbi/: Power BI automation helpers used by workflows.
 - scripts/contracts/: data-contract validation helpers.
 - databricks/contracts/: versioned data contracts for CI enforcement.
-- terraform/: IaC scaffold for Power BI RBAC groups.
+- databricks/databricks.yml: Databricks Asset Bundle entrypoint for the example workflow.
+- databricks/jobs/: bundle-included job YAML resources.
+- terraform/: IaC for networking, storage, Databricks, Foundry, Key Vault, observability, Unity Catalog, budgets, and Power BI groups.
 - docs/runbooks/: incident and operations runbooks.
 
 ## GitHub configuration required
@@ -80,6 +86,23 @@ Run data-contract validation:
 
 python dataplatform-beta/scripts/contracts/validate_contracts.py
 
+Run the staged example ETL tests:
+
+poetry run pytest dataplatform-beta/tests/test_core_nordic_sales_nok.py -q
+
+Validate the Databricks Asset Bundle structure locally:
+
+cd dataplatform-beta/databricks
+databricks bundle validate
+
+## Example ETL layout
+- `src/dataplatform_beta/example_products/core_nordic_sales_nok_raw.py`: raw extraction and JSON staging.
+- `src/dataplatform_beta/example_products/core_nordic_sales_nok_bronze.py`: Bronze validation and quarantine logic.
+- `src/dataplatform_beta/example_products/core_nordic_sales_nok_silver.py`: Silver deduplication and FX enrichment.
+- `src/dataplatform_beta/example_products/core_nordic_sales_nok_gold.py`: Gold monthly aggregation.
+- `src/dataplatform_beta/example_products/core_nordic_sales_nok.py`: compatibility facade and local end-to-end CLI.
+- `src/dataplatform_beta/example_products/publish_gold_to_foundry_exchange.py`: approved Gold publish step.
+
 ## Architecture and flow diagrams
 Mermaid source diagrams are in docs/architecture-flow-diagrams.md and embedded here for quick review.
 
@@ -97,6 +120,7 @@ flowchart LR
     EH[Event Hubs]
     AL[Databricks Auto Loader]
     DBX[Azure Databricks]
+    FDRY[Azure AI Foundry]
     UC[Unity Catalog]
     ADLS[ADLS Gen2 Delta Lake]
     KV[Key Vault]
@@ -117,12 +141,15 @@ flowchart LR
   AL --> DBX
   DBX <--> ADLS
   UC -. governance .- DBX
-  KV -. secrets .- DBX
+  KV -. secrets and contract .- DBX
+  KV -. contract .- FDRY
   ENTRA -. RBAC .- UC
+  DBX --> FDRY
   DBX --> WS
   WS --> PIPE
   PIPE --> USERS
   DBX --> LA
+  FDRY --> LA
   WS --> LA
 ```
 
@@ -134,13 +161,18 @@ flowchart LR
   RAW --> BRONZE[Bronze Standardized Delta]
   BRONZE --> SILVER[Silver Validated and Conformed]
   SILVER --> GOLD[Gold Star Schemas and Data Marts]
+  GOLD --> FX[foundry-exchange Approved Gold Publish]
 
   BRONZE --> Q[Quarantine Invalid Records + Reason Codes]
   SILVER --> Q
 
-  ORCH[Databricks Workflows] -. orchestrates .-> BRONZE
+  ORCH[Databricks Workflows] -. orchestrates .-> RAW
+  ORCH -. orchestrates .-> BRONZE
   ORCH -. orchestrates .-> SILVER
   ORCH -. orchestrates .-> GOLD
+  ORCH -. publish step .-> FX
+
+  FX --> FDRY[Azure AI Foundry]
 
   GOLD --> SM[PBIP Semantic Models]
   SM --> RPT[Thin Reports]
@@ -164,14 +196,35 @@ flowchart TD
   PROD_PROMOTE --> PROD_SMOKE[Prod smoke checks]
 ```
 
-## Terraform bootstrap (Power BI RBAC)
+### Example DAB workflow
 
-cd dataplatform-beta/terraform/environments/dev/powerbi_rbac
+```mermaid
+flowchart LR
+  CSV[Orders + FX CSV] --> RAW[raw task]
+  RAW --> BRONZE[bronze task]
+  BRONZE --> SILVER[silver task]
+  SILVER --> GOLD[gold task]
+  GOLD --> PUBLISH[publish_approved_gold task]
+  PUBLISH --> EXCHANGE[foundry-exchange]
+  EXCHANGE --> FDRY[Azure AI Foundry]
+  GOLD --> PBI[Power BI Import]
+```
+
+## Terraform bootstrap
+
+cd dataplatform-beta/terraform/deployment
 terraform init
-terraform plan -var-file=terraform.tfvars.example
+terraform workspace select dev || terraform workspace new dev
+terraform plan
+
+## Databricks Asset Bundle bootstrap
+
+cd dataplatform-beta/databricks
+databricks bundle validate
+databricks bundle deploy --target dev
 
 ## Next implementation steps
 1. Add tenant-specific PBIP publish-to-Dev mechanism before smoke checks.
 2. Replace static IDs with dynamic mapping lookup from deployment config.
 3. Add richer semantic model static checks in PR validation.
-4. Extend Terraform environments for test/prod and provider wiring.
+4. Add diagnostics settings to route resource logs explicitly into Log Analytics.

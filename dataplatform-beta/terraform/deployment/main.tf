@@ -32,6 +32,11 @@ locals {
         service_delegation = "Microsoft.Databricks/workspaces"
         create_nsg         = true
       }
+      snet-private-endpoints = {
+        address_prefixes   = ["10.40.10.0/24"]
+        service_delegation = null
+        create_nsg         = false
+      }
     }
     test = {
       snet-databricks-public = {
@@ -43,6 +48,11 @@ locals {
         address_prefixes   = ["10.41.2.0/24"]
         service_delegation = "Microsoft.Databricks/workspaces"
         create_nsg         = true
+      }
+      snet-private-endpoints = {
+        address_prefixes   = ["10.41.10.0/24"]
+        service_delegation = null
+        create_nsg         = false
       }
     }
     prod = {
@@ -56,50 +66,13 @@ locals {
         service_delegation = "Microsoft.Databricks/workspaces"
         create_nsg         = true
       }
+      snet-private-endpoints = {
+        address_prefixes   = ["10.42.10.0/24"]
+        service_delegation = null
+        create_nsg         = false
+      }
     }
   }
-
-  metric_alerts = [
-    {
-      name              = "ma-${local.env}-storage-availability-low"
-      description       = "Storage availability dropped below 99 percent. This usually indicates the platform data plane is degraded or unreachable."
-      severity          = 1
-      scope_resource_id = module.storage.storage_account_id
-      metric_namespace  = "Microsoft.Storage/storageAccounts"
-      metric_name       = "Availability"
-      aggregation       = "Average"
-      operator          = "LessThan"
-      threshold         = 99
-      frequency         = "PT5M"
-      window_size       = "PT15M"
-    },
-    {
-      name              = "ma-${local.env}-storage-latency-high"
-      description       = "Blob end-to-end latency is elevated. Databricks reads, writes, checkpoints, or volume access may be stuck or timing out."
-      severity          = 2
-      scope_resource_id = module.storage.storage_account_id
-      metric_namespace  = "Microsoft.Storage/storageAccounts"
-      metric_name       = "SuccessE2ELatency"
-      aggregation       = "Average"
-      operator          = "GreaterThan"
-      threshold         = 2000
-      frequency         = "PT5M"
-      window_size       = "PT15M"
-    },
-    {
-      name              = "ma-${local.env}-keyvault-availability-low"
-      description       = "Key Vault availability dropped below 99 percent. Secret resolution and downstream workloads are likely impaired."
-      severity          = 1
-      scope_resource_id = module.key_vault.key_vault_id
-      metric_namespace  = "Microsoft.KeyVault/vaults"
-      metric_name       = "Availability"
-      aggregation       = "Average"
-      operator          = "LessThan"
-      threshold         = 99
-      frequency         = "PT5M"
-      window_size       = "PT15M"
-    }
-  ]
 }
 
 resource "azurerm_resource_group" "main" {
@@ -117,7 +90,30 @@ module "network" {
   vnet_name           = "vnet-dpb-${local.env}-core"
   address_space       = lookup(local.vnet_cidr, local.env, local.vnet_cidr["dev"])
   subnets             = lookup(local.subnets, local.env, local.subnets["dev"])
-  tags                = local.tags
+  private_endpoints = {
+    storage_blob = {
+      name                  = "pep-dpb-${local.env}-storage-blob"
+      subnet_name           = "snet-private-endpoints"
+      target_resource_id    = module.storage.storage_account_id
+      subresource_names     = ["blob"]
+      private_dns_zone_name = "privatelink.blob.core.windows.net"
+    }
+    storage_dfs = {
+      name                  = "pep-dpb-${local.env}-storage-dfs"
+      subnet_name           = "snet-private-endpoints"
+      target_resource_id    = module.storage.storage_account_id
+      subresource_names     = ["dfs"]
+      private_dns_zone_name = "privatelink.dfs.core.windows.net"
+    }
+    key_vault = {
+      name                  = "pep-dpb-${local.env}-keyvault"
+      subnet_name           = "snet-private-endpoints"
+      target_resource_id    = module.key_vault.key_vault_id
+      subresource_names     = ["vault"]
+      private_dns_zone_name = "privatelink.vaultcore.azure.net"
+    }
+  }
+  tags = local.tags
 }
 
 module "storage" {
@@ -149,22 +145,26 @@ module "key_vault" {
 module "monitor_alerting" {
   source = "../modules/monitor_alerting"
 
-  resource_group_name = azurerm_resource_group.main.name
-  action_group_name   = "ag-dpb-${local.env}-core"
-  short_name          = "dpb${local.env}core"
+  resource_group_name          = azurerm_resource_group.main.name
+  location                     = local.location
+  environment                  = local.env
+  action_group_name            = "ag-dpb-${local.env}-core"
+  short_name                   = "dpb${local.env}core"
+  log_analytics_workspace_name = "log-dpb-${local.env}-core"
+  storage_account_id           = module.storage.storage_account_id
+  key_vault_id                 = module.key_vault.key_vault_id
   email_receivers = [
     {
       name  = "${local.env}-alerts"
       email = var.alert_email
     }
   ]
-  metric_alerts = local.metric_alerts
-  tags          = local.tags
+  tags = local.tags
 }
 
 # ── Data Platform — Databricks Workspace ───────────────────────────────────────
-module "databricks_workspace" {
-  source = "../modules/databricks_workspace"
+module "databricks" {
+  source = "../modules/databricks"
 
   workspace_name      = "dbw-dpb-${local.env}-core"
   resource_group_name = azurerm_resource_group.main.name
@@ -181,8 +181,8 @@ module "databricks_workspace" {
   tags = local.tags
 }
 
-module "foundry_workspace" {
-  source = "../modules/foundry_workspace"
+module "foundry" {
+  source = "../modules/foundry"
 
   name                          = "fdry-dpb-${local.env}-core"
   resource_group_name           = azurerm_resource_group.main.name
@@ -214,13 +214,13 @@ resource "azurerm_role_assignment" "databricks_storage_blob_contributor" {
 resource "azurerm_role_assignment" "foundry_storage_blob_reader" {
   scope                = module.storage.storage_account_id
   role_definition_name = "Storage Blob Data Reader"
-  principal_id         = module.foundry_workspace.principal_id
+  principal_id         = module.foundry.principal_id
 }
 
 resource "azurerm_key_vault_access_policy" "foundry_secret_reader" {
   key_vault_id = module.key_vault.key_vault_id
   tenant_id    = var.tenant_id
-  object_id    = module.foundry_workspace.principal_id
+  object_id    = module.foundry.principal_id
 
   secret_permissions = [
     "Get",
@@ -228,9 +228,48 @@ resource "azurerm_key_vault_access_policy" "foundry_secret_reader" {
   ]
 }
 
+resource "azurerm_key_vault_secret" "foundry_databricks_pat" {
+  count = var.databricks_connection_pat == "" ? 0 : 1
+
+  name         = "foundry-databricks-pat"
+  value        = var.databricks_connection_pat
+  key_vault_id = module.key_vault.key_vault_id
+  content_type = "Databricks PAT used by Foundry connection"
+
+  depends_on = [azurerm_key_vault_access_policy.foundry_secret_reader]
+}
+
+resource "azurerm_key_vault_secret" "foundry_databricks_connection_contract" {
+  name = "foundry-databricks-connection-contract"
+  value = jsonencode({
+    host                   = startswith(module.databricks.workspace_url, "https://") ? module.databricks.workspace_url : "https://${module.databricks.workspace_url}"
+    workspace_resource_id  = module.databricks.workspace_id
+    unity_catalog_catalog  = var.unity_catalog_catalog_name
+    unity_catalog_schema   = var.unity_catalog_schema_name
+    external_location_name = "foundry_exchange"
+    external_location_url  = module.storage.filesystem_uris["foundry-exchange"]
+    pat_secret_name        = "foundry-databricks-pat"
+  })
+  key_vault_id = module.key_vault.key_vault_id
+  content_type = "Foundry to Databricks connection metadata"
+
+  depends_on = [azurerm_key_vault_access_policy.foundry_secret_reader]
+}
+
+module "unity_catalog" {
+  source = "../modules/unity_catalog"
+
+  catalog_name                     = var.unity_catalog_catalog_name
+  schema_name                      = var.unity_catalog_schema_name
+  foundry_exchange_external_name   = "foundry_exchange"
+  foundry_exchange_external_url    = module.storage.filesystem_uris["foundry-exchange"]
+  databricks_access_connector_id   = azurerm_databricks_access_connector.volumes.id
+  databricks_access_connector_name = azurerm_databricks_access_connector.volumes.name
+}
+
 # ── Cost Governance — Budgets ──────────────────────────────────────────────────
 module "budgets" {
-  source = "../modules/budgets_tags_policy"
+  source = "../modules/budget"
 
   action_group_id     = module.monitor_alerting.action_group_id
   budget_start_date   = var.budget_start_date
@@ -258,8 +297,8 @@ module "budgets" {
 }
 
 # ── Power BI RBAC ──────────────────────────────────────────────────────────────
-module "powerbi_rbac" {
-  source = "../modules/powerbi_rbac"
+module "powerbi" {
+  source = "../modules/powerbi"
 
   group_prefix            = "grp-pbi"
   domain                  = "core"

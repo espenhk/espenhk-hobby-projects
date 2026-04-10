@@ -37,6 +37,9 @@ PyPDF2 = ">=3.0.0"
 [tool.poetry.group.skate-test.dependencies]
 pytest = ">=8.0"
 
+[tool.poetry.group.dataplatform-beta.dependencies]
+pytest = ">=8.0"
+
 # Not on PyPI — install from source first:
 # tminterface
 # pygbx
