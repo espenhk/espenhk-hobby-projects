@@ -30,12 +30,12 @@ Out of scope in phase 1:
 
 ### Provider Strategy
 - Pin Terraform providers with bounded versions and commit lock files in environment roots.
-- Use explicit provider aliases for split planes:
+- Use separate providers for distinct control planes where required:
   - azurerm for Azure resources.
   - azuread for Entra groups and identities.
-  - databricks.account for account-level resources.
-  - databricks.workspace for workspace-level resources.
-- Configure providers in root environment stacks and pass providers explicitly to modules.
+  - databricks as a single root provider configuration in the current baseline.
+- Configure providers in root environment stacks.
+- If the Terraform root is expanded to manage both Databricks account-level and workspace-level resources, introduce explicit `databricks.account` and `databricks.workspace` aliases and pass them explicitly to modules at that time.
 
 ### Data Design
 - Use Delta Lake and medallion layers: Raw -> Bronze -> Silver -> Gold.
