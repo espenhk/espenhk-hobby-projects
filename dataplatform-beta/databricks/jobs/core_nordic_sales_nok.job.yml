@@ -1,0 +1,72 @@
+resources:
+  jobs:
+    core_nordic_sales_nok:
+      name: core_nordic_sales_nok
+      tasks:
+        - task_key: raw
+          spark_python_task:
+            python_file: ../src/dataplatform_beta/example_products/core_nordic_sales_nok_raw.py
+            parameters:
+              - --orders
+              - ${var.orders_csv_path}
+              - --fx-rates
+              - ${var.fx_rates_csv_path}
+              - --output-dir
+              - ${var.raw_output_dir}
+          job_cluster_key: core_nordic_sales_cluster
+        - task_key: bronze
+          depends_on:
+            - task_key: raw
+          spark_python_task:
+            python_file: ../src/dataplatform_beta/example_products/core_nordic_sales_nok_bronze.py
+            parameters:
+              - --raw-orders-input
+              - ${var.raw_output_dir}/raw_orders.json
+              - --bronze-output
+              - ${var.bronze_output_path}
+              - --quarantine-output
+              - ${var.bronze_quarantine_path}
+          job_cluster_key: core_nordic_sales_cluster
+        - task_key: silver
+          depends_on:
+            - task_key: bronze
+          spark_python_task:
+            python_file: ../src/dataplatform_beta/example_products/core_nordic_sales_nok_silver.py
+            parameters:
+              - --bronze-input
+              - ${var.bronze_output_path}
+              - --raw-fx-input
+              - ${var.raw_output_dir}/raw_fx_rates.json
+              - --silver-output
+              - ${var.silver_output_path}
+              - --quarantine-output
+              - ${var.silver_quarantine_path}
+          job_cluster_key: core_nordic_sales_cluster
+        - task_key: gold
+          depends_on:
+            - task_key: silver
+          spark_python_task:
+            python_file: ../src/dataplatform_beta/example_products/core_nordic_sales_nok_gold.py
+            parameters:
+              - --silver-input
+              - ${var.silver_output_path}
+              - --output
+              - ${var.gold_output_path}
+          job_cluster_key: core_nordic_sales_cluster
+        - task_key: publish_approved_gold
+          depends_on:
+            - task_key: gold
+          spark_python_task:
+            python_file: ../src/dataplatform_beta/example_products/publish_gold_to_foundry_exchange.py
+            parameters:
+              - --source
+              - ${var.gold_output_path}
+              - --destination
+              - ${var.foundry_publish_path}
+          job_cluster_key: core_nordic_sales_cluster
+      job_clusters:
+        - job_cluster_key: core_nordic_sales_cluster
+          new_cluster:
+            spark_version: 14.3.x-scala2.12
+            node_type_id: Standard_DS3_v2
+            num_workers: 1

@@ -1,0 +1,26 @@
+name: data-contract-checks
+
+on:
+  pull_request:
+    paths:
+      - "dataplatform-beta/databricks/contracts/**"
+      - "dataplatform-beta/scripts/contracts/**"
+      - "dataplatform-beta/ci/data-contract-checks.yml"
+
+jobs:
+  validate-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate contract files
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/contracts/validate_contracts.py

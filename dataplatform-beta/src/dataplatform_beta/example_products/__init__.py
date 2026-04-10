@@ -1,0 +1,1 @@
+"""Example data products for local ETL and test validation."""

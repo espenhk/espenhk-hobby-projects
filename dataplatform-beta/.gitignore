@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+*.tfplan
+.pytest_cache/

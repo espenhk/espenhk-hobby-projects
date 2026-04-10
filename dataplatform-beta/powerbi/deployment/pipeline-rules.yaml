@@ -1,0 +1,56 @@
+version: 1
+pipeline: dpb-core-bi
+
+stages:
+  - name: Dev
+    workspace: pbi-dpb-dev-core
+    approvals: []
+  - name: Test
+    workspace: pbi-dpb-test-core
+    approvals:
+      - grp-pbi-core-testers
+  - name: Prod
+    workspace: pbi-dpb-prod-core
+    approvals:
+      - grp-pbi-core-admins
+
+rules:
+  datasourceBindings:
+    dev:
+      databricksSqlEndpoint: sql-dev-core
+      catalog: core_dev
+      schema: gold
+    test:
+      databricksSqlEndpoint: sql-test-core
+      catalog: core_test
+      schema: gold
+    prod:
+      databricksSqlEndpoint: sql-prod-core
+      catalog: core_prod
+      schema: gold
+
+  refreshPolicy:
+    dev:
+      type: on-demand
+    test:
+      type: scheduled
+      cron: "0 */4 * * *"
+    prod:
+      type: scheduled
+      cron: "0 * * * *"
+
+  promotionChecks:
+    dev_to_test:
+      - ci_status_green
+      - smoke_checks_passed
+    test_to_prod:
+      - ci_status_green
+      - uat_approved
+      - change_ticket_attached
+      - smoke_checks_passed
+
+controls:
+  denyDirectPublishTo:
+    - pbi-dpb-test-core
+    - pbi-dpb-prod-core
+  requireAuditTrail: true

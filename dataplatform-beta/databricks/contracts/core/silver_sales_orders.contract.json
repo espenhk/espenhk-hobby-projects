@@ -1,0 +1,110 @@
+{
+  "contractVersion": "1.0",
+  "dataset": "silver_sales_orders",
+  "layer": "silver",
+  "owner": "platform-team",
+  "description": "Cleansed and deduplicated sales orders from the raw Bronze layer. Serves as the validated source for Gold star schemas.",
+  "schema": [
+    {
+      "name": "order_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Unique order identifier, carried from source with no transformation."
+    },
+    {
+      "name": "order_date",
+      "type": "date",
+      "nullable": false,
+      "description": "Parsed and validated order date (UTC)."
+    },
+    {
+      "name": "customer_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Customer identifier, validated against the customer dimension."
+    },
+    {
+      "name": "product_id",
+      "type": "string",
+      "nullable": false,
+      "description": "Product identifier."
+    },
+    {
+      "name": "quantity",
+      "type": "integer",
+      "nullable": false,
+      "description": "Order line quantity; must be positive."
+    },
+    {
+      "name": "unit_price_gbp",
+      "type": "decimal(18,4)",
+      "nullable": false,
+      "description": "Unit price in GBP normalised from source currency."
+    },
+    {
+      "name": "gross_amount_gbp",
+      "type": "decimal(18,4)",
+      "nullable": false,
+      "description": "quantity × unit_price_gbp."
+    },
+    {
+      "name": "discount_pct",
+      "type": "decimal(5,4)",
+      "nullable": true,
+      "description": "Discount percentage applied to the line (0–1 range). Null means no discount."
+    },
+    {
+      "name": "quarantine_reason",
+      "type": "string",
+      "nullable": true,
+      "description": "Populated when a record is flagged by quality rules but retained for audit. Null for conforming records."
+    },
+    {
+      "name": "ingested_at",
+      "type": "timestamp",
+      "nullable": false,
+      "description": "UTC timestamp when the record was written to Silver."
+    },
+    {
+      "name": "source_file",
+      "type": "string",
+      "nullable": false,
+      "description": "Source file path from Auto Loader, for lineage."
+    }
+  ],
+  "keys": {
+    "primaryKey": ["order_id"],
+    "deduplicationKey": ["order_id", "ingested_at"]
+  },
+  "freshness": {
+    "targetMinutes": 120,
+    "lateDataPolicy": "quarantine"
+  },
+  "qualityChecks": [
+    {
+      "name": "order_id_not_null",
+      "rule": "order_id IS NOT NULL",
+      "action": "quarantine"
+    },
+    {
+      "name": "quantity_positive",
+      "rule": "quantity > 0",
+      "action": "quarantine"
+    },
+    {
+      "name": "unit_price_positive",
+      "rule": "unit_price_gbp > 0",
+      "action": "quarantine"
+    },
+    {
+      "name": "discount_range",
+      "rule": "discount_pct IS NULL OR (discount_pct >= 0 AND discount_pct <= 1)",
+      "action": "quarantine"
+    },
+    {
+      "name": "gross_amount_consistent",
+      "rule": "ABS(gross_amount_gbp - (quantity * unit_price_gbp)) < 0.01",
+      "action": "quarantine"
+    }
+  ]
+}

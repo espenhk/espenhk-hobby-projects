@@ -1,0 +1,41 @@
+bundle:
+  name: dataplatform-beta-example
+
+include:
+  - jobs/*.job.yml
+
+sync:
+  paths:
+    - ../src
+    - sample_data
+
+variables:
+  workspace_host:
+    description: Databricks workspace host for bundle deployment.
+    default: https://adb-0000000000000000.0.azuredatabricks.net
+  orders_csv_path:
+    default: /Volumes/core/raw/core_nordic_sales_nok/orders.csv
+  fx_rates_csv_path:
+    default: /Volumes/core/raw/core_nordic_sales_nok/fx_rates_to_nok.csv
+  raw_output_dir:
+    default: /Volumes/core/raw/core_nordic_sales_nok/staged
+  bronze_output_path:
+    default: /Volumes/core/bronze/core_nordic_sales_nok/bronze_orders.json
+  bronze_quarantine_path:
+    default: /Volumes/core/bronze/core_nordic_sales_nok/bronze_quarantine.json
+  silver_output_path:
+    default: /Volumes/core/silver/core_nordic_sales_nok/silver_sales_lines.json
+  silver_quarantine_path:
+    default: /Volumes/core/silver/core_nordic_sales_nok/silver_quarantine.json
+  gold_output_path:
+    default: /Volumes/core/gold/core_nordic_sales_nok/gold_sales_monthly_nok.json
+  foundry_publish_path:
+    default: /Volumes/core/foundry-exchange/core_nordic_sales_nok/gold_sales_monthly_nok.json
+
+targets:
+  dev:
+    default: true
+    mode: development
+    workspace:
+      host: ${var.workspace_host}
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}

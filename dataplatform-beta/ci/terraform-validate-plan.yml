@@ -1,0 +1,34 @@
+name: terraform-validate-plan
+
+on:
+  pull_request:
+    paths:
+      - "dataplatform-beta/terraform/**"
+      - "dataplatform-beta/ci/terraform-validate-plan.yml"
+
+jobs:
+  terraform-validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform fmt check
+        run: |
+          set -euo pipefail
+          terraform fmt -recursive -check dataplatform-beta/terraform
+
+      - name: Terraform init and validate (deployment root)
+        run: |
+          set -euo pipefail
+          cd dataplatform-beta/terraform/deployment
+          terraform init -backend=false
+          terraform validate

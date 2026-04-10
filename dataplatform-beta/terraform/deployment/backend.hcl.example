@@ -1,0 +1,11 @@
+# Shared remote state backend — workspaces isolate state automatically.
+# State files land at: tfstate/env:/dev/deployment.tfstate, env:/test/..., etc.
+#
+# Usage:
+#   terraform init -backend-config=backend.hcl
+#   terraform workspace select dev   # or test / prod
+
+resource_group_name  = "rg-dpb-tfstate"
+storage_account_name = "sadpbtfstate"
+container_name       = "tfstate"
+key                  = "deployment.tfstate"

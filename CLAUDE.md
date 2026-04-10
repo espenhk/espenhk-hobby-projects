@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo contains two independent hobby projects sharing a single Python virtual environment managed by Poetry.
+This repo contains three projects sharing a single Python virtual environment managed by Poetry.
 
 ---
 
@@ -9,12 +9,69 @@ This repo contains two independent hobby projects sharing a single Python virtua
 ```
 espenhk-hobby-projects/
 ├── .venv/                  # Shared virtual environment (created by Poetry)
+├── dataplatform-beta/      # Azure Databricks + Foundry platform example
 ├── skate/                  # Ice skating race predictor
 ├── tmnf/                   # Trackmania Nations Forever AI
-├── pyproject.toml          # Shared dependencies for both projects
+├── pyproject.toml          # Shared dependencies for all projects
 ├── poetry.lock             # Locked dependency versions
 ├── README.md
 └── CLAUDE.md
+```
+
+---
+
+## Project: `dataplatform-beta`
+
+### Purpose
+Reference Azure data platform slice combining Terraform-managed infrastructure, a Databricks Asset Bundle workflow, medallion-style sample ETL, and a governed `foundry-exchange` handoff for Azure AI Foundry.
+
+### Structure
+```text
+dataplatform-beta/
+├── README.md
+├── PLAN.md
+├── ci/
+├── databricks/
+│   ├── databricks.yml              # Databricks Asset Bundle entrypoint
+│   ├── contracts/
+│   ├── jobs/
+│   │   └── core_nordic_sales_nok.job.yml
+│   └── sample_data/
+├── docs/
+├── powerbi/
+├── scripts/
+├── src/
+│   └── dataplatform_beta/
+│       └── example_products/
+│           ├── core_nordic_sales_nok.py
+│           ├── core_nordic_sales_nok_common.py
+│           ├── core_nordic_sales_nok_raw.py
+│           ├── core_nordic_sales_nok_bronze.py
+│           ├── core_nordic_sales_nok_silver.py
+│           ├── core_nordic_sales_nok_gold.py
+│           └── publish_gold_to_foundry_exchange.py
+├── terraform/
+└── tests/
+```
+
+### State
+Platform baseline is functional: Terraform wiring exists for networking, storage, Databricks, Foundry, Key Vault, monitoring, Unity Catalog, budgets, and Power BI groups. The example ETL is split into raw/bronze/silver/gold stages and orchestrated by a Databricks Asset Bundle workflow.
+
+### Key design decisions
+- Keep `core_nordic_sales_nok.py` as a compatibility facade so tests and simple local execution do not break while stage logic lives in dedicated modules.
+- Use a Databricks Asset Bundle YAML workflow to mirror a real medallion job layout: `raw -> bronze -> silver -> gold -> publish_approved_gold`.
+- Publish approved Gold outputs separately into `foundry-exchange` so Power BI serving and Foundry exchange paths stay explicit.
+- Store the Foundry-to-Databricks connection contract in Key Vault rather than hard-coding connection metadata into application code.
+
+### Running tests
+```bash
+poetry run pytest dataplatform-beta/tests/ -q
+```
+
+### Bundle validation
+```bash
+cd dataplatform-beta/databricks
+databricks bundle validate
 ```
 
 ---

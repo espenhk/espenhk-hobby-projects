@@ -1,0 +1,26 @@
+name: powerbi-pr-validation
+
+on:
+  pull_request:
+    paths:
+      - "dataplatform-beta/powerbi/**"
+      - "dataplatform-beta/docs/powerbi-serving.md"
+      - "dataplatform-beta/ci/powerbi-pr-validation.yml"
+
+jobs:
+  validate-pbip:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Validate PBIP conventions
+        shell: bash
+        run: |
+          set -euo pipefail
+          python dataplatform-beta/scripts/powerbi/validate_pbip.py

@@ -1,0 +1,32 @@
+version: 1
+project: dataplatform-beta
+
+powerbi:
+  domain: core
+  deploymentPipeline: dpb-core-bi
+  workspaces:
+    dev:
+      name: pbi-dpb-dev-core
+      stage: Dev
+      capacity: shared
+      mode: authoring
+    test:
+      name: pbi-dpb-test-core
+      stage: Test
+      capacity: shared
+      mode: validation
+    prod:
+      name: pbi-dpb-prod-core
+      stage: Prod
+      capacity: dedicated
+      mode: consumption
+
+rbac:
+  adminsGroup: grp-pbi-core-admins
+  developersGroup: grp-pbi-core-developers
+  testersGroup: grp-pbi-core-testers
+  consumersGroup: grp-pbi-core-consumers
+
+assets:
+  semanticModelsPath: powerbi/domains/core/semantic-model
+  reportsPath: powerbi/domains/core/reports

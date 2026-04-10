@@ -6,6 +6,26 @@ Hobby projects done in my free time.
 
 ## Projects
 
+### `dataplatform-beta` — Azure Databricks + Foundry Data Platform Example
+
+A repository-in-repository style platform slice that demonstrates medallion ETL, Databricks Asset Bundles, Terraform-based Azure platform wiring, and governed publishing into a Foundry exchange zone.
+
+**Key features:**
+- Split sample ETL with explicit raw, bronze, silver, and gold stages
+- Databricks Asset Bundle with YAML job orchestration
+- Terraform modules for network, storage, Databricks, Foundry, Key Vault, monitoring, Unity Catalog, budgets, and Power BI groups
+- Foundry connection contract stored in Key Vault
+- Power BI- and Foundry-oriented Gold publishing paths
+
+**State:** Active platform baseline with working sample ETL, bundle/job definition, and supporting architecture/security docs.
+
+```bash
+# From the dataplatform-beta directory:
+poetry run pytest tests/test_core_nordic_sales_nok.py -q
+```
+
+---
+
 ### `skate` — Ice Skating Race Predictor
 
 A terminal application for live tracking of ice skating race times. Feed in lap splits as they happen and get real-time finish time predictions using speed-based algorithms.
@@ -51,6 +71,12 @@ On first run with a new experiment name, a fresh reward config is copied from `r
 
 ## Testing
 
+### `dataplatform-beta`
+
+```bash
+poetry run pytest dataplatform-beta/tests/ -v
+```
+
 ### `skate`
 
 ```bash
@@ -88,7 +114,7 @@ none of the game-dependent dependencies (`tminterface`, `pygbx`, etc.) are neede
 
 ## Environment Setup
 
-Both projects share a single virtual environment managed by [Poetry](https://python-poetry.org/). Python 3.12 is recommended.
+All projects share a single virtual environment managed by [Poetry](https://python-poetry.org/). Python 3.12 is recommended.
 
 > **Note:** `tminterface` and `pygbx` (required by `tmnf`) are not on PyPI — install them manually from their respective GitHub repos before running `poetry install`.
 
