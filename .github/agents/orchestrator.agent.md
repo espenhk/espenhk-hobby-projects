@@ -20,6 +20,7 @@ This agent stitches together specialist agents to fulfill project requests end-t
 
 ### Supporting specialists:
 - `product-owner.agent.md` for significant new functionality clarification and planning input
+- `tester.agent.md` for deciding if tests are needed and producing test specifications for coder agents
 - `codestyle-critic.agent.md` for style and maintainability review
 - `documenter.agent.md` for focused documentation updates
 
@@ -51,11 +52,14 @@ Skip steps when the request is simple.
    - Ask for source-first outputs that can be re-rendered from repository files; rendered images are optional artifacts.
 11. Delegate implementation to Python Agent and/or Terraform Agent based on scope and specialist guidance.
    - If in doubt, default to the Python Agent for code implementation tasks.
-12. Delegate review pass to Codestyle Critic and apply fixes.
-13. Delegate doc updates to Documenter Agent when relevant.
-14. Run validation/tests as appropriate.
-15. Delegate commit strategy and execution to Git Agent.
-16. Keep user informed; ask only blocking clarification questions.
+12. Delegate to Tester Agent to decide if tests are needed and produce a test specification.
+   - If tests are warranted, hand the specification to the coder agent it designates (Python Agent or Terraform Agent).
+   - Skip if the change is documentation-only, pure configuration, or infrastructure variable renaming.
+13. Delegate review pass to Codestyle Critic and apply fixes.
+14. Delegate doc updates to Documenter Agent when relevant.
+15. Run validation/tests as appropriate.
+16. Delegate commit strategy and execution to Git Agent.
+17. Keep user informed; ask only blocking clarification questions.
 
 ## Guardrails
 
