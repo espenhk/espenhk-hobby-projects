@@ -47,22 +47,22 @@ def cmd_validate(args: argparse.Namespace) -> int:
         f"{len(model.relationships)} relationships, {len(model.verified_answers)} verified answers."
     )
 
-    con = get_connection()
     failures: list[str] = []
-    for va in model.verified_answers:
-        try:
-            lq = LogicalQuery.model_validate(va.logical_query)
-        except Exception as exc:  # noqa: BLE001
-            failures.append(f"{va.question!r}: invalid logical query shape: {exc}")
-            continue
-        errors = validate_logical_query(model, lq)
-        if errors:
-            failures.append(f"{va.question!r}: {errors}")
-            continue
-        try:
-            execute_logical_query(con, model, lq)
-        except Exception as exc:  # noqa: BLE001
-            failures.append(f"{va.question!r}: failed to execute: {exc}")
+    with get_connection() as con:
+        for va in model.verified_answers:
+            try:
+                lq = LogicalQuery.model_validate(va.logical_query)
+            except Exception as exc:  # noqa: BLE001
+                failures.append(f"{va.question!r}: invalid logical query shape: {exc}")
+                continue
+            errors = validate_logical_query(model, lq)
+            if errors:
+                failures.append(f"{va.question!r}: {errors}")
+                continue
+            try:
+                execute_logical_query(con, model, lq)
+            except Exception as exc:  # noqa: BLE001
+                failures.append(f"{va.question!r}: failed to execute: {exc}")
 
     if failures:
         print(f"FAIL: {len(failures)}/{len(model.verified_answers)} verified_answers.yml queries failed:")
@@ -83,7 +83,6 @@ def cmd_ask(args: argparse.Namespace) -> int:
 
     model = load_semantic_model(SEMANTIC_MODEL_DIR)
     client = anthropic.Anthropic()
-    con = get_connection()
 
     print(f"Asking: {args.question!r}")
     try:
@@ -93,7 +92,8 @@ def cmd_ask(args: argparse.Namespace) -> int:
         return 1
     print(f"Logical query: {lq.model_dump_json(exclude_none=True)}")
 
-    df, sql = execute_logical_query(con, model, lq, identity=args.identity)
+    with get_connection() as con:
+        df, sql = execute_logical_query(con, model, lq, identity=args.identity)
     print(f"Rows: {len(df)}")
 
     specs = None
@@ -153,9 +153,9 @@ def cmd_refresh(args: argparse.Namespace) -> int:
         print(f"No dashboard with id {args.id!r}", file=sys.stderr)
         return 1
 
-    con = get_connection()
     lq = LogicalQuery.model_validate(record.logical_query)
-    df, sql = execute_logical_query(con, model, lq, identity=record.identity)
+    with get_connection() as con:
+        df, sql = execute_logical_query(con, model, lq, identity=record.identity)
 
     html_path = Path(record.html_path)
     write_dashboard(

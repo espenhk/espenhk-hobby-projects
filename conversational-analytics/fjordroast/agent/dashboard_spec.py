@@ -30,8 +30,9 @@ respond with ONLY raw JSON — a single Vega-Lite v6 spec object, or a JSON arra
 objects for a small multi-chart dashboard. No prose, no markdown code fences, no commentary.
 
 Rules:
-- Every spec's "data" field must be exactly {"data": {"name": "table"}} — never inline data
-  and never omit it.
+- Every spec must have a top-level "data" key whose value is exactly {"name": "table"} —
+  i.e. each spec looks like {"data": {"name": "table"}, "mark": ..., "encoding": ...}.
+  Never inline data and never omit this key.
 - Reference ONLY the column names you were given. Never invent a field name.
 - Add a "tooltip" encoding covering the marks' key fields, on every spec.
 - If a spec encodes a temporal/date field on the x-axis, add an interval-selection "params"

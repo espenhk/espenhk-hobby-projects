@@ -15,8 +15,16 @@ import os
 import pytest
 
 from fjordroast.agent.nl_to_query import nl_to_logical_query
+from fjordroast.semantic.loader import load_semantic_model
 from fjordroast.semantic.logical_query import LogicalQuery
 from fjordroast.semantic.query_builder import execute_logical_query, validate_logical_query
+from tests.conftest import SEMANTIC_MODEL_DIR
+
+# Parametrize decorators run at collection time, before fixtures are available,
+# so the answer count is read directly from the file here rather than hard-coded
+# — otherwise adding entries to verified_answers.yml would silently stop being
+# exercised by the live-API test below.
+_VERIFIED_ANSWER_COUNT = len(load_semantic_model(SEMANTIC_MODEL_DIR).verified_answers)
 
 
 def test_verified_answers_compile_and_execute(semantic_model, duck_con):
@@ -32,7 +40,7 @@ def test_verified_answers_compile_and_execute(semantic_model, duck_con):
 @pytest.mark.skipif(not os.environ.get("ANTHROPIC_API_KEY"), reason="requires a live Anthropic API key")
 @pytest.mark.parametrize(
     "index",
-    range(4),
+    range(_VERIFIED_ANSWER_COUNT),
     ids=lambda i: f"verified_answer_{i}",
 )
 def test_agent_matches_verified_answer(semantic_model, index):

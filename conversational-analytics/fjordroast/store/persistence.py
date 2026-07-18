@@ -120,7 +120,9 @@ class DashboardStore:
             ),
         )
         self._con.commit()
-        return self.get(rid)
+        saved = self.get(rid)
+        assert saved is not None, "row was just inserted/updated by id, so it must exist"
+        return saved
 
     def get(self, record_id: str) -> DashboardRecord | None:
         row = self._con.execute("SELECT * FROM dashboards WHERE id = ?", (record_id,)).fetchone()

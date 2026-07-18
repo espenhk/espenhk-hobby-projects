@@ -3,6 +3,7 @@ dashboards. `python cli.py serve` runs this."""
 
 from __future__ import annotations
 
+import html
 import uuid
 from pathlib import Path
 
@@ -71,21 +72,22 @@ def build_app(project_root: Path) -> FastAPI:
     def gallery():
         rows = store.list()
         items = "".join(
-            f"<li><a href='/dashboards/{Path(r.html_path).name}'>{r.question}</a> "
-            f"<small>({r.created_at})</small> &mdash; <a href='/refresh/{r.id}'>refresh</a></li>"
+            f"<li><a href='/dashboards/{html.escape(Path(r.html_path).name)}'>{html.escape(r.question)}</a> "
+            f"<small>({html.escape(r.created_at)})</small> &mdash; "
+            f"<a href='/refresh/{html.escape(r.id)}'>refresh</a></li>"
             for r in rows
         ) or "<li><em>No dashboards yet &mdash; ask a question below.</em></li>"
         return _GALLERY_PAGE.format(items=items)
 
     @app.post("/api/ask")
     def ask(req: AskRequest):
-        con = get_connection()
         try:
             lq = nl_to_logical_query(client, model, req.question, identity=req.identity)
         except AgentError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-        df, sql = execute_logical_query(con, model, lq, identity=req.identity)
+        with get_connection() as con:
+            df, sql = execute_logical_query(con, model, lq, identity=req.identity)
 
         try:
             specs = generate_dashboard_specs(client, req.question, df)
@@ -128,9 +130,9 @@ def build_app(project_root: Path) -> FastAPI:
         if record is None:
             raise HTTPException(status_code=404, detail="No such dashboard")
 
-        con = get_connection()
         lq = LogicalQuery.model_validate(record.logical_query)
-        df, sql = execute_logical_query(con, model, lq, identity=record.identity)
+        with get_connection() as con:
+            df, sql = execute_logical_query(con, model, lq, identity=record.identity)
         html_path = Path(record.html_path)
         write_dashboard(
             html_path,
