@@ -1,0 +1,17 @@
+name: basket_count
+description: "Number of distinct baskets (receipts). Never a row count — always DISTINCT receipt_id."
+kind: simple
+expression: "COUNT(DISTINCT fact_sales.receipt_id)"
+format: number
+synonyms: ["baskets", "number of orders", "transactions", "receipt count"]
+sliceable_dimensions:
+  - dim_date.date
+  - dim_date.day_of_week
+  - dim_date.is_weekend
+  - dim_date.month
+  - dim_date.quarter
+  - dim_date.year
+  - dim_date.season
+  - dim_store.store_name
+  - dim_store.city
+  - dim_member.loyalty_tier

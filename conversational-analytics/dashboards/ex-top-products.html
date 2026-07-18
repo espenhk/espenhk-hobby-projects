@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>What are our top products by revenue, and what's total revenue and units sold — Fjord Roast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@7"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0; padding: 2rem 1.5rem 3rem; background: #faf7f2; color: #241c14;
+  }
+  @media (prefers-color-scheme: dark) { body { background: #1b1710; color: #f0e9de; } }
+  header { max-width: 1000px; margin: 0 auto 1.5rem; }
+  h1 { font-size: 1.55rem; margin: 0 0 .3rem; }
+  .question { font-style: italic; color: #7a6a55; margin: 0 0 .6rem; }
+  @media (prefers-color-scheme: dark) { .question { color: #b7a888; } }
+  .narrative { font-size: 1rem; line-height: 1.55; margin: .4rem 0 .9rem; max-width: 68ch; }
+  .meta { font-size: .78rem; color: #9a8b74; }
+  main.charts {
+    max-width: 1100px; margin: 0 auto; display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.25rem;
+  }
+  .chart-card {
+    background: #ffffff; border-radius: 12px; padding: 1rem 1.15rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08); min-width: 0; overflow-x: auto;
+  }
+  /* vega-embed sets its target element to display:inline-block, which
+     collapses to zero width before the chart renders when a spec uses
+     "width": "container" — force it to fill the card instead. */
+  .chart-card > div { width: 100%; }
+  @media (prefers-color-scheme: dark) {
+    .chart-card { background: #2a241a; box-shadow: none; border: 1px solid #443c2c; }
+  }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #e4dccb; white-space: nowrap; }
+  @media (prefers-color-scheme: dark) { th, td { border-bottom: 1px solid #443c2c; } }
+  footer { max-width: 1000px; margin: 2rem auto 0; font-size: .75rem; color: #9a8b74; }
+  code.sql {
+    display: block; white-space: pre-wrap; background: #f0ebe0; padding: .75rem;
+    border-radius: 8px; font-size: .74rem; overflow-x: auto; margin-top: .4rem;
+  }
+  @media (prefers-color-scheme: dark) { code.sql { background: #241f16; color: #d8cdb8; } }
+  details summary { cursor: pointer; color: #7a6a55; font-size: .82rem; }
+  @media (prefers-color-scheme: dark) { details summary { color: #b7a888; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>What are our top products by revenue, and what's total revenue and units sold</h1>
+  <p class="question">&ldquo;What are our top products by revenue, and what's total revenue and units sold?&rdquo;</p>
+  <p class="narrative">Filter Roast Beans narrowly leads by revenue thanks to its high price point, just ahead of Latte and Cappuccino — the three espresso-based drinks together outsell every other product by volume.</p>
+  <p class="meta">Data as of 2026-07-18 03:49 UTC &middot; Fjord Roast conversational analytics prototype</p>
+</header>
+
+<main class="charts">
+
+  
+  <div class="chart-card"><div id="vis-0"></div></div>
+  
+  <div class="chart-card"><div id="vis-1"></div></div>
+  
+
+</main>
+
+<footer>
+  <details>
+    <summary>Show compiled SQL (executed by DuckDB — never written by the LLM)</summary>
+    <code class="sql">SELECT dim_product.name AS name, SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) AS net_revenue, SUM(fact_sales.quantity) AS units_sold
+FROM read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/fact_sales.parquet') AS fact_sales
+LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
+WHERE 1=1
+GROUP BY dim_product.name
+ORDER BY net_revenue DESC
+LIMIT 100</code>
+  </details>
+</footer>
+
+<script>
+const __tableData = [{"name": "Filter Roast Beans 500g", "net_revenue": 2058827.5, "units_sold": 9418.0}, {"name": "Latte", "net_revenue": 2052687.9999999972, "units_sold": 39735.0}, {"name": "Cappuccino", "net_revenue": 1993902.9, "units_sold": 39386.0}, {"name": "Americano", "net_revenue": 1774677.6000000013, "units_sold": 39753.0}, {"name": "Sandwich", "net_revenue": 1500889.0, "units_sold": 19107.0}, {"name": "Dark Roast Beans 250g", "net_revenue": 1243339.6000000003, "units_sold": 9233.0}, {"name": "House Blend Beans 250g", "net_revenue": 1187037.5000000005, "units_sold": 9230.0}, {"name": "Mocha", "net_revenue": 1067079.6, "units_sold": 19530.0}, {"name": "Carrot Cake", "net_revenue": 995126.0000000009, "units_sold": 19315.0}, {"name": "Flat White", "net_revenue": 968486.7999999993, "units_sold": 19512.0}, {"name": "Waffle", "net_revenue": 934960.3000000003, "units_sold": 19252.0}, {"name": "Cinnamon Bun", "net_revenue": 851365.7999999985, "units_sold": 19109.0}, {"name": "Chai Latte", "net_revenue": 754072.6000000002, "units_sold": 15829.0}, {"name": "Croissant", "net_revenue": 715172.1999999994, "units_sold": 19048.0}, {"name": "Berry Smoothie", "net_revenue": 714822.5999999997, "units_sold": 12399.0}, {"name": "Iced Latte", "net_revenue": 657826.2000000007, "units_sold": 12728.0}, {"name": "Cold Brew", "net_revenue": 631087.5999999995, "units_sold": 12716.0}, {"name": "Espresso", "net_revenue": 622521.8999999991, "units_sold": 19695.0}, {"name": "Black Tea", "net_revenue": 609821.3000000002, "units_sold": 16205.0}, {"name": "Green Tea", "net_revenue": 598696.2999999998, "units_sold": 15907.0}, {"name": "Iced Coffee", "net_revenue": 586733.1999999998, "units_sold": 12866.0}, {"name": "Lemonade", "net_revenue": 507681.5000000002, "units_sold": 12822.0}];
+
+const __specs = [{"$schema": "https://vega.github.io/schema/vega-lite/v6.json", "title": "Total revenue and units sold", "description": "KPI tile aggregated (in Vega-Lite) over every product in the result.", "width": "container", "height": 90, "data": {"name": "table"}, "transform": [{"aggregate": [{"op": "sum", "field": "net_revenue", "as": "total_revenue"}, {"op": "sum", "field": "units_sold", "as": "total_units"}]}, {"calculate": "format(datum.total_revenue, '.3~s') + ' kr revenue   |   ' + format(datum.total_units, '.3~s') + ' units sold'", "as": "kpi_label"}], "mark": {"type": "text", "align": "center", "baseline": "middle", "fontSize": 18, "fontWeight": "bold"}, "encoding": {"text": {"field": "kpi_label", "type": "nominal"}, "x": {"value": {"expr": "width / 2"}}, "y": {"value": {"expr": "height / 2"}}}}, {"$schema": "https://vega.github.io/schema/vega-lite/v6.json", "title": "Top 10 products by revenue", "description": "Ranked via a Vega-Lite window transform over the same product-level result.", "width": "container", "data": {"name": "table"}, "transform": [{"window": [{"op": "rank", "as": "rank"}], "sort": [{"field": "net_revenue", "order": "descending"}]}, {"filter": "datum.rank <= 10"}], "mark": "bar", "encoding": {"x": {"field": "net_revenue", "type": "quantitative", "title": "Net revenue (NOK)"}, "y": {"field": "name", "type": "nominal", "sort": "-x", "title": null}, "tooltip": [{"field": "name", "type": "nominal", "title": "Product"}, {"field": "net_revenue", "type": "quantitative", "title": "Revenue", "format": ",.0f"}, {"field": "units_sold", "type": "quantitative", "title": "Units sold", "format": ",.0f"}]}}];
+__specs.forEach(function (spec, i) {
+  const s = Object.assign({}, spec, { data: { values: __tableData } });
+  vegaEmbed('#vis-' + i, s, { actions: false }).catch(function (err) { console.error(err); });
+});
+
+</script>
+</body>
+</html>

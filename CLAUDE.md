@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This repo contains two independent hobby projects sharing a single Python virtual environment managed by Poetry.
+This repo contains independent hobby projects sharing a single Python virtual environment managed by Poetry.
 
 ---
 
@@ -8,11 +8,12 @@ This repo contains two independent hobby projects sharing a single Python virtua
 
 ```sh
 espenhk-hobby-projects/
-├── .venv/                  # Shared virtual environment (created by Poetry)
-├── skate/                  # Ice skating race predictor
-├── tmnf/                   # Trackmania Nations Forever AI
-├── pyproject.toml          # Shared dependencies for both projects
-├── poetry.lock             # Locked dependency versions
+├── .venv/                       # Shared virtual environment (created by Poetry)
+├── skate/                       # Ice skating race predictor
+├── tmnf/                        # Trackmania Nations Forever AI
+├── conversational-analytics/    # NL -> semantic model -> DuckDB -> Vega-Lite dashboard prototype
+├── pyproject.toml               # Shared dependencies for all projects
+├── poetry.lock                  # Locked dependency versions
 ├── README.md
 └── CLAUDE.md
 ```
@@ -69,6 +70,53 @@ Complete and functional. All core features work. Skater profiles include histori
 
 ```bash
 python -m pytest skate/tests/
+```
+
+---
+
+## Project: `conversational-analytics`
+
+### Purpose
+
+A local, dependency-light prototype proving out a conversational-analytics
+architecture (the Microsoft Fabric data-agent pattern, built natively):
+a natural-language question about a fictional coffee-shop chain's sales is
+grounded in a file-defined semantic model, compiled to DuckDB SQL, executed
+against local Parquet, and rendered as a self-contained interactive HTML
+dashboard. The LLM (Claude, via the `anthropic` SDK) only ever produces
+*structure* — a logical query and Vega-Lite chart encodings — never raw SQL
+and never numbers; DuckDB is the sole source of truth for values.
+
+### Structure
+
+```sh
+conversational-analytics/
+├── semantic_model/       # single source of business meaning: tables, relationships,
+│                          # metrics, verified_answers, row_filters — all YAML
+├── data/                  # generated Parquet star schema (shipped, runs offline)
+├── scripts/generate_data.py
+├── fjordroast/
+│   ├── semantic/          # loader/validator + query-builder (LogicalQuery -> SQL)
+│   ├── agent/              # NL -> LogicalQuery, result -> Vega-Lite spec(s), narrative
+│   ├── dashboard/          # Jinja2 HTML assembly + pinned Vega-Lite schema
+│   ├── store/              # SQLite "living dashboard" persistence
+│   └── server.py           # stretch: FastAPI chat + gallery
+├── cli.py                 # ask / validate / refresh / serve
+├── tests/
+└── dashboards/             # generated dashboard.html files + dashboards.db
+```
+
+### State
+
+Complete and functional. `validate` and `refresh` run fully offline against
+the shipped data; `ask` and `serve` require `ANTHROPIC_API_KEY`. See
+`conversational-analytics/README.md` for the full architecture writeup and
+the Fabric-concept mapping table.
+
+### Running tests
+
+```bash
+poetry run python -m pytest conversational-analytics/tests/
 ```
 
 ---

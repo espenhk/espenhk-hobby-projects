@@ -1,0 +1,30 @@
+name: dim_store
+source: data/dim_store.parquet
+grain: "One row per café."
+description: "The six Fjord Roast café locations."
+columns:
+  - name: store_id
+    type: string
+    is_key: true
+    description: "Surrogate key for the café."
+    hidden_from_ai: true
+
+  - name: store_name
+    type: string
+    description: "Café name, e.g. 'Bergen Bryggen'."
+    synonyms: ["café name", "shop name", "location name", "store"]
+
+  - name: city
+    type: string
+    description: "City the café is in: Tromsø, Bergen, Oslo, or Trondheim."
+    synonyms: ["town", "location"]
+
+  - name: opening_date
+    type: date
+    description: "Date the café opened for business."
+    synonyms: ["open date", "launch date"]
+
+  - name: seating_capacity
+    type: integer
+    description: "Number of seats in the café."
+    synonyms: ["seats", "capacity"]

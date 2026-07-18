@@ -1,0 +1,21 @@
+# Named-identity -> SQL predicate, the row-level-security analogue.
+# The query-builder ANDs the matching predicate into every compiled query's
+# WHERE clause whenever `ask` is called with --identity. Predicates may
+# reference any joined table; the query-builder adds the join automatically
+# if the predicate's table isn't already required by the query.
+filters:
+  - identity: hq_admin
+    description: "Head-office — full visibility across all cafés."
+    predicate: "1=1"
+
+  - identity: manager_tromso
+    description: "Café manager restricted to the Tromsø cafés only."
+    predicate: "dim_store.city = 'Tromsø'"
+
+  - identity: manager_bergen
+    description: "Café manager restricted to the Bergen cafés only."
+    predicate: "dim_store.city = 'Bergen'"
+
+  - identity: manager_oslo_sentrum
+    description: "Café manager restricted to a single named store: Oslo Sentrum."
+    predicate: "dim_store.store_name = 'Oslo Sentrum'"

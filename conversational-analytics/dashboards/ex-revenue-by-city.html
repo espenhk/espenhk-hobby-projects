@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>What is revenue by city — Fjord Roast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-lite@6"></script>
+<script src="https://cdn.jsdelivr.net/npm/vega-embed@7"></script>
+<style>
+  :root { color-scheme: light dark; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0; padding: 2rem 1.5rem 3rem; background: #faf7f2; color: #241c14;
+  }
+  @media (prefers-color-scheme: dark) { body { background: #1b1710; color: #f0e9de; } }
+  header { max-width: 1000px; margin: 0 auto 1.5rem; }
+  h1 { font-size: 1.55rem; margin: 0 0 .3rem; }
+  .question { font-style: italic; color: #7a6a55; margin: 0 0 .6rem; }
+  @media (prefers-color-scheme: dark) { .question { color: #b7a888; } }
+  .narrative { font-size: 1rem; line-height: 1.55; margin: .4rem 0 .9rem; max-width: 68ch; }
+  .meta { font-size: .78rem; color: #9a8b74; }
+  main.charts {
+    max-width: 1100px; margin: 0 auto; display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1.25rem;
+  }
+  .chart-card {
+    background: #ffffff; border-radius: 12px; padding: 1rem 1.15rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08); min-width: 0; overflow-x: auto;
+  }
+  /* vega-embed sets its target element to display:inline-block, which
+     collapses to zero width before the chart renders when a spec uses
+     "width": "container" — force it to fill the card instead. */
+  .chart-card > div { width: 100%; }
+  @media (prefers-color-scheme: dark) {
+    .chart-card { background: #2a241a; box-shadow: none; border: 1px solid #443c2c; }
+  }
+  table { border-collapse: collapse; width: 100%; font-size: .88rem; }
+  th, td { text-align: left; padding: .4rem .6rem; border-bottom: 1px solid #e4dccb; white-space: nowrap; }
+  @media (prefers-color-scheme: dark) { th, td { border-bottom: 1px solid #443c2c; } }
+  footer { max-width: 1000px; margin: 2rem auto 0; font-size: .75rem; color: #9a8b74; }
+  code.sql {
+    display: block; white-space: pre-wrap; background: #f0ebe0; padding: .75rem;
+    border-radius: 8px; font-size: .74rem; overflow-x: auto; margin-top: .4rem;
+  }
+  @media (prefers-color-scheme: dark) { code.sql { background: #241f16; color: #d8cdb8; } }
+  details summary { cursor: pointer; color: #7a6a55; font-size: .82rem; }
+  @media (prefers-color-scheme: dark) { details summary { color: #b7a888; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>What is revenue by city</h1>
+  <p class="question">&ldquo;What is revenue by city?&rdquo;</p>
+  <p class="narrative">Bergen's two cafés lead the chain on revenue, with Tromsø close behind — Oslo Sentrum alone still outsells any single Trondheim location.</p>
+  <p class="meta">Data as of 2026-07-18 03:49 UTC &middot; Fjord Roast conversational analytics prototype</p>
+</header>
+
+<main class="charts">
+
+  
+  <div class="chart-card"><div id="vis-0"></div></div>
+  
+
+</main>
+
+<footer>
+  <details>
+    <summary>Show compiled SQL (executed by DuckDB — never written by the LLM)</summary>
+    <code class="sql">SELECT dim_store.city AS city, SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) AS net_revenue
+FROM read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/fact_sales.parquet') AS fact_sales
+LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_store.parquet') AS dim_store ON fact_sales.store_id = dim_store.store_id
+WHERE 1=1
+GROUP BY dim_store.city
+ORDER BY net_revenue DESC
+LIMIT 1000</code>
+  </details>
+</footer>
+
+<script>
+const __tableData = [{"city": "Bergen", "net_revenue": 7787885.400000002}, {"city": "Troms\u00f8", "net_revenue": 6650214.800000029}, {"city": "Oslo", "net_revenue": 5325441.000000001}, {"city": "Trondheim", "net_revenue": 3263274.8}];
+
+const __specs = [{"$schema": "https://vega.github.io/schema/vega-lite/v6.json", "title": "Net revenue by city", "description": "Total net revenue across the two-year history, broken down by city.", "width": "container", "mark": "bar", "data": {"name": "table"}, "encoding": {"x": {"field": "net_revenue", "type": "quantitative", "title": "Net revenue (NOK)"}, "y": {"field": "city", "type": "nominal", "sort": "-x", "title": null}, "tooltip": [{"field": "city", "type": "nominal"}, {"field": "net_revenue", "type": "quantitative", "format": ",.0f"}]}}];
+__specs.forEach(function (spec, i) {
+  const s = Object.assign({}, spec, { data: { values: __tableData } });
+  vegaEmbed('#vis-' + i, s, { actions: false }).catch(function (err) { console.error(err); });
+});
+
+</script>
+</body>
+</html>

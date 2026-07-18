@@ -1,0 +1,17 @@
+name: avg_basket_value
+description: "Net revenue divided by the number of distinct baskets — the average order value, in NOK."
+kind: simple
+expression: "SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) / NULLIF(COUNT(DISTINCT fact_sales.receipt_id), 0)"
+format: NOK
+synonyms: ["average order value", "AOV", "basket size", "average basket", "average spend"]
+sliceable_dimensions:
+  - dim_date.date
+  - dim_date.day_of_week
+  - dim_date.is_weekend
+  - dim_date.month
+  - dim_date.quarter
+  - dim_date.year
+  - dim_date.season
+  - dim_store.store_name
+  - dim_store.city
+  - dim_member.loyalty_tier

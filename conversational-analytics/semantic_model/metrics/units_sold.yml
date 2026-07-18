@@ -1,0 +1,21 @@
+name: units_sold
+description: "Total number of product units sold."
+kind: simple
+expression: "SUM(fact_sales.quantity)"
+format: number
+synonyms: ["units", "quantity sold", "items sold", "volume"]
+sliceable_dimensions:
+  - dim_date.date
+  - dim_date.day_of_week
+  - dim_date.is_weekend
+  - dim_date.month
+  - dim_date.quarter
+  - dim_date.year
+  - dim_date.season
+  - dim_date.is_holiday
+  - dim_store.store_name
+  - dim_store.city
+  - dim_product.name
+  - dim_product.category
+  - dim_product.size
+  - dim_member.loyalty_tier

@@ -1,0 +1,14 @@
+name: gross_margin
+description: "Net revenue minus cost of goods sold, as a share of net revenue."
+kind: simple
+expression: "(SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) - SUM(dim_product.unit_cost * fact_sales.quantity)) / NULLIF(SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount), 0)"
+format: percent
+synonyms: ["margin", "profit margin", "gross margin percent"]
+sliceable_dimensions:
+  - dim_date.month
+  - dim_date.quarter
+  - dim_date.year
+  - dim_date.season
+  - dim_store.store_name
+  - dim_store.city
+  - dim_product.category
