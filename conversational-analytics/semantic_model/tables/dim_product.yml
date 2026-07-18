@@ -1,0 +1,30 @@
+name: dim_product
+source: data/dim_product.parquet
+grain: "One row per sellable product."
+description: "Menu and retail catalogue for Fjord Roast."
+columns:
+  - name: product_id
+    type: string
+    is_key: true
+    description: "Surrogate key for the product."
+    hidden_from_ai: true
+
+  - name: name
+    type: string
+    description: "Product name as it appears on the menu."
+    synonyms: ["product name", "item name", "drink name"]
+
+  - name: category
+    type: string
+    description: "One of Coffee, Tea, Cold Drink, Food, Retail Bean."
+    synonyms: ["product category", "product type", "menu category"]
+
+  - name: size
+    type: string
+    description: "Serving size where applicable: Small, Medium, Large, or N/A for food and retail items."
+    synonyms: ["cup size", "portion size"]
+
+  - name: unit_cost
+    type: float
+    description: "Fjord Roast's cost to produce/stock one unit, in NOK. Used by gross_margin."
+    synonyms: ["cost of goods", "COGS per unit"]

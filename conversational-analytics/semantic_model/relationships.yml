@@ -1,0 +1,32 @@
+# Join graph radiating out from fact_sales — the query-builder only ever
+# emits LEFT JOINs along these declared edges, and only for the tables a
+# given logical query actually touches.
+relationships:
+  - name: sales_to_store
+    from_table: fact_sales
+    from_column: store_id
+    to_table: dim_store
+    to_column: store_id
+    cardinality: many_to_one
+
+  - name: sales_to_product
+    from_table: fact_sales
+    from_column: product_id
+    to_table: dim_product
+    to_column: product_id
+    cardinality: many_to_one
+
+  - name: sales_to_date
+    from_table: fact_sales
+    from_column: date
+    to_table: dim_date
+    to_column: date
+    cardinality: many_to_one
+
+  - name: sales_to_member
+    from_table: fact_sales
+    from_column: member_id
+    to_table: dim_member
+    to_column: member_id
+    cardinality: many_to_one
+    nullable: true

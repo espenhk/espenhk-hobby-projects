@@ -1,0 +1,49 @@
+name: dim_date
+source: data/dim_date.parquet
+grain: "One row per calendar date."
+description: "Calendar dimension covering the full range of fact_sales, including Norwegian public holidays."
+columns:
+  - name: date
+    type: date
+    is_key: true
+    description: "Calendar date. Joins to fact_sales.date."
+    synonyms: ["day", "calendar date"]
+
+  - name: day_of_week
+    type: string
+    description: "Day name, e.g. 'Monday'."
+    synonyms: ["weekday", "day name"]
+
+  - name: is_weekend
+    type: boolean
+    description: "True for Saturday and Sunday."
+    synonyms: ["weekend flag"]
+
+  - name: month
+    type: string
+    description: "Month name, e.g. 'March'."
+    synonyms: ["calendar month"]
+
+  - name: quarter
+    type: string
+    description: "Calendar quarter, e.g. 'Q1'."
+    synonyms: ["fiscal quarter"]
+
+  - name: year
+    type: integer
+    description: "Calendar year."
+
+  - name: season
+    type: string
+    description: "Meteorological season for Norway: Winter, Spring, Summer, or Autumn."
+    synonyms: ["time of year"]
+
+  - name: is_holiday
+    type: boolean
+    description: "True on Norwegian public holidays (e.g. 17. mai, Christmas Day, Easter)."
+    synonyms: ["public holiday", "bank holiday"]
+
+  - name: holiday_name
+    type: string
+    description: "Name of the holiday on this date, empty string on non-holidays."
+    synonyms: ["holiday"]

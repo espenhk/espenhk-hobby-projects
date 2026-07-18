@@ -1,0 +1,25 @@
+name: dim_member
+source: data/dim_member.parquet
+grain: "One row per loyalty programme member."
+description: "Fjord Roast loyalty programme membership records."
+columns:
+  - name: member_id
+    type: string
+    is_key: true
+    description: "Surrogate key for the loyalty member. Joins to fact_sales.member_id."
+    hidden_from_ai: true
+
+  - name: loyalty_tier
+    type: string
+    description: "Membership tier: None, Silver, or Gold. 'None' is a signed-up member on the base tier, not a non-member."
+    synonyms: ["tier", "membership level", "loyalty level", "loyalty status"]
+
+  - name: signup_date
+    type: date
+    description: "Date the member joined the loyalty programme."
+    synonyms: ["join date", "member since"]
+
+  - name: home_city
+    type: string
+    description: "City the member signed up in / lives closest to."
+    synonyms: ["member city", "home town"]

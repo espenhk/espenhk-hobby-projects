@@ -1,0 +1,57 @@
+name: fact_sales
+source: data/fact_sales.parquet
+grain: "One row per line item on a receipt — one product line within one basket."
+description: >
+  Point-of-sale line items across all six Fjord Roast cafés, roughly two
+  years of history.
+columns:
+  - name: sale_id
+    type: string
+    is_key: true
+    description: "Surrogate key for the line item. Not meaningful for grouping or filtering."
+    hidden_from_ai: true
+
+  - name: receipt_id
+    type: string
+    description: "Identifies the basket/receipt a line item belongs to. Used by basket_count and food_attach_rate."
+    synonyms: ["basket id", "order id", "transaction id", "receipt number"]
+
+  - name: date
+    type: date
+    description: "Calendar date of the sale. Joins to dim_date.date."
+    synonyms: ["sale date", "transaction date", "order date"]
+
+  - name: hour
+    type: integer
+    description: "Hour of day (0-23, local time) the sale was rung up."
+    synonyms: ["time of day", "hour of day"]
+
+  - name: store_id
+    type: string
+    description: "Café where the sale occurred. Joins to dim_store.store_id."
+    synonyms: ["café id", "shop id", "location id"]
+
+  - name: product_id
+    type: string
+    description: "Product sold on this line. Joins to dim_product.product_id."
+    synonyms: ["item id"]
+
+  - name: member_id
+    type: string
+    description: "Loyalty member who made the purchase. Nullable — null means a walk-in, non-loyalty sale. Joins to dim_member.member_id."
+    synonyms: ["loyalty member id", "customer id", "member number"]
+
+  - name: quantity
+    type: integer
+    description: "Units of the product sold on this line item."
+    synonyms: ["qty", "count sold"]
+
+  - name: unit_price
+    type: float
+    description: "List price per unit in NOK, before any discount."
+    synonyms: ["price", "list price"]
+
+  - name: discount
+    type: float
+    description: "Total discount in NOK applied to this line item (not per-unit)."
+    synonyms: ["discount amount"]

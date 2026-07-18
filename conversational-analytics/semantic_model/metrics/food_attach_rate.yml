@@ -1,0 +1,18 @@
+name: food_attach_rate
+description: >
+  Share of drink-buying baskets (Coffee, Tea, or Cold Drink) that also
+  contain a Food item — a basket-level cross-sell measure, not a share of
+  all line items or all revenue.
+kind: basket_ratio
+numerator_condition: "dim_product.category = 'Food'"
+denominator_condition: "dim_product.category IN ('Coffee', 'Tea', 'Cold Drink')"
+format: percent
+synonyms: ["attach rate", "food attach", "cross-sell rate", "food attach percentage"]
+sliceable_dimensions:
+  - dim_date.month
+  - dim_date.quarter
+  - dim_date.year
+  - dim_date.season
+  - dim_store.store_name
+  - dim_store.city
+  - dim_member.loyalty_tier

@@ -1,0 +1,44 @@
+# Question -> canonical logical query pairs. These exist for trust
+# (a human signed off that this is what the question means) and for
+# regression testing: tests/test_verified_answers.py stubs the Anthropic
+# client to return each `logical_query` and asserts it round-trips through
+# validation and the query-builder without error, and a live-API variant
+# (skipped without ANTHROPIC_API_KEY) asserts the real agent step reproduces
+# the same structure for the same question.
+answers:
+  - question: "What is net revenue by city in 2025?"
+    logical_query:
+      metrics: ["net_revenue"]
+      group_by: ["dim_store.city"]
+      filters:
+        - field: "dim_date.year"
+          op: "="
+          value: 2025
+      sort:
+        - field: "net_revenue"
+          direction: "desc"
+
+  - question: "How many units of Coffee were sold, broken down by month?"
+    logical_query:
+      metrics: ["units_sold"]
+      group_by: ["dim_date.month"]
+      filters:
+        - field: "dim_product.category"
+          op: "="
+          value: "Coffee"
+
+  - question: "What is the average basket value and food attach rate by café?"
+    logical_query:
+      metrics: ["avg_basket_value", "food_attach_rate"]
+      group_by: ["dim_store.store_name"]
+      sort:
+        - field: "avg_basket_value"
+          direction: "desc"
+
+  - question: "What is total net revenue and average basket value for Gold loyalty members?"
+    logical_query:
+      metrics: ["net_revenue", "avg_basket_value"]
+      filters:
+        - field: "dim_member.loyalty_tier"
+          op: "="
+          value: "Gold"

@@ -1,0 +1,31 @@
+name: Fjord Roast Sales
+version: "1.0"
+description: >
+  Semantic model for Fjord Roast, a Norwegian coffee-shop chain with six cafés
+  in Tromsø, Bergen, Oslo, and Trondheim. Sells drinks, food, and retail beans,
+  and runs a three-tier loyalty programme. This file is the single source of
+  business meaning consumed by the NL-to-query agent — do not duplicate
+  metric or join logic anywhere else.
+
+# Grounding instructions handed verbatim to the LLM alongside the compact
+# schema-plus-glossary block produced by fjordroast.semantic.grounding.
+ai_instructions:
+  business_context:
+    - "Revenue is always net of discount. Never sum unit_price * quantity without subtracting discount — that is exactly what the net_revenue metric already does."
+    - "A 'basket' is one receipt, identified by fact_sales.receipt_id. Basket count means COUNT(DISTINCT receipt_id), not a row count — use the basket_count metric rather than counting rows."
+    - "'Attach rate' (see food_attach_rate) is the share of drink-buying baskets that also contain a Food item — a cross-sell measure, not a share of all revenue."
+    - "Currency is NOK (Norwegian kroner). Monetary metrics are already formatted with a 'kr' suffix by their declared format."
+    - "fact_sales.member_id is nullable. A null member_id is a walk-in / non-loyalty purchase, not a data quality problem — do not filter it out unless the question is specifically about loyalty members."
+    - "dim_member.loyalty_tier has three values: None, Silver, Gold. 'None' means a signed-up member who has not qualified for a paid tier; it is different from a null member_id (no membership at all)."
+    - "Two full years of daily data are loaded, so 'last summer', 'this winter', 'last quarter' etc. should be resolved against dim_date using the season / month / date columns, relative to the most recent date in the data."
+  terminology:
+    - "'café', 'store', and 'shop' are the same concept and all map to dim_store."
+    - "'drink' means the product categories Coffee, Tea, and Cold Drink — never Food or Retail Bean."
+    - "'basket value' and 'average order value' both mean the avg_basket_value metric."
+    - "'margin' means gross_margin unless the question explicitly asks for margin in kroner rather than a percentage."
+  do_dont:
+    - "DO always express requested numbers as one of the metrics defined in metrics/*.yml; never invent a new aggregation formula over physical columns."
+    - "DO reference dimensions and filters using their fully qualified 'table.column' name as declared in tables/*.yml."
+    - "DO NOT write SQL. The agent's only output is a structured logical query (metrics, group_by, filters, time_grain, sort, limit) — the query-builder compiles it centrally."
+    - "DO NOT reference a column marked hidden_from_ai — it is not visible to you and does not exist in the vocabulary you may use."
+    - "DO NOT assume holidays or seasons beyond what dim_date.is_holiday and dim_date.season already encode."

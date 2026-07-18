@@ -1,0 +1,22 @@
+name: net_revenue
+description: "Total revenue net of line-item discounts, in NOK."
+kind: simple
+expression: "SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount)"
+format: NOK
+synonyms: ["revenue", "sales", "total sales", "turnover", "net sales"]
+sliceable_dimensions:
+  - dim_date.date
+  - dim_date.day_of_week
+  - dim_date.is_weekend
+  - dim_date.month
+  - dim_date.quarter
+  - dim_date.year
+  - dim_date.season
+  - dim_date.is_holiday
+  - dim_store.store_name
+  - dim_store.city
+  - dim_product.name
+  - dim_product.category
+  - dim_product.size
+  - dim_member.loyalty_tier
+  - dim_member.home_city
