@@ -53,6 +53,20 @@ uvicorn = ">=0.30"
 [tool.poetry.group.conversational-analytics-test.dependencies]
 pytest = ">=8.0"
 
+[tool.poetry.group.football-scheduler.dependencies]
+pydantic = ">=2.5"
+pyyaml = ">=6.0"
+jinja2 = ">=3.1"
+
+[tool.poetry.group.football-scheduler-test.dependencies]
+pytest = ">=8.0"
+
+[tool.poetry.group.football-scheduler-cpsat]
+optional = true
+
+[tool.poetry.group.football-scheduler-cpsat.dependencies]
+ortools = ">=9.9"
+
 # Not on PyPI — install from source first:
 # tminterface
 # pygbx
