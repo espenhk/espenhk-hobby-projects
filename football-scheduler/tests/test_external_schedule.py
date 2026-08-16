@@ -73,6 +73,24 @@ def test_json_schedule_loads_equivalently(tmp_path, world):
     assert matches[0].home_team == "brann_m"
 
 
+def test_json_entry_numbers_in_errors_are_1_based_like_csv(tmp_path, world):
+    """A bad second entry should be reported as 'entry 2', matching the
+    1-based numbering CSV parsing and _validate_entries both use — not the
+    0-based index enumerate() hands back by default."""
+    path = tmp_path / "schedule.json"
+    path.write_text(
+        json.dumps(
+            [
+                {"competition": "eliteserien_2026", "date": "2026-04-05", "home_team": "brann_m", "away_team": "viking_m"},
+                {"competition": "eliteserien_2026", "date": "not-a-date", "home_team": "brann_m", "away_team": "viking_m"},
+            ]
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ExternalScheduleError, match="entry 2"):
+        load_external_schedule(path, world)
+
+
 def test_coverage_warning_flags_a_pair_that_never_meets(tmp_path, world):
     path = tmp_path / "schedule.csv"
     # Only one match from the whole Eliteserien: every other pair is missing.

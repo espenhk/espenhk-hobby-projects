@@ -95,3 +95,26 @@ def test_season_shorter_than_required_rounds_is_caught():
     )
     errors = _validate_calendar_capacity(bad_world, tiny_season)
     assert errors
+
+
+def test_capacity_check_uses_a_tight_lower_bound_not_rounds_times_rest():
+    """A season with just enough room for `(rounds - 1) * min_rest_days + 1`
+    days should validate clean — the first round needs no rest before it, so
+    only the gaps *between* rounds count. The old `rounds * min_rest_days`
+    formula overcounted by one full gap and would wrongly flag this season as
+    too short."""
+    from terminliste.model.loader import _validate_calendar_capacity
+    import factories as f
+
+    v = f.venue("v1")
+    teams = [f.team(f"t{i}", f"c{i}", "v1") for i in range(6)]
+    clubs = [f.club(f"c{i}", [teams[i]]) for i in range(6)]
+    # 6 teams, single league -> 5 rounds. Tight bound: (5-1)*10 + 1 = 41 days.
+    comp = f.competition("comp", [t.id for t in teams], min_rest_days=10, rounds_per_pairing=1)
+    assert comp.rounds == 5
+    world = f.world(clubs, [v], [comp])
+    season = f.season(
+        competitions=["comp"], start=date(2026, 1, 1), end=date(2026, 2, 10)  # 41 days
+    )
+    errors = _validate_calendar_capacity(world, season)
+    assert errors == []

@@ -103,7 +103,10 @@ def _parse_json(path: Path) -> list[RawEntry]:
             f"{path}: expected a JSON list of matches, or an object with a 'matches' list"
         )
     entries: list[RawEntry] = []
-    for i, row in enumerate(rows):
+    # 1-based throughout: matches CSV's line numbers and _validate_entries's
+    # "entry N" numbering, so a parse error and a later validation error can
+    # both be traced to the same row without an off-by-one translation.
+    for i, row in enumerate(rows, start=1):
         try:
             entries.append(
                 RawEntry(

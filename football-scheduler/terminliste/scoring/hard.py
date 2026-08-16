@@ -250,7 +250,11 @@ class LegOrdering:
                 if match.leg < 2:
                     continue
                 previous_end = last_of_leg.get(match.leg - 1)
-                if previous_end is None or match.date >= previous_end:
+                # Date-only precision: "precedes" excludes ties. A leg-2 match
+                # landing on the same day the previous leg's last match was
+                # played is not a first-meeting-before-second-meeting schedule,
+                # so it counts as a violation rather than being waved through.
+                if previous_end is None or match.date > previous_end:
                     continue
                 count += 1
                 penalty -= self.weight

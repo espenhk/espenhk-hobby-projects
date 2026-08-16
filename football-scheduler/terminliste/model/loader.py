@@ -324,12 +324,17 @@ def _validate_calendar_capacity(world: World, season: Season) -> list[str]:
         competition = world.competitions.get(competition_id)
         if competition is None:
             continue
-        needed = competition.rounds * competition.min_rest_days
+        # Tight lower bound: the first round can land on day 1, and each
+        # subsequent round only needs to clear min_rest_days from the one
+        # before it — (rounds - 1) gaps, not `rounds` of them. The previous
+        # `rounds * min_rest_days` formula overcounted by one full gap and
+        # could flag a genuinely feasible season as too short.
+        needed = (competition.rounds - 1) * competition.min_rest_days + 1
         if needed > available_days:
             errors.append(
                 f"season {season.id!r} spans {available_days} days but {competition_id!r} needs "
-                f"at least {needed} ({competition.rounds} rounds x {competition.min_rest_days} "
-                f"days rest) — widen the window or reduce rounds"
+                f"at least {needed} ({competition.rounds} rounds, {competition.min_rest_days} "
+                f"days rest between each) — widen the window or reduce rounds"
             )
     return errors
 

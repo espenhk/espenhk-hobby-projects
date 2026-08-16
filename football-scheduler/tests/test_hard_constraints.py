@@ -219,6 +219,34 @@ def test_leg_ordering_fires_when_a_second_leg_match_starts_too_early():
     assert result.hard_violations == 0
 
 
+def test_leg_ordering_fires_on_a_same_day_tie():
+    """Date-only precision: a leg-2 match landing on the same day the last
+    leg-1 match was played is not 'first meeting precedes second meeting' —
+    it should count as a violation, not be waved through as a tie."""
+    v1 = f.venue("v1")
+    t1 = f.team("t1", "c1", "v1")
+    t2 = f.team("t2", "c2", "v1")
+    t3 = f.team("t3", "c3", "v1")
+    clubs = [f.club("c1", [t1]), f.club("c2", [t2]), f.club("c3", [t3])]
+    comp = f.competition("comp", ["t1", "t2", "t3"], rounds_per_pairing=2)
+    world = f.world(clubs, [v1], [comp])
+    season = f.season(competitions=["comp"])
+
+    same_day = [
+        f.match("comp", "t1", "t2", date(2026, 6, 10), "v1", leg=1, round_index=0),
+        f.match("comp", "t3", "t1", date(2026, 6, 10), "v1", leg=2, round_index=1),
+    ]
+    result = evaluate(same_day, [LegOrdering()], _ctx(world, season))
+    assert result.hard_violations == 1
+
+    one_day_later = [
+        f.match("comp", "t1", "t2", date(2026, 6, 10), "v1", leg=1, round_index=0),
+        f.match("comp", "t3", "t1", date(2026, 6, 11), "v1", leg=2, round_index=1),
+    ]
+    result = evaluate(one_day_later, [LegOrdering()], _ctx(world, season))
+    assert result.hard_violations == 0
+
+
 # -- fixed_requirement --------------------------------------------------
 
 
