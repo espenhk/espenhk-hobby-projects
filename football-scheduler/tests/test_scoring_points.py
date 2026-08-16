@@ -68,6 +68,14 @@ def test_feasible_negative_soft_score_stays_above_the_infeasible_ceiling():
     assert poor.points > INFEASIBLE_CEILING
 
 
+def test_feasible_extreme_negative_soft_score_still_stays_strictly_above_the_ceiling():
+    # At an extreme negative per-match soft score, the sigmoid underflows to
+    # exactly 0.0 — without a saturation floor that would put points exactly
+    # on INFEASIBLE_CEILING instead of strictly above it.
+    catastrophic = _score(hard_violations=0, soft_total=-1e12)
+    assert catastrophic.points > INFEASIBLE_CEILING
+
+
 def test_points_with_no_matches_does_not_divide_by_zero():
     empty = _score(hard_violations=0, soft_total=0.0, num_matches=0)
     assert empty.points == (INFEASIBLE_CEILING + 100.0) / 2

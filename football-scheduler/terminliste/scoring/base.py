@@ -43,6 +43,13 @@ HARD_PENALTY = 10_000.0
 INFEASIBLE_CEILING = 20.0
 SOFT_SCALE = 3.0
 
+# Floor for the feasible-side saturation factor. `_sigmoid` underflows to an
+# exact 0.0 once its input is a few hundred past zero, which an extreme (if
+# unrealistic) negative soft score can reach — left unclamped, that would let
+# a feasible schedule's points hit INFEASIBLE_CEILING exactly rather than
+# staying strictly above it.
+_MIN_SATURATION = 1e-9
+
 
 def _sigmoid(x: float) -> float:
     """Numerically stable logistic function — plain `1/(1+exp(-x))` overflows
@@ -181,7 +188,7 @@ class Score:
             return INFEASIBLE_CEILING * math.exp(-0.25 * self.hard_violations)
 
         per_match = self.soft_total / self.num_matches if self.num_matches else 0.0
-        saturation = _sigmoid(per_match / SOFT_SCALE)
+        saturation = max(_sigmoid(per_match / SOFT_SCALE), _MIN_SATURATION)
         return INFEASIBLE_CEILING + (100.0 - INFEASIBLE_CEILING) * saturation
 
     @property
