@@ -1,15 +1,15 @@
 {
   "solver": "local",
-  "iterations": 33932,
-  "elapsed_s": 58.25,
+  "iterations": 31400,
+  "elapsed_s": 59.15,
   "notes": [],
   "options": [
     {
       "label": "Option 1",
       "seed": 23799,
       "hard_violations": 0,
-      "soft_total": 2960.5,
-      "points": 92.4,
+      "soft_total": 2935.82,
+      "points": 92.3,
       "breakdown": [
         {
           "constraint": "one_match_per_team_per_day",
@@ -68,26 +68,26 @@
         {
           "constraint": "consecutive_home_days",
           "kind": "soft",
-          "total": 1525.0,
-          "count": 61
+          "total": 1500.0,
+          "count": 60
         },
         {
           "constraint": "consecutive_away_days",
           "kind": "soft",
-          "total": 257.5,
-          "count": 35
+          "total": 267.82,
+          "count": 36
         },
         {
           "constraint": "home_away_breaks",
           "kind": "soft",
-          "total": -168.0,
-          "count": 20
+          "total": -184.0,
+          "count": 22
         },
         {
           "constraint": "home_away_balance",
           "kind": "soft",
-          "total": -6.0,
-          "count": 1
+          "total": 0.0,
+          "count": 0
         },
         {
           "constraint": "rest_comfort",
@@ -208,7 +208,7 @@
           "round": 10,
           "leg": 1,
           "home": "honefoss_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "aka_arena"
         },
         {
@@ -225,9 +225,9 @@
           "competition": "toppserien_2026",
           "round": 10,
           "leg": 1,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "rosenborg_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-03-22",
@@ -342,18 +342,18 @@
           "competition": "toppserien_2026",
           "round": 1,
           "leg": 1,
-          "home": "rosenborg_w",
-          "away": "roa_w",
-          "venue": "lerkendal_stadion"
+          "home": "roa_w",
+          "away": "valerenga_w",
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-03-28",
           "competition": "toppserien_2026",
           "round": 1,
           "leg": 1,
-          "home": "stabak_w",
-          "away": "valerenga_w",
-          "venue": "nadderud_stadion"
+          "home": "rosenborg_w",
+          "away": "stabak_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-03-29",
@@ -442,7 +442,7 @@
           "round": 4,
           "leg": 1,
           "home": "lyn_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -459,18 +459,18 @@
           "competition": "toppserien_2026",
           "round": 4,
           "leg": 1,
-          "home": "roa_w",
-          "away": "haugesund_w",
-          "venue": "roa_kunstgress"
+          "home": "rosenborg_w",
+          "away": "lsk_kvinner_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-04-04",
           "competition": "toppserien_2026",
           "round": 4,
           "leg": 1,
-          "home": "rosenborg_w",
-          "away": "lsk_kvinner_w",
-          "venue": "lerkendal_stadion"
+          "home": "stabak_w",
+          "away": "haugesund_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-04-04",
@@ -484,60 +484,6 @@
         {
           "date": "2026-04-11",
           "competition": "toppserien_2026",
-          "round": 5,
-          "leg": 1,
-          "home": "brann_w",
-          "away": "rosenborg_w",
-          "venue": "brann_stadion"
-        },
-        {
-          "date": "2026-04-11",
-          "competition": "toppserien_2026",
-          "round": 5,
-          "leg": 1,
-          "home": "haugesund_w",
-          "away": "lyn_w",
-          "venue": "haugesund_stadion"
-        },
-        {
-          "date": "2026-04-11",
-          "competition": "toppserien_2026",
-          "round": 5,
-          "leg": 1,
-          "home": "honefoss_w",
-          "away": "bodo_glimt_w",
-          "venue": "aka_arena"
-        },
-        {
-          "date": "2026-04-11",
-          "competition": "toppserien_2026",
-          "round": 5,
-          "leg": 1,
-          "home": "lsk_kvinner_w",
-          "away": "aalesund_w",
-          "venue": "araasen_stadion"
-        },
-        {
-          "date": "2026-04-11",
-          "competition": "toppserien_2026",
-          "round": 5,
-          "leg": 1,
-          "home": "stabak_w",
-          "away": "molde_w",
-          "venue": "nadderud_stadion"
-        },
-        {
-          "date": "2026-04-11",
-          "competition": "toppserien_2026",
-          "round": 5,
-          "leg": 1,
-          "home": "valerenga_w",
-          "away": "roa_w",
-          "venue": "intility_arena"
-        },
-        {
-          "date": "2026-04-18",
-          "competition": "toppserien_2026",
           "round": 2,
           "leg": 1,
           "home": "bodo_glimt_w",
@@ -545,7 +491,7 @@
           "venue": "aspmyra_stadion"
         },
         {
-          "date": "2026-04-18",
+          "date": "2026-04-11",
           "competition": "toppserien_2026",
           "round": 2,
           "leg": 1,
@@ -554,16 +500,16 @@
           "venue": "brann_stadion"
         },
         {
-          "date": "2026-04-18",
+          "date": "2026-04-11",
           "competition": "toppserien_2026",
           "round": 2,
           "leg": 1,
           "home": "haugesund_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "haugesund_stadion"
         },
         {
-          "date": "2026-04-18",
+          "date": "2026-04-11",
           "competition": "toppserien_2026",
           "round": 2,
           "leg": 1,
@@ -572,22 +518,76 @@
           "venue": "aka_arena"
         },
         {
-          "date": "2026-04-18",
-          "competition": "toppserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "roa_w",
-          "away": "aalesund_w",
-          "venue": "roa_kunstgress"
-        },
-        {
-          "date": "2026-04-18",
+          "date": "2026-04-11",
           "competition": "toppserien_2026",
           "round": 2,
           "leg": 1,
           "home": "rosenborg_w",
           "away": "lyn_w",
           "venue": "lerkendal_stadion"
+        },
+        {
+          "date": "2026-04-11",
+          "competition": "toppserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "stabak_w",
+          "away": "aalesund_w",
+          "venue": "nadderud_stadion"
+        },
+        {
+          "date": "2026-04-18",
+          "competition": "toppserien_2026",
+          "round": 5,
+          "leg": 1,
+          "home": "brann_w",
+          "away": "rosenborg_w",
+          "venue": "brann_stadion"
+        },
+        {
+          "date": "2026-04-18",
+          "competition": "toppserien_2026",
+          "round": 5,
+          "leg": 1,
+          "home": "haugesund_w",
+          "away": "lyn_w",
+          "venue": "haugesund_stadion"
+        },
+        {
+          "date": "2026-04-18",
+          "competition": "toppserien_2026",
+          "round": 5,
+          "leg": 1,
+          "home": "honefoss_w",
+          "away": "bodo_glimt_w",
+          "venue": "aka_arena"
+        },
+        {
+          "date": "2026-04-18",
+          "competition": "toppserien_2026",
+          "round": 5,
+          "leg": 1,
+          "home": "lsk_kvinner_w",
+          "away": "aalesund_w",
+          "venue": "araasen_stadion"
+        },
+        {
+          "date": "2026-04-18",
+          "competition": "toppserien_2026",
+          "round": 5,
+          "leg": 1,
+          "home": "roa_w",
+          "away": "molde_w",
+          "venue": "roa_kunstgress"
+        },
+        {
+          "date": "2026-04-18",
+          "competition": "toppserien_2026",
+          "round": 5,
+          "leg": 1,
+          "home": "valerenga_w",
+          "away": "stabak_w",
+          "venue": "intility_arena"
         },
         {
           "date": "2026-04-19",
@@ -685,7 +685,7 @@
           "round": 6,
           "leg": 1,
           "home": "lsk_kvinner_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "araasen_stadion"
         },
         {
@@ -694,7 +694,7 @@
           "round": 6,
           "leg": 1,
           "home": "lyn_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -810,15 +810,6 @@
           "competition": "toppserien_2026",
           "round": 8,
           "leg": 1,
-          "home": "lsk_kvinner_w",
-          "away": "roa_w",
-          "venue": "araasen_stadion"
-        },
-        {
-          "date": "2026-05-02",
-          "competition": "toppserien_2026",
-          "round": 8,
-          "leg": 1,
           "home": "molde_w",
           "away": "lyn_w",
           "venue": "aker_stadion"
@@ -828,8 +819,17 @@
           "competition": "toppserien_2026",
           "round": 8,
           "leg": 1,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "honefoss_w",
+          "venue": "roa_kunstgress"
+        },
+        {
+          "date": "2026-05-02",
+          "competition": "toppserien_2026",
+          "round": 8,
+          "leg": 1,
+          "home": "stabak_w",
+          "away": "lsk_kvinner_w",
           "venue": "nadderud_stadion"
         },
         {
@@ -919,7 +919,7 @@
           "round": 7,
           "leg": 1,
           "home": "brann_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "brann_stadion"
         },
         {
@@ -954,9 +954,9 @@
           "competition": "toppserien_2026",
           "round": 7,
           "leg": 1,
-          "home": "roa_w",
+          "home": "stabak_w",
           "away": "molde_w",
-          "venue": "roa_kunstgress"
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-05-10",
@@ -1054,7 +1054,7 @@
           "round": 9,
           "leg": 1,
           "home": "bodo_glimt_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -1080,18 +1080,18 @@
           "competition": "toppserien_2026",
           "round": 9,
           "leg": 1,
-          "home": "roa_w",
-          "away": "brann_w",
-          "venue": "roa_kunstgress"
+          "home": "rosenborg_w",
+          "away": "aalesund_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-05-16",
           "competition": "toppserien_2026",
           "round": 9,
           "leg": 1,
-          "home": "rosenborg_w",
-          "away": "aalesund_w",
-          "venue": "lerkendal_stadion"
+          "home": "stabak_w",
+          "away": "brann_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-05-23",
@@ -1143,9 +1143,9 @@
           "competition": "toppserien_2026",
           "round": 3,
           "leg": 1,
-          "home": "stabak_w",
-          "away": "roa_w",
-          "venue": "nadderud_stadion"
+          "home": "roa_w",
+          "away": "stabak_w",
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-05-30",
@@ -1153,7 +1153,7 @@
           "round": 11,
           "leg": 1,
           "home": "aalesund_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "color_line_stadion"
         },
         {
@@ -1162,7 +1162,7 @@
           "round": 11,
           "leg": 1,
           "home": "bodo_glimt_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -1314,9 +1314,9 @@
           "competition": "toppserien_2026",
           "round": 12,
           "leg": 2,
-          "home": "roa_w",
+          "home": "stabak_w",
           "away": "rosenborg_w",
-          "venue": "roa_kunstgress"
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-06-06",
@@ -1324,7 +1324,7 @@
           "round": 12,
           "leg": 2,
           "home": "valerenga_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "intility_arena"
         },
         {
@@ -1432,7 +1432,7 @@
           "round": 13,
           "leg": 2,
           "home": "aalesund_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "color_line_stadion"
         },
         {
@@ -1467,9 +1467,9 @@
           "competition": "toppserien_2026",
           "round": 13,
           "leg": 2,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "haugesund_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-06-14",
@@ -1557,18 +1557,18 @@
           "competition": "toppserien_2026",
           "round": 14,
           "leg": 2,
-          "home": "roa_w",
-          "away": "stabak_w",
-          "venue": "roa_kunstgress"
+          "home": "rosenborg_w",
+          "away": "molde_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-06-20",
           "competition": "toppserien_2026",
           "round": 14,
           "leg": 2,
-          "home": "rosenborg_w",
-          "away": "molde_w",
-          "venue": "lerkendal_stadion"
+          "home": "stabak_w",
+          "away": "roa_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-06-20",
@@ -1675,7 +1675,7 @@
           "round": 15,
           "leg": 2,
           "home": "haugesund_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "haugesund_stadion"
         },
         {
@@ -1701,9 +1701,9 @@
           "competition": "toppserien_2026",
           "round": 15,
           "leg": 2,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "lyn_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-07-02",
@@ -1728,18 +1728,18 @@
           "competition": "toppserien_2026",
           "round": 16,
           "leg": 2,
-          "home": "roa_w",
-          "away": "valerenga_w",
-          "venue": "roa_kunstgress"
+          "home": "rosenborg_w",
+          "away": "brann_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-07-03",
           "competition": "toppserien_2026",
           "round": 16,
           "leg": 2,
-          "home": "rosenborg_w",
-          "away": "brann_w",
-          "venue": "lerkendal_stadion"
+          "home": "stabak_w",
+          "away": "valerenga_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-07-05",
@@ -1810,7 +1810,7 @@
           "round": 16,
           "leg": 2,
           "home": "molde_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "aker_stadion"
         },
         {
@@ -1839,15 +1839,6 @@
           "home": "sandefjord_m",
           "away": "valerenga_m",
           "venue": "jotun_arena"
-        },
-        {
-          "date": "2026-07-09",
-          "competition": "toppserien_2026",
-          "round": 17,
-          "leg": 2,
-          "home": "roa_w",
-          "away": "lyn_w",
-          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-07-10",
@@ -1881,9 +1872,9 @@
           "competition": "toppserien_2026",
           "round": 17,
           "leg": 2,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "lsk_kvinner_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-07-12",
@@ -1956,6 +1947,15 @@
           "home": "honefoss_w",
           "away": "rosenborg_w",
           "venue": "aka_arena"
+        },
+        {
+          "date": "2026-07-13",
+          "competition": "toppserien_2026",
+          "round": 17,
+          "leg": 2,
+          "home": "stabak_w",
+          "away": "lyn_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-07-19",
@@ -2071,7 +2071,7 @@
           "round": 18,
           "leg": 2,
           "home": "molde_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "aker_stadion"
         },
         {
@@ -2079,9 +2079,9 @@
           "competition": "toppserien_2026",
           "round": 18,
           "leg": 2,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "brann_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-07-25",
@@ -2179,8 +2179,17 @@
           "round": 19,
           "leg": 2,
           "home": "honefoss_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "aka_arena"
+        },
+        {
+          "date": "2026-08-01",
+          "competition": "toppserien_2026",
+          "round": 19,
+          "leg": 2,
+          "home": "lsk_kvinner_w",
+          "away": "stabak_w",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-08-01",
@@ -2190,15 +2199,6 @@
           "home": "lyn_w",
           "away": "molde_w",
           "venue": "kringsjaa_kunstgress"
-        },
-        {
-          "date": "2026-08-01",
-          "competition": "toppserien_2026",
-          "round": 19,
-          "leg": 2,
-          "home": "roa_w",
-          "away": "lsk_kvinner_w",
-          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-08-01",
@@ -2224,7 +2224,7 @@
           "round": 20,
           "leg": 2,
           "home": "brann_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "brann_stadion"
         },
         {
@@ -2259,9 +2259,9 @@
           "competition": "toppserien_2026",
           "round": 20,
           "leg": 2,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "bodo_glimt_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-08-09",
@@ -2367,18 +2367,18 @@
           "competition": "toppserien_2026",
           "round": 21,
           "leg": 2,
-          "home": "roa_w",
-          "away": "honefoss_w",
-          "venue": "roa_kunstgress"
+          "home": "rosenborg_w",
+          "away": "roa_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-08-15",
           "competition": "toppserien_2026",
           "round": 21,
           "leg": 2,
-          "home": "rosenborg_w",
-          "away": "stabak_w",
-          "venue": "lerkendal_stadion"
+          "home": "stabak_w",
+          "away": "honefoss_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-08-15",
@@ -2503,7 +2503,7 @@
           "round": 22,
           "leg": 2,
           "home": "roa_w",
-          "away": "bodo_glimt_w",
+          "away": "aalesund_w",
           "venue": "roa_kunstgress"
         },
         {
@@ -2512,7 +2512,7 @@
           "round": 22,
           "leg": 2,
           "home": "stabak_w",
-          "away": "aalesund_w",
+          "away": "bodo_glimt_w",
           "venue": "nadderud_stadion"
         },
         {
@@ -2593,7 +2593,7 @@
           "round": 23,
           "leg": 3,
           "home": "rosenborg_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "lerkendal_stadion"
         },
         {
@@ -2602,7 +2602,7 @@
           "round": 23,
           "leg": 3,
           "home": "valerenga_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "intility_arena"
         },
         {
@@ -2737,7 +2737,7 @@
           "round": 24,
           "leg": 3,
           "home": "haugesund_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "haugesund_stadion"
         },
         {
@@ -2763,9 +2763,9 @@
           "competition": "toppserien_2026",
           "round": 24,
           "leg": 3,
-          "home": "roa_w",
+          "home": "stabak_w",
           "away": "aalesund_w",
-          "venue": "roa_kunstgress"
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-09-12",
@@ -2808,9 +2808,9 @@
           "competition": "toppserien_2026",
           "round": 25,
           "leg": 3,
-          "home": "stabak_w",
-          "away": "roa_w",
-          "venue": "nadderud_stadion"
+          "home": "roa_w",
+          "away": "stabak_w",
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-09-12",
@@ -2926,7 +2926,7 @@
           "round": 26,
           "leg": 3,
           "home": "roa_w",
-          "away": "haugesund_w",
+          "away": "lyn_w",
           "venue": "roa_kunstgress"
         },
         {
@@ -2944,7 +2944,7 @@
           "round": 26,
           "leg": 3,
           "home": "stabak_w",
-          "away": "lyn_w",
+          "away": "haugesund_w",
           "venue": "nadderud_stadion"
         },
         {
@@ -3060,9 +3060,9 @@
           "competition": "toppserien_2026",
           "round": 27,
           "leg": 3,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "molde_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-09-26",
@@ -3070,7 +3070,7 @@
           "round": 27,
           "leg": 3,
           "home": "valerenga_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "intility_arena"
         },
         {
@@ -3187,7 +3187,7 @@
           "round": 28,
           "leg": 3,
           "home": "lsk_kvinner_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "araasen_stadion"
         },
         {
@@ -3196,7 +3196,7 @@
           "round": 28,
           "leg": 3,
           "home": "lyn_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -3277,7 +3277,7 @@
           "round": 29,
           "leg": 3,
           "home": "brann_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "brann_stadion"
         },
         {
@@ -3312,9 +3312,9 @@
           "competition": "toppserien_2026",
           "round": 29,
           "leg": 3,
-          "home": "roa_w",
+          "home": "stabak_w",
           "away": "molde_w",
-          "venue": "roa_kunstgress"
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-10-10",
@@ -3358,7 +3358,7 @@
           "round": 30,
           "leg": 3,
           "home": "roa_w",
-          "away": "lsk_kvinner_w",
+          "away": "honefoss_w",
           "venue": "roa_kunstgress"
         },
         {
@@ -3376,7 +3376,7 @@
           "round": 30,
           "leg": 3,
           "home": "stabak_w",
-          "away": "honefoss_w",
+          "away": "lsk_kvinner_w",
           "venue": "nadderud_stadion"
         },
         {
@@ -3457,7 +3457,7 @@
           "round": 31,
           "leg": 3,
           "home": "bodo_glimt_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -3483,18 +3483,18 @@
           "competition": "toppserien_2026",
           "round": 31,
           "leg": 3,
-          "home": "roa_w",
-          "away": "brann_w",
-          "venue": "roa_kunstgress"
+          "home": "rosenborg_w",
+          "away": "aalesund_w",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-10-24",
           "competition": "toppserien_2026",
           "round": 31,
           "leg": 3,
-          "home": "rosenborg_w",
-          "away": "aalesund_w",
-          "venue": "lerkendal_stadion"
+          "home": "stabak_w",
+          "away": "brann_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-10-24",
@@ -3601,7 +3601,7 @@
           "round": 32,
           "leg": 3,
           "home": "honefoss_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "aka_arena"
         },
         {
@@ -3627,9 +3627,9 @@
           "competition": "toppserien_2026",
           "round": 32,
           "leg": 3,
-          "home": "stabak_w",
+          "home": "roa_w",
           "away": "rosenborg_w",
-          "venue": "nadderud_stadion"
+          "venue": "roa_kunstgress"
         },
         {
           "date": "2026-11-01",
@@ -3709,7 +3709,7 @@
           "round": 33,
           "leg": 3,
           "home": "aalesund_w",
-          "away": "stabak_w",
+          "away": "roa_w",
           "venue": "color_line_stadion"
         },
         {
@@ -3718,7 +3718,7 @@
           "round": 33,
           "leg": 3,
           "home": "bodo_glimt_w",
-          "away": "roa_w",
+          "away": "stabak_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -8094,8 +8094,8 @@
       "label": "Option 3",
       "seed": 42,
       "hard_violations": 0,
-      "soft_total": 2851.47,
-      "points": 91.8,
+      "soft_total": 2823.12,
+      "points": 91.6,
       "breakdown": [
         {
           "constraint": "one_match_per_team_per_day",
@@ -8148,8 +8148,8 @@
         {
           "constraint": "preferred_weekday",
           "kind": "soft",
-          "total": 1560.0,
-          "count": 390
+          "total": 1564.0,
+          "count": 391
         },
         {
           "constraint": "consecutive_home_days",
@@ -8160,14 +8160,14 @@
         {
           "constraint": "consecutive_away_days",
           "kind": "soft",
-          "total": 246.47,
-          "count": 33
+          "total": 249.12,
+          "count": 34
         },
         {
           "constraint": "home_away_breaks",
           "kind": "soft",
-          "total": -176.0,
-          "count": 19
+          "total": -208.0,
+          "count": 23
         },
         {
           "constraint": "home_away_balance",
@@ -8178,8 +8178,8 @@
         {
           "constraint": "rest_comfort",
           "kind": "soft",
-          "total": -159.0,
-          "count": 30
+          "total": -162.0,
+          "count": 31
         },
         {
           "constraint": "soft_venue_preference",
@@ -8204,7 +8204,7 @@
           "round": 1,
           "leg": 1,
           "home": "fredrikstad_m",
-          "away": "aalesund_m",
+          "away": "rosenborg_m",
           "venue": "fredrikstad_stadion"
         },
         {
@@ -8222,7 +8222,7 @@
           "round": 1,
           "leg": 1,
           "home": "kfum_oslo_m",
-          "away": "viking_m",
+          "away": "aalesund_m",
           "venue": "kfum_arena"
         },
         {
@@ -8240,7 +8240,7 @@
           "round": 1,
           "leg": 1,
           "home": "lillestrom_m",
-          "away": "rosenborg_m",
+          "away": "viking_m",
           "venue": "araasen_stadion"
         },
         {
@@ -8285,7 +8285,7 @@
           "round": 1,
           "leg": 1,
           "home": "honefoss_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "aka_arena"
         },
         {
@@ -8293,9 +8293,9 @@
           "competition": "toppserien_2026",
           "round": 1,
           "leg": 1,
-          "home": "roa_w",
-          "away": "lyn_w",
-          "venue": "roa_kunstgress"
+          "home": "lsk_kvinner_w",
+          "away": "roa_w",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-03-21",
@@ -8338,9 +8338,9 @@
           "competition": "eliteserien_2026",
           "round": 9,
           "leg": 1,
-          "home": "lillestrom_m",
+          "home": "fredrikstad_m",
           "away": "bodo_glimt_m",
-          "venue": "araasen_stadion"
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-03-22",
@@ -8357,7 +8357,7 @@
           "round": 9,
           "leg": 1,
           "home": "sandefjord_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "jotun_arena"
         },
         {
@@ -8375,7 +8375,7 @@
           "round": 9,
           "leg": 1,
           "home": "start_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "sor_arena"
         },
         {
@@ -8393,7 +8393,7 @@
           "round": 2,
           "leg": 1,
           "home": "haugesund_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "haugesund_stadion"
         },
         {
@@ -8401,9 +8401,9 @@
           "competition": "toppserien_2026",
           "round": 2,
           "leg": 1,
-          "home": "lsk_kvinner_w",
+          "home": "lyn_w",
           "away": "rosenborg_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-03-28",
@@ -8446,17 +8446,8 @@
           "competition": "eliteserien_2026",
           "round": 3,
           "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "bodo_glimt_m",
-          "venue": "fredrikstad_stadion"
-        },
-        {
-          "date": "2026-03-29",
-          "competition": "eliteserien_2026",
-          "round": 3,
-          "leg": 1,
           "home": "kfum_oslo_m",
-          "away": "sandefjord_m",
+          "away": "bodo_glimt_m",
           "venue": "kfum_arena"
         },
         {
@@ -8467,6 +8458,15 @@
           "home": "kristiansund_m",
           "away": "tromso_m",
           "venue": "kristiansund_stadion"
+        },
+        {
+          "date": "2026-03-29",
+          "competition": "eliteserien_2026",
+          "round": 3,
+          "leg": 1,
+          "home": "lillestrom_m",
+          "away": "sandefjord_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-03-29",
@@ -8492,7 +8492,7 @@
           "round": 3,
           "leg": 1,
           "home": "start_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "sor_arena"
         },
         {
@@ -8528,7 +8528,7 @@
           "round": 3,
           "leg": 1,
           "home": "bodo_glimt_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -8545,9 +8545,9 @@
           "competition": "toppserien_2026",
           "round": 3,
           "leg": 1,
-          "home": "lyn_w",
-          "away": "honefoss_w",
-          "venue": "kringsjaa_kunstgress"
+          "home": "honefoss_w",
+          "away": "lsk_kvinner_w",
+          "venue": "aka_arena"
         },
         {
           "date": "2026-04-04",
@@ -8591,8 +8591,17 @@
           "round": 4,
           "leg": 1,
           "home": "lsk_kvinner_w",
-          "away": "stabak_w",
+          "away": "rosenborg_w",
           "venue": "araasen_stadion"
+        },
+        {
+          "date": "2026-04-11",
+          "competition": "toppserien_2026",
+          "round": 4,
+          "leg": 1,
+          "home": "lyn_w",
+          "away": "stabak_w",
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-04-11",
@@ -8602,15 +8611,6 @@
           "home": "roa_w",
           "away": "brann_w",
           "venue": "roa_kunstgress"
-        },
-        {
-          "date": "2026-04-11",
-          "competition": "toppserien_2026",
-          "round": 4,
-          "leg": 1,
-          "home": "rosenborg_w",
-          "away": "lyn_w",
-          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-04-11",
@@ -8636,7 +8636,7 @@
           "round": 5,
           "leg": 1,
           "home": "bodo_glimt_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -8645,7 +8645,7 @@
           "round": 5,
           "leg": 1,
           "home": "brann_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "brann_stadion"
         },
         {
@@ -8699,7 +8699,7 @@
           "round": 4,
           "leg": 1,
           "home": "brann_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "brann_stadion"
         },
         {
@@ -8708,17 +8708,8 @@
           "round": 4,
           "leg": 1,
           "home": "hamkam_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "briskeby_arena"
-        },
-        {
-          "date": "2026-04-19",
-          "competition": "eliteserien_2026",
-          "round": 4,
-          "leg": 1,
-          "home": "lillestrom_m",
-          "away": "sarpsborg08_m",
-          "venue": "araasen_stadion"
         },
         {
           "date": "2026-04-19",
@@ -8737,6 +8728,15 @@
           "home": "sandefjord_m",
           "away": "viking_m",
           "venue": "jotun_arena"
+        },
+        {
+          "date": "2026-04-19",
+          "competition": "eliteserien_2026",
+          "round": 4,
+          "leg": 1,
+          "home": "sarpsborg08_m",
+          "away": "fredrikstad_m",
+          "venue": "sarpsborg_stadion"
         },
         {
           "date": "2026-04-19",
@@ -8779,9 +8779,9 @@
           "competition": "toppserien_2026",
           "round": 6,
           "leg": 1,
-          "home": "lyn_w",
+          "home": "lsk_kvinner_w",
           "away": "stabak_w",
-          "venue": "kringsjaa_kunstgress"
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-04-25",
@@ -8798,7 +8798,7 @@
           "round": 6,
           "leg": 1,
           "home": "valerenga_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "intility_arena"
         },
         {
@@ -8806,9 +8806,9 @@
           "competition": "eliteserien_2026",
           "round": 5,
           "leg": 1,
-          "home": "kfum_oslo_m",
-          "away": "molde_m",
-          "venue": "kfum_arena"
+          "home": "fredrikstad_m",
+          "away": "aalesund_m",
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-04-26",
@@ -8825,7 +8825,7 @@
           "round": 5,
           "leg": 1,
           "home": "lillestrom_m",
-          "away": "aalesund_m",
+          "away": "molde_m",
           "venue": "araasen_stadion"
         },
         {
@@ -8861,7 +8861,7 @@
           "round": 5,
           "leg": 1,
           "home": "valerenga_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "intility_arena"
         },
         {
@@ -8896,9 +8896,9 @@
           "competition": "toppserien_2026",
           "round": 7,
           "leg": 1,
-          "home": "lsk_kvinner_w",
-          "away": "lyn_w",
-          "venue": "araasen_stadion"
+          "home": "lyn_w",
+          "away": "lsk_kvinner_w",
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-05-02",
@@ -8950,18 +8950,18 @@
           "competition": "eliteserien_2026",
           "round": 6,
           "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "kfum_oslo_m",
-          "venue": "fredrikstad_stadion"
+          "home": "hamkam_m",
+          "away": "rosenborg_m",
+          "venue": "briskeby_arena"
         },
         {
           "date": "2026-05-03",
           "competition": "eliteserien_2026",
           "round": 6,
           "leg": 1,
-          "home": "hamkam_m",
-          "away": "rosenborg_m",
-          "venue": "briskeby_arena"
+          "home": "kfum_oslo_m",
+          "away": "lillestrom_m",
+          "venue": "kfum_arena"
         },
         {
           "date": "2026-05-03",
@@ -8978,7 +8978,7 @@
           "round": 6,
           "leg": 1,
           "home": "sandefjord_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "jotun_arena"
         },
         {
@@ -8996,7 +8996,7 @@
           "round": 8,
           "leg": 1,
           "home": "aalesund_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "color_line_stadion"
         },
         {
@@ -9022,9 +9022,9 @@
           "competition": "toppserien_2026",
           "round": 8,
           "leg": 1,
-          "home": "lyn_w",
+          "home": "lsk_kvinner_w",
           "away": "valerenga_w",
-          "venue": "kringsjaa_kunstgress"
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-05-09",
@@ -9049,9 +9049,9 @@
           "competition": "eliteserien_2026",
           "round": 7,
           "leg": 1,
-          "home": "kfum_oslo_m",
-          "away": "kristiansund_m",
-          "venue": "kfum_arena"
+          "home": "fredrikstad_m",
+          "away": "tromso_m",
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-05-10",
@@ -9059,7 +9059,7 @@
           "round": 7,
           "leg": 1,
           "home": "lillestrom_m",
-          "away": "tromso_m",
+          "away": "kristiansund_m",
           "venue": "araasen_stadion"
         },
         {
@@ -9104,7 +9104,7 @@
           "round": 7,
           "leg": 1,
           "home": "viking_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "sr_bank_arena"
         },
         {
@@ -9117,7 +9117,7 @@
           "venue": "haugesund_stadion"
         },
         {
-          "date": "2026-05-12",
+          "date": "2026-05-13",
           "competition": "toppserien_2026",
           "round": 9,
           "leg": 1,
@@ -9149,7 +9149,7 @@
           "round": 9,
           "leg": 1,
           "home": "lsk_kvinner_w",
-          "away": "molde_w",
+          "away": "brann_w",
           "venue": "araasen_stadion"
         },
         {
@@ -9158,7 +9158,7 @@
           "round": 9,
           "leg": 1,
           "home": "lyn_w",
-          "away": "brann_w",
+          "away": "molde_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -9185,7 +9185,7 @@
           "round": 10,
           "leg": 1,
           "home": "aalesund_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "color_line_stadion"
         },
         {
@@ -9203,7 +9203,7 @@
           "round": 10,
           "leg": 1,
           "home": "roa_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "roa_kunstgress"
         },
         {
@@ -9235,15 +9235,6 @@
         },
         {
           "date": "2026-05-30",
-          "competition": "eliteserien_2026",
-          "round": 8,
-          "leg": 1,
-          "home": "kfum_oslo_m",
-          "away": "rosenborg_m",
-          "venue": "kfum_arena"
-        },
-        {
-          "date": "2026-05-30",
           "competition": "toppserien_2026",
           "round": 11,
           "leg": 1,
@@ -9266,7 +9257,7 @@
           "round": 11,
           "leg": 1,
           "home": "haugesund_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "haugesund_stadion"
         },
         {
@@ -9284,7 +9275,7 @@
           "round": 11,
           "leg": 1,
           "home": "molde_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "aker_stadion"
         },
         {
@@ -9311,17 +9302,8 @@
           "round": 8,
           "leg": 1,
           "home": "brann_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "brann_stadion"
-        },
-        {
-          "date": "2026-05-31",
-          "competition": "eliteserien_2026",
-          "round": 8,
-          "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "sarpsborg08_m",
-          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-05-31",
@@ -9337,6 +9319,15 @@
           "competition": "eliteserien_2026",
           "round": 8,
           "leg": 1,
+          "home": "kfum_oslo_m",
+          "away": "sarpsborg08_m",
+          "venue": "kfum_arena"
+        },
+        {
+          "date": "2026-05-31",
+          "competition": "eliteserien_2026",
+          "round": 8,
+          "leg": 1,
           "home": "kristiansund_m",
           "away": "viking_m",
           "venue": "kristiansund_stadion"
@@ -9345,235 +9336,244 @@
           "date": "2026-05-31",
           "competition": "eliteserien_2026",
           "round": 8,
-          "leg": 1,
-          "home": "molde_m",
-          "away": "sandefjord_m",
-          "venue": "aker_stadion"
-        },
-        {
-          "date": "2026-05-31",
-          "competition": "eliteserien_2026",
-          "round": 8,
-          "leg": 1,
-          "home": "valerenga_m",
-          "away": "start_m",
-          "venue": "intility_arena"
-        },
-        {
-          "date": "2026-06-06",
-          "competition": "toppserien_2026",
-          "round": 12,
-          "leg": 2,
-          "home": "bodo_glimt_w",
-          "away": "brann_w",
-          "venue": "aspmyra_stadion"
-        },
-        {
-          "date": "2026-06-06",
-          "competition": "toppserien_2026",
-          "round": 12,
-          "leg": 2,
-          "home": "haugesund_w",
-          "away": "valerenga_w",
-          "venue": "haugesund_stadion"
-        },
-        {
-          "date": "2026-06-06",
-          "competition": "toppserien_2026",
-          "round": 12,
-          "leg": 2,
-          "home": "lsk_kvinner_w",
-          "away": "honefoss_w",
-          "venue": "araasen_stadion"
-        },
-        {
-          "date": "2026-06-06",
-          "competition": "toppserien_2026",
-          "round": 12,
-          "leg": 2,
-          "home": "lyn_w",
-          "away": "roa_w",
-          "venue": "kringsjaa_kunstgress"
-        },
-        {
-          "date": "2026-06-06",
-          "competition": "toppserien_2026",
-          "round": 12,
-          "leg": 2,
-          "home": "molde_w",
-          "away": "aalesund_w",
-          "venue": "aker_stadion"
-        },
-        {
-          "date": "2026-06-06",
-          "competition": "toppserien_2026",
-          "round": 12,
-          "leg": 2,
-          "home": "stabak_w",
-          "away": "rosenborg_w",
-          "venue": "nadderud_stadion"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "aalesund_m",
-          "away": "kristiansund_m",
-          "venue": "color_line_stadion"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "bodo_glimt_m",
-          "away": "molde_m",
-          "venue": "aspmyra_stadion"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "brann_m",
-          "away": "hamkam_m",
-          "venue": "brann_stadion"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "sandefjord_m",
-          "away": "valerenga_m",
-          "venue": "jotun_arena"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "sarpsborg08_m",
-          "away": "kfum_oslo_m",
-          "venue": "sarpsborg_stadion"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "start_m",
-          "away": "rosenborg_m",
-          "venue": "sor_arena"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "tromso_m",
-          "away": "fredrikstad_m",
-          "venue": "romssa_arena"
-        },
-        {
-          "date": "2026-06-07",
-          "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "viking_m",
-          "away": "lillestrom_m",
-          "venue": "sr_bank_arena"
-        },
-        {
-          "date": "2026-06-13",
-          "competition": "toppserien_2026",
-          "round": 13,
-          "leg": 2,
-          "home": "aalesund_w",
-          "away": "roa_w",
-          "venue": "color_line_stadion"
-        },
-        {
-          "date": "2026-06-13",
-          "competition": "toppserien_2026",
-          "round": 13,
-          "leg": 2,
-          "home": "bodo_glimt_w",
-          "away": "stabak_w",
-          "venue": "aspmyra_stadion"
-        },
-        {
-          "date": "2026-06-13",
-          "competition": "toppserien_2026",
-          "round": 13,
-          "leg": 2,
-          "home": "brann_w",
-          "away": "molde_w",
-          "venue": "brann_stadion"
-        },
-        {
-          "date": "2026-06-13",
-          "competition": "toppserien_2026",
-          "round": 13,
-          "leg": 2,
-          "home": "honefoss_w",
-          "away": "valerenga_w",
-          "venue": "aka_arena"
-        },
-        {
-          "date": "2026-06-13",
-          "competition": "toppserien_2026",
-          "round": 13,
-          "leg": 2,
-          "home": "lyn_w",
-          "away": "haugesund_w",
-          "venue": "kringsjaa_kunstgress"
-        },
-        {
-          "date": "2026-06-13",
-          "competition": "toppserien_2026",
-          "round": 13,
-          "leg": 2,
-          "home": "rosenborg_w",
-          "away": "lsk_kvinner_w",
-          "venue": "lerkendal_stadion"
-        },
-        {
-          "date": "2026-06-14",
-          "competition": "eliteserien_2026",
-          "round": 11,
-          "leg": 1,
-          "home": "aalesund_m",
-          "away": "viking_m",
-          "venue": "color_line_stadion"
-        },
-        {
-          "date": "2026-06-14",
-          "competition": "eliteserien_2026",
-          "round": 11,
-          "leg": 1,
-          "home": "bodo_glimt_m",
-          "away": "valerenga_m",
-          "venue": "aspmyra_stadion"
-        },
-        {
-          "date": "2026-06-14",
-          "competition": "eliteserien_2026",
-          "round": 11,
-          "leg": 1,
-          "home": "brann_m",
-          "away": "kristiansund_m",
-          "venue": "brann_stadion"
-        },
-        {
-          "date": "2026-06-14",
-          "competition": "eliteserien_2026",
-          "round": 11,
           "leg": 1,
           "home": "lillestrom_m",
-          "away": "hamkam_m",
+          "away": "rosenborg_m",
           "venue": "araasen_stadion"
+        },
+        {
+          "date": "2026-05-31",
+          "competition": "eliteserien_2026",
+          "round": 8,
+          "leg": 1,
+          "home": "molde_m",
+          "away": "sandefjord_m",
+          "venue": "aker_stadion"
+        },
+        {
+          "date": "2026-05-31",
+          "competition": "eliteserien_2026",
+          "round": 8,
+          "leg": 1,
+          "home": "valerenga_m",
+          "away": "start_m",
+          "venue": "intility_arena"
+        },
+        {
+          "date": "2026-06-06",
+          "competition": "toppserien_2026",
+          "round": 12,
+          "leg": 2,
+          "home": "bodo_glimt_w",
+          "away": "brann_w",
+          "venue": "aspmyra_stadion"
+        },
+        {
+          "date": "2026-06-06",
+          "competition": "toppserien_2026",
+          "round": 12,
+          "leg": 2,
+          "home": "haugesund_w",
+          "away": "valerenga_w",
+          "venue": "haugesund_stadion"
+        },
+        {
+          "date": "2026-06-06",
+          "competition": "toppserien_2026",
+          "round": 12,
+          "leg": 2,
+          "home": "lyn_w",
+          "away": "honefoss_w",
+          "venue": "kringsjaa_kunstgress"
+        },
+        {
+          "date": "2026-06-06",
+          "competition": "toppserien_2026",
+          "round": 12,
+          "leg": 2,
+          "home": "molde_w",
+          "away": "aalesund_w",
+          "venue": "aker_stadion"
+        },
+        {
+          "date": "2026-06-06",
+          "competition": "toppserien_2026",
+          "round": 12,
+          "leg": 2,
+          "home": "roa_w",
+          "away": "lsk_kvinner_w",
+          "venue": "roa_kunstgress"
+        },
+        {
+          "date": "2026-06-06",
+          "competition": "toppserien_2026",
+          "round": 12,
+          "leg": 2,
+          "home": "stabak_w",
+          "away": "rosenborg_w",
+          "venue": "nadderud_stadion"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "aalesund_m",
+          "away": "kristiansund_m",
+          "venue": "color_line_stadion"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "bodo_glimt_m",
+          "away": "molde_m",
+          "venue": "aspmyra_stadion"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "brann_m",
+          "away": "hamkam_m",
+          "venue": "brann_stadion"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "sandefjord_m",
+          "away": "valerenga_m",
+          "venue": "jotun_arena"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "sarpsborg08_m",
+          "away": "lillestrom_m",
+          "venue": "sarpsborg_stadion"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "start_m",
+          "away": "rosenborg_m",
+          "venue": "sor_arena"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "tromso_m",
+          "away": "kfum_oslo_m",
+          "venue": "romssa_arena"
+        },
+        {
+          "date": "2026-06-07",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "viking_m",
+          "away": "fredrikstad_m",
+          "venue": "sr_bank_arena"
+        },
+        {
+          "date": "2026-06-13",
+          "competition": "toppserien_2026",
+          "round": 13,
+          "leg": 2,
+          "home": "aalesund_w",
+          "away": "roa_w",
+          "venue": "color_line_stadion"
+        },
+        {
+          "date": "2026-06-13",
+          "competition": "toppserien_2026",
+          "round": 13,
+          "leg": 2,
+          "home": "bodo_glimt_w",
+          "away": "stabak_w",
+          "venue": "aspmyra_stadion"
+        },
+        {
+          "date": "2026-06-13",
+          "competition": "toppserien_2026",
+          "round": 13,
+          "leg": 2,
+          "home": "brann_w",
+          "away": "molde_w",
+          "venue": "brann_stadion"
+        },
+        {
+          "date": "2026-06-13",
+          "competition": "toppserien_2026",
+          "round": 13,
+          "leg": 2,
+          "home": "honefoss_w",
+          "away": "valerenga_w",
+          "venue": "aka_arena"
+        },
+        {
+          "date": "2026-06-13",
+          "competition": "toppserien_2026",
+          "round": 13,
+          "leg": 2,
+          "home": "lsk_kvinner_w",
+          "away": "haugesund_w",
+          "venue": "araasen_stadion"
+        },
+        {
+          "date": "2026-06-13",
+          "competition": "toppserien_2026",
+          "round": 13,
+          "leg": 2,
+          "home": "rosenborg_w",
+          "away": "lyn_w",
+          "venue": "lerkendal_stadion"
+        },
+        {
+          "date": "2026-06-14",
+          "competition": "eliteserien_2026",
+          "round": 11,
+          "leg": 1,
+          "home": "aalesund_m",
+          "away": "viking_m",
+          "venue": "color_line_stadion"
+        },
+        {
+          "date": "2026-06-14",
+          "competition": "eliteserien_2026",
+          "round": 11,
+          "leg": 1,
+          "home": "bodo_glimt_m",
+          "away": "valerenga_m",
+          "venue": "aspmyra_stadion"
+        },
+        {
+          "date": "2026-06-14",
+          "competition": "eliteserien_2026",
+          "round": 11,
+          "leg": 1,
+          "home": "brann_m",
+          "away": "kristiansund_m",
+          "venue": "brann_stadion"
+        },
+        {
+          "date": "2026-06-14",
+          "competition": "eliteserien_2026",
+          "round": 11,
+          "leg": 1,
+          "home": "fredrikstad_m",
+          "away": "hamkam_m",
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-06-14",
@@ -9581,7 +9581,7 @@
           "round": 11,
           "leg": 1,
           "home": "molde_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "aker_stadion"
         },
         {
@@ -9608,7 +9608,7 @@
           "round": 11,
           "leg": 1,
           "home": "tromso_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "romssa_arena"
         },
         {
@@ -9625,18 +9625,18 @@
           "competition": "toppserien_2026",
           "round": 14,
           "leg": 2,
-          "home": "honefoss_w",
-          "away": "lyn_w",
-          "venue": "aka_arena"
+          "home": "lsk_kvinner_w",
+          "away": "honefoss_w",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-06-20",
           "competition": "toppserien_2026",
           "round": 14,
           "leg": 2,
-          "home": "lsk_kvinner_w",
+          "home": "lyn_w",
           "away": "bodo_glimt_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-06-20",
@@ -9670,15 +9670,6 @@
           "competition": "eliteserien_2026",
           "round": 10,
           "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "brann_m",
-          "venue": "fredrikstad_stadion"
-        },
-        {
-          "date": "2026-06-21",
-          "competition": "eliteserien_2026",
-          "round": 10,
-          "leg": 1,
           "home": "hamkam_m",
           "away": "bodo_glimt_m",
           "venue": "briskeby_arena"
@@ -9689,7 +9680,7 @@
           "round": 10,
           "leg": 1,
           "home": "kfum_oslo_m",
-          "away": "aalesund_m",
+          "away": "brann_m",
           "venue": "kfum_arena"
         },
         {
@@ -9697,9 +9688,9 @@
           "competition": "eliteserien_2026",
           "round": 10,
           "leg": 1,
-          "home": "kristiansund_m",
-          "away": "sandefjord_m",
-          "venue": "kristiansund_stadion"
+          "home": "lillestrom_m",
+          "away": "aalesund_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-06-21",
@@ -9707,8 +9698,17 @@
           "round": 10,
           "leg": 1,
           "home": "molde_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "aker_stadion"
+        },
+        {
+          "date": "2026-06-21",
+          "competition": "eliteserien_2026",
+          "round": 10,
+          "leg": 1,
+          "home": "sandefjord_m",
+          "away": "kristiansund_m",
+          "venue": "jotun_arena"
         },
         {
           "date": "2026-06-21",
@@ -9769,15 +9769,6 @@
           "competition": "toppserien_2026",
           "round": 15,
           "leg": 2,
-          "home": "lyn_w",
-          "away": "rosenborg_w",
-          "venue": "kringsjaa_kunstgress"
-        },
-        {
-          "date": "2026-06-27",
-          "competition": "toppserien_2026",
-          "round": 15,
-          "leg": 2,
           "home": "molde_w",
           "away": "haugesund_w",
           "venue": "aker_stadion"
@@ -9787,45 +9778,18 @@
           "competition": "toppserien_2026",
           "round": 15,
           "leg": 2,
-          "home": "stabak_w",
+          "home": "rosenborg_w",
           "away": "lsk_kvinner_w",
-          "venue": "nadderud_stadion"
-        },
-        {
-          "date": "2026-07-02",
-          "competition": "eliteserien_2026",
-          "round": 14,
-          "leg": 1,
-          "home": "rosenborg_m",
-          "away": "fredrikstad_m",
           "venue": "lerkendal_stadion"
         },
         {
-          "date": "2026-07-03",
+          "date": "2026-06-27",
           "competition": "toppserien_2026",
-          "round": 16,
+          "round": 15,
           "leg": 2,
-          "home": "honefoss_w",
-          "away": "molde_w",
-          "venue": "aka_arena"
-        },
-        {
-          "date": "2026-07-04",
-          "competition": "toppserien_2026",
-          "round": 16,
-          "leg": 2,
-          "home": "lyn_w",
-          "away": "bodo_glimt_w",
-          "venue": "kringsjaa_kunstgress"
-        },
-        {
-          "date": "2026-07-05",
-          "competition": "eliteserien_2026",
-          "round": 12,
-          "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "lillestrom_m",
-          "venue": "fredrikstad_stadion"
+          "home": "stabak_w",
+          "away": "lyn_w",
+          "venue": "nadderud_stadion"
         },
         {
           "date": "2026-07-05",
@@ -9833,7 +9797,7 @@
           "round": 12,
           "leg": 1,
           "home": "kfum_oslo_m",
-          "away": "bodo_glimt_m",
+          "away": "fredrikstad_m",
           "venue": "kfum_arena"
         },
         {
@@ -9850,9 +9814,9 @@
           "competition": "eliteserien_2026",
           "round": 12,
           "leg": 1,
-          "home": "sandefjord_m",
-          "away": "start_m",
-          "venue": "jotun_arena"
+          "home": "lillestrom_m",
+          "away": "bodo_glimt_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-07-05",
@@ -9862,6 +9826,15 @@
           "home": "sarpsborg08_m",
           "away": "aalesund_m",
           "venue": "sarpsborg_stadion"
+        },
+        {
+          "date": "2026-07-05",
+          "competition": "eliteserien_2026",
+          "round": 12,
+          "leg": 1,
+          "home": "start_m",
+          "away": "sandefjord_m",
+          "venue": "sor_arena"
         },
         {
           "date": "2026-07-05",
@@ -9886,9 +9859,18 @@
           "competition": "toppserien_2026",
           "round": 16,
           "leg": 2,
-          "home": "lsk_kvinner_w",
+          "home": "honefoss_w",
+          "away": "molde_w",
+          "venue": "aka_arena"
+        },
+        {
+          "date": "2026-07-05",
+          "competition": "toppserien_2026",
+          "round": 16,
+          "leg": 2,
+          "home": "lyn_w",
           "away": "brann_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-07-05",
@@ -9925,24 +9907,33 @@
           "home": "valerenga_m",
           "away": "hamkam_m",
           "venue": "intility_arena"
+        },
+        {
+          "date": "2026-07-06",
+          "competition": "toppserien_2026",
+          "round": 16,
+          "leg": 2,
+          "home": "lsk_kvinner_w",
+          "away": "bodo_glimt_w",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-07-10",
           "competition": "toppserien_2026",
           "round": 17,
           "leg": 2,
-          "home": "lsk_kvinner_w",
+          "home": "lyn_w",
           "away": "valerenga_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-07-11",
           "competition": "eliteserien_2026",
           "round": 13,
           "leg": 1,
-          "home": "lillestrom_m",
+          "home": "fredrikstad_m",
           "away": "valerenga_m",
-          "venue": "araasen_stadion"
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-07-11",
@@ -9963,6 +9954,15 @@
           "venue": "aker_stadion"
         },
         {
+          "date": "2026-07-11",
+          "competition": "toppserien_2026",
+          "round": 17,
+          "leg": 2,
+          "home": "stabak_w",
+          "away": "lsk_kvinner_w",
+          "venue": "nadderud_stadion"
+        },
+        {
           "date": "2026-07-12",
           "competition": "eliteserien_2026",
           "round": 13,
@@ -9976,18 +9976,18 @@
           "competition": "eliteserien_2026",
           "round": 13,
           "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "kristiansund_m",
-          "venue": "fredrikstad_stadion"
+          "home": "hamkam_m",
+          "away": "lillestrom_m",
+          "venue": "briskeby_arena"
         },
         {
           "date": "2026-07-12",
           "competition": "eliteserien_2026",
           "round": 13,
           "leg": 1,
-          "home": "hamkam_m",
-          "away": "kfum_oslo_m",
-          "venue": "briskeby_arena"
+          "home": "kfum_oslo_m",
+          "away": "kristiansund_m",
+          "venue": "kfum_arena"
         },
         {
           "date": "2026-07-12",
@@ -10035,31 +10035,22 @@
           "venue": "brann_stadion"
         },
         {
-          "date": "2026-07-13",
-          "competition": "toppserien_2026",
-          "round": 17,
-          "leg": 2,
-          "home": "stabak_w",
-          "away": "lyn_w",
-          "venue": "nadderud_stadion"
+          "date": "2026-07-16",
+          "competition": "eliteserien_2026",
+          "round": 14,
+          "leg": 1,
+          "home": "rosenborg_m",
+          "away": "kfum_oslo_m",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-07-19",
           "competition": "eliteserien_2026",
           "round": 14,
           "leg": 1,
-          "home": "brann_m",
-          "away": "aalesund_m",
-          "venue": "brann_stadion"
-        },
-        {
-          "date": "2026-07-19",
-          "competition": "eliteserien_2026",
-          "round": 14,
-          "leg": 1,
-          "home": "kfum_oslo_m",
-          "away": "valerenga_m",
-          "venue": "kfum_arena"
+          "home": "aalesund_m",
+          "away": "brann_m",
+          "venue": "color_line_stadion"
         },
         {
           "date": "2026-07-19",
@@ -10067,8 +10058,17 @@
           "round": 14,
           "leg": 1,
           "home": "kristiansund_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "kristiansund_stadion"
+        },
+        {
+          "date": "2026-07-19",
+          "competition": "eliteserien_2026",
+          "round": 14,
+          "leg": 1,
+          "home": "lillestrom_m",
+          "away": "valerenga_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-07-19",
@@ -10156,9 +10156,9 @@
           "competition": "toppserien_2026",
           "round": 18,
           "leg": 2,
-          "home": "lyn_w",
-          "away": "lsk_kvinner_w",
-          "venue": "kringsjaa_kunstgress"
+          "home": "lsk_kvinner_w",
+          "away": "lyn_w",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-07-25",
@@ -10183,6 +10183,15 @@
           "competition": "eliteserien_2026",
           "round": 15,
           "leg": 1,
+          "home": "fredrikstad_m",
+          "away": "lillestrom_m",
+          "venue": "fredrikstad_stadion"
+        },
+        {
+          "date": "2026-07-26",
+          "competition": "eliteserien_2026",
+          "round": 15,
+          "leg": 1,
           "home": "hamkam_m",
           "away": "sarpsborg08_m",
           "venue": "briskeby_arena"
@@ -10195,15 +10204,6 @@
           "home": "kristiansund_m",
           "away": "rosenborg_m",
           "venue": "kristiansund_stadion"
-        },
-        {
-          "date": "2026-07-26",
-          "competition": "eliteserien_2026",
-          "round": 15,
-          "leg": 1,
-          "home": "lillestrom_m",
-          "away": "kfum_oslo_m",
-          "venue": "araasen_stadion"
         },
         {
           "date": "2026-07-26",
@@ -10228,18 +10228,18 @@
           "competition": "eliteserien_2026",
           "round": 15,
           "leg": 1,
-          "home": "aalesund_m",
-          "away": "molde_m",
-          "venue": "color_line_stadion"
+          "home": "molde_m",
+          "away": "aalesund_m",
+          "venue": "aker_stadion"
         },
         {
           "date": "2026-07-29",
           "competition": "eliteserien_2026",
           "round": 15,
           "leg": 1,
-          "home": "start_m",
-          "away": "fredrikstad_m",
-          "venue": "sor_arena"
+          "home": "kfum_oslo_m",
+          "away": "start_m",
+          "venue": "kfum_arena"
         },
         {
           "date": "2026-08-01",
@@ -10264,9 +10264,9 @@
           "competition": "toppserien_2026",
           "round": 19,
           "leg": 2,
-          "home": "lsk_kvinner_w",
+          "home": "lyn_w",
           "away": "aalesund_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-08-01",
@@ -10292,7 +10292,7 @@
           "round": 19,
           "leg": 2,
           "home": "valerenga_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "intility_arena"
         },
         {
@@ -10319,7 +10319,7 @@
           "round": 20,
           "leg": 2,
           "home": "brann_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "brann_stadion"
         },
         {
@@ -10328,7 +10328,7 @@
           "round": 20,
           "leg": 2,
           "home": "molde_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "aker_stadion"
         },
         {
@@ -10355,7 +10355,7 @@
           "round": 16,
           "leg": 2,
           "home": "aalesund_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "color_line_stadion"
         },
         {
@@ -10382,7 +10382,7 @@
           "round": 16,
           "leg": 2,
           "home": "rosenborg_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "lerkendal_stadion"
         },
         {
@@ -10418,8 +10418,17 @@
           "round": 16,
           "leg": 2,
           "home": "viking_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "sr_bank_arena"
+        },
+        {
+          "date": "2026-08-14",
+          "competition": "toppserien_2026",
+          "round": 21,
+          "leg": 2,
+          "home": "brann_w",
+          "away": "rosenborg_w",
+          "venue": "brann_stadion"
         },
         {
           "date": "2026-08-15",
@@ -10445,7 +10454,7 @@
           "round": 21,
           "leg": 2,
           "home": "lsk_kvinner_w",
-          "away": "roa_w",
+          "away": "aalesund_w",
           "venue": "araasen_stadion"
         },
         {
@@ -10454,7 +10463,7 @@
           "round": 21,
           "leg": 2,
           "home": "lyn_w",
-          "away": "aalesund_w",
+          "away": "roa_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -10472,7 +10481,7 @@
           "round": 17,
           "leg": 2,
           "home": "fredrikstad_m",
-          "away": "tromso_m",
+          "away": "viking_m",
           "venue": "fredrikstad_stadion"
         },
         {
@@ -10490,7 +10499,7 @@
           "round": 17,
           "leg": 2,
           "home": "kfum_oslo_m",
-          "away": "sarpsborg08_m",
+          "away": "tromso_m",
           "venue": "kfum_arena"
         },
         {
@@ -10508,7 +10517,7 @@
           "round": 17,
           "leg": 2,
           "home": "lillestrom_m",
-          "away": "viking_m",
+          "away": "sarpsborg08_m",
           "venue": "araasen_stadion"
         },
         {
@@ -10539,15 +10548,6 @@
           "venue": "intility_arena"
         },
         {
-          "date": "2026-08-16",
-          "competition": "toppserien_2026",
-          "round": 21,
-          "leg": 2,
-          "home": "brann_w",
-          "away": "rosenborg_w",
-          "venue": "brann_stadion"
-        },
-        {
           "date": "2026-08-22",
           "competition": "toppserien_2026",
           "round": 22,
@@ -10562,7 +10562,7 @@
           "round": 22,
           "leg": 2,
           "home": "lsk_kvinner_w",
-          "away": "haugesund_w",
+          "away": "molde_w",
           "venue": "araasen_stadion"
         },
         {
@@ -10571,7 +10571,7 @@
           "round": 22,
           "leg": 2,
           "home": "lyn_w",
-          "away": "molde_w",
+          "away": "haugesund_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -10616,7 +10616,7 @@
           "round": 18,
           "leg": 2,
           "home": "bodo_glimt_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "aspmyra_stadion"
         },
         {
@@ -10633,6 +10633,15 @@
           "competition": "eliteserien_2026",
           "round": 18,
           "leg": 2,
+          "home": "fredrikstad_m",
+          "away": "start_m",
+          "venue": "fredrikstad_stadion"
+        },
+        {
+          "date": "2026-08-25",
+          "competition": "eliteserien_2026",
+          "round": 18,
+          "leg": 2,
           "home": "hamkam_m",
           "away": "molde_m",
           "venue": "briskeby_arena"
@@ -10642,17 +10651,8 @@
           "competition": "eliteserien_2026",
           "round": 18,
           "leg": 2,
-          "home": "lillestrom_m",
-          "away": "start_m",
-          "venue": "araasen_stadion"
-        },
-        {
-          "date": "2026-08-25",
-          "competition": "eliteserien_2026",
-          "round": 18,
-          "leg": 2,
           "home": "sandefjord_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "jotun_arena"
         },
         {
@@ -10705,9 +10705,9 @@
           "competition": "eliteserien_2026",
           "round": 19,
           "leg": 2,
-          "home": "fredrikstad_m",
+          "home": "kfum_oslo_m",
           "away": "hamkam_m",
-          "venue": "fredrikstad_stadion"
+          "venue": "kfum_arena"
         },
         {
           "date": "2026-08-29",
@@ -10724,7 +10724,7 @@
           "round": 23,
           "leg": 3,
           "home": "honefoss_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "aka_arena"
         },
         {
@@ -10732,9 +10732,9 @@
           "competition": "toppserien_2026",
           "round": 23,
           "leg": 3,
-          "home": "lyn_w",
+          "home": "lsk_kvinner_w",
           "away": "roa_w",
-          "venue": "kringsjaa_kunstgress"
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-08-29",
@@ -10759,9 +10759,9 @@
           "competition": "eliteserien_2026",
           "round": 19,
           "leg": 2,
-          "home": "kfum_oslo_m",
-          "away": "brann_m",
-          "venue": "kfum_arena"
+          "home": "fredrikstad_m",
+          "away": "sarpsborg08_m",
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-08-30",
@@ -10777,18 +10777,18 @@
           "competition": "eliteserien_2026",
           "round": 19,
           "leg": 2,
-          "home": "rosenborg_m",
-          "away": "tromso_m",
-          "venue": "lerkendal_stadion"
+          "home": "lillestrom_m",
+          "away": "brann_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-08-30",
           "competition": "eliteserien_2026",
           "round": 19,
           "leg": 2,
-          "home": "sarpsborg08_m",
-          "away": "lillestrom_m",
-          "venue": "sarpsborg_stadion"
+          "home": "rosenborg_m",
+          "away": "tromso_m",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-08-30",
@@ -10805,7 +10805,7 @@
           "round": 24,
           "leg": 3,
           "home": "haugesund_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "haugesund_stadion"
         },
         {
@@ -10813,9 +10813,9 @@
           "competition": "toppserien_2026",
           "round": 24,
           "leg": 3,
-          "home": "lsk_kvinner_w",
+          "home": "lyn_w",
           "away": "rosenborg_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-09-05",
@@ -10868,7 +10868,7 @@
           "round": 25,
           "leg": 3,
           "home": "bodo_glimt_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -10885,9 +10885,9 @@
           "competition": "toppserien_2026",
           "round": 25,
           "leg": 3,
-          "home": "lyn_w",
+          "home": "lsk_kvinner_w",
           "away": "honefoss_w",
-          "venue": "kringsjaa_kunstgress"
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-09-12",
@@ -10913,7 +10913,7 @@
           "round": 20,
           "leg": 2,
           "home": "aalesund_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "color_line_stadion"
         },
         {
@@ -10939,15 +10939,6 @@
           "competition": "eliteserien_2026",
           "round": 20,
           "leg": 2,
-          "home": "fredrikstad_m",
-          "away": "valerenga_m",
-          "venue": "fredrikstad_stadion"
-        },
-        {
-          "date": "2026-09-13",
-          "competition": "eliteserien_2026",
-          "round": 20,
-          "leg": 2,
           "home": "hamkam_m",
           "away": "kristiansund_m",
           "venue": "briskeby_arena"
@@ -10957,8 +10948,17 @@
           "competition": "eliteserien_2026",
           "round": 20,
           "leg": 2,
+          "home": "kfum_oslo_m",
+          "away": "valerenga_m",
+          "venue": "kfum_arena"
+        },
+        {
+          "date": "2026-09-13",
+          "competition": "eliteserien_2026",
+          "round": 20,
+          "leg": 2,
           "home": "molde_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "aker_stadion"
         },
         {
@@ -11012,7 +11012,7 @@
           "round": 26,
           "leg": 3,
           "home": "lsk_kvinner_w",
-          "away": "stabak_w",
+          "away": "rosenborg_w",
           "venue": "araasen_stadion"
         },
         {
@@ -11021,7 +11021,7 @@
           "round": 26,
           "leg": 3,
           "home": "lyn_w",
-          "away": "rosenborg_w",
+          "away": "stabak_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -11047,9 +11047,9 @@
           "competition": "eliteserien_2026",
           "round": 21,
           "leg": 2,
-          "home": "kfum_oslo_m",
-          "away": "fredrikstad_m",
-          "venue": "kfum_arena"
+          "home": "fredrikstad_m",
+          "away": "sandefjord_m",
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-09-20",
@@ -11066,7 +11066,7 @@
           "round": 21,
           "leg": 2,
           "home": "lillestrom_m",
-          "away": "sandefjord_m",
+          "away": "kfum_oslo_m",
           "venue": "araasen_stadion"
         },
         {
@@ -11111,7 +11111,7 @@
           "round": 31,
           "leg": 3,
           "home": "brann_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "brann_stadion"
         },
         {
@@ -11137,9 +11137,9 @@
           "competition": "toppserien_2026",
           "round": 31,
           "leg": 3,
-          "home": "lsk_kvinner_w",
+          "home": "lyn_w",
           "away": "molde_w",
-          "venue": "araasen_stadion"
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-09-26",
@@ -11182,15 +11182,6 @@
           "competition": "eliteserien_2026",
           "round": 22,
           "leg": 2,
-          "home": "fredrikstad_m",
-          "away": "viking_m",
-          "venue": "fredrikstad_stadion"
-        },
-        {
-          "date": "2026-09-27",
-          "competition": "eliteserien_2026",
-          "round": 22,
-          "leg": 2,
           "home": "hamkam_m",
           "away": "start_m",
           "venue": "briskeby_arena"
@@ -11200,8 +11191,17 @@
           "competition": "eliteserien_2026",
           "round": 22,
           "leg": 2,
+          "home": "kfum_oslo_m",
+          "away": "viking_m",
+          "venue": "kfum_arena"
+        },
+        {
+          "date": "2026-09-27",
+          "competition": "eliteserien_2026",
+          "round": 22,
+          "leg": 2,
           "home": "kristiansund_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "kristiansund_stadion"
         },
         {
@@ -11219,7 +11219,7 @@
           "round": 22,
           "leg": 2,
           "home": "tromso_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "romssa_arena"
         },
         {
@@ -11273,7 +11273,7 @@
           "round": 28,
           "leg": 3,
           "home": "stabak_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "nadderud_stadion"
         },
         {
@@ -11282,7 +11282,7 @@
           "round": 28,
           "leg": 3,
           "home": "valerenga_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "intility_arena"
         },
         {
@@ -11293,15 +11293,6 @@
           "home": "aalesund_m",
           "away": "hamkam_m",
           "venue": "color_line_stadion"
-        },
-        {
-          "date": "2026-10-05",
-          "competition": "eliteserien_2026",
-          "round": 23,
-          "leg": 2,
-          "home": "rosenborg_m",
-          "away": "kfum_oslo_m",
-          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-10-05",
@@ -11326,9 +11317,18 @@
           "competition": "eliteserien_2026",
           "round": 23,
           "leg": 2,
-          "home": "lillestrom_m",
+          "home": "fredrikstad_m",
           "away": "brann_m",
-          "venue": "araasen_stadion"
+          "venue": "fredrikstad_stadion"
+        },
+        {
+          "date": "2026-10-07",
+          "competition": "eliteserien_2026",
+          "round": 23,
+          "leg": 2,
+          "home": "rosenborg_m",
+          "away": "lillestrom_m",
+          "venue": "lerkendal_stadion"
         },
         {
           "date": "2026-10-07",
@@ -11345,7 +11345,7 @@
           "round": 23,
           "leg": 2,
           "home": "sarpsborg08_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "sarpsborg_stadion"
         },
         {
@@ -11380,9 +11380,9 @@
           "competition": "toppserien_2026",
           "round": 29,
           "leg": 3,
-          "home": "lsk_kvinner_w",
-          "away": "lyn_w",
-          "venue": "araasen_stadion"
+          "home": "lyn_w",
+          "away": "lsk_kvinner_w",
+          "venue": "kringsjaa_kunstgress"
         },
         {
           "date": "2026-10-10",
@@ -11435,7 +11435,7 @@
           "round": 30,
           "leg": 3,
           "home": "lsk_kvinner_w",
-          "away": "aalesund_w",
+          "away": "valerenga_w",
           "venue": "araasen_stadion"
         },
         {
@@ -11444,7 +11444,7 @@
           "round": 30,
           "leg": 3,
           "home": "lyn_w",
-          "away": "valerenga_w",
+          "away": "aalesund_w",
           "venue": "kringsjaa_kunstgress"
         },
         {
@@ -11471,17 +11471,8 @@
           "round": 24,
           "leg": 2,
           "home": "bodo_glimt_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "aspmyra_stadion"
-        },
-        {
-          "date": "2026-10-18",
-          "competition": "eliteserien_2026",
-          "round": 24,
-          "leg": 2,
-          "home": "fredrikstad_m",
-          "away": "sandefjord_m",
-          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-10-18",
@@ -11498,7 +11489,7 @@
           "round": 24,
           "leg": 2,
           "home": "kfum_oslo_m",
-          "away": "start_m",
+          "away": "sandefjord_m",
           "venue": "kfum_arena"
         },
         {
@@ -11509,6 +11500,15 @@
           "home": "kristiansund_m",
           "away": "sarpsborg08_m",
           "venue": "kristiansund_stadion"
+        },
+        {
+          "date": "2026-10-18",
+          "competition": "eliteserien_2026",
+          "round": 24,
+          "leg": 2,
+          "home": "lillestrom_m",
+          "away": "start_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-10-18",
@@ -11552,7 +11552,7 @@
           "round": 33,
           "leg": 3,
           "home": "haugesund_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "haugesund_stadion"
         },
         {
@@ -11569,9 +11569,9 @@
           "competition": "toppserien_2026",
           "round": 33,
           "leg": 3,
-          "home": "lyn_w",
+          "home": "lsk_kvinner_w",
           "away": "molde_w",
-          "venue": "kringsjaa_kunstgress"
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-10-24",
@@ -11597,7 +11597,7 @@
           "round": 25,
           "leg": 2,
           "home": "aalesund_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "color_line_stadion"
         },
         {
@@ -11615,7 +11615,7 @@
           "round": 25,
           "leg": 2,
           "home": "brann_m",
-          "away": "fredrikstad_m",
+          "away": "kfum_oslo_m",
           "venue": "brann_stadion"
         },
         {
@@ -11623,9 +11623,18 @@
           "competition": "eliteserien_2026",
           "round": 25,
           "leg": 2,
-          "home": "lillestrom_m",
+          "home": "fredrikstad_m",
           "away": "molde_m",
-          "venue": "araasen_stadion"
+          "venue": "fredrikstad_stadion"
+        },
+        {
+          "date": "2026-10-25",
+          "competition": "eliteserien_2026",
+          "round": 25,
+          "leg": 2,
+          "home": "kristiansund_m",
+          "away": "sandefjord_m",
+          "venue": "kristiansund_stadion"
         },
         {
           "date": "2026-10-25",
@@ -11635,15 +11644,6 @@
           "home": "rosenborg_m",
           "away": "sarpsborg08_m",
           "venue": "lerkendal_stadion"
-        },
-        {
-          "date": "2026-10-25",
-          "competition": "eliteserien_2026",
-          "round": 25,
-          "leg": 2,
-          "home": "sandefjord_m",
-          "away": "kristiansund_m",
-          "venue": "jotun_arena"
         },
         {
           "date": "2026-10-25",
@@ -11669,7 +11669,7 @@
           "round": 32,
           "leg": 3,
           "home": "aalesund_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "color_line_stadion"
         },
         {
@@ -11687,7 +11687,7 @@
           "round": 32,
           "leg": 3,
           "home": "roa_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "roa_kunstgress"
         },
         {
@@ -11722,17 +11722,8 @@
           "competition": "eliteserien_2026",
           "round": 26,
           "leg": 2,
-          "home": "fredrikstad_m",
-          "away": "molde_m",
-          "venue": "fredrikstad_stadion"
-        },
-        {
-          "date": "2026-11-01",
-          "competition": "eliteserien_2026",
-          "round": 26,
-          "leg": 2,
           "home": "hamkam_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "briskeby_arena"
         },
         {
@@ -11741,7 +11732,7 @@
           "round": 26,
           "leg": 2,
           "home": "kfum_oslo_m",
-          "away": "tromso_m",
+          "away": "molde_m",
           "venue": "kfum_arena"
         },
         {
@@ -11752,6 +11743,15 @@
           "home": "kristiansund_m",
           "away": "brann_m",
           "venue": "kristiansund_stadion"
+        },
+        {
+          "date": "2026-11-01",
+          "competition": "eliteserien_2026",
+          "round": 26,
+          "leg": 2,
+          "home": "lillestrom_m",
+          "away": "tromso_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-11-01",
@@ -11804,7 +11804,7 @@
           "round": 27,
           "leg": 3,
           "home": "bodo_glimt_w",
-          "away": "lyn_w",
+          "away": "lsk_kvinner_w",
           "venue": "aspmyra_stadion"
         },
         {
@@ -11813,7 +11813,7 @@
           "round": 27,
           "leg": 3,
           "home": "brann_w",
-          "away": "lsk_kvinner_w",
+          "away": "lyn_w",
           "venue": "brann_stadion"
         },
         {
@@ -11858,7 +11858,7 @@
           "round": 27,
           "leg": 2,
           "home": "bodo_glimt_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "aspmyra_stadion"
         },
         {
@@ -11875,18 +11875,18 @@
           "competition": "eliteserien_2026",
           "round": 27,
           "leg": 2,
-          "home": "hamkam_m",
-          "away": "valerenga_m",
-          "venue": "briskeby_arena"
+          "home": "fredrikstad_m",
+          "away": "kfum_oslo_m",
+          "venue": "fredrikstad_stadion"
         },
         {
           "date": "2026-11-08",
           "competition": "eliteserien_2026",
           "round": 27,
           "leg": 2,
-          "home": "lillestrom_m",
-          "away": "fredrikstad_m",
-          "venue": "araasen_stadion"
+          "home": "hamkam_m",
+          "away": "valerenga_m",
+          "venue": "briskeby_arena"
         },
         {
           "date": "2026-11-08",
@@ -11902,9 +11902,9 @@
           "competition": "eliteserien_2026",
           "round": 27,
           "leg": 2,
-          "home": "start_m",
-          "away": "sandefjord_m",
-          "venue": "sor_arena"
+          "home": "sandefjord_m",
+          "away": "start_m",
+          "venue": "jotun_arena"
         },
         {
           "date": "2026-11-08",
@@ -11920,18 +11920,18 @@
           "competition": "eliteserien_2026",
           "round": 28,
           "leg": 2,
-          "home": "kfum_oslo_m",
-          "away": "hamkam_m",
-          "venue": "kfum_arena"
+          "home": "kristiansund_m",
+          "away": "kfum_oslo_m",
+          "venue": "kristiansund_stadion"
         },
         {
           "date": "2026-11-22",
           "competition": "eliteserien_2026",
           "round": 28,
           "leg": 2,
-          "home": "kristiansund_m",
-          "away": "fredrikstad_m",
-          "venue": "kristiansund_stadion"
+          "home": "lillestrom_m",
+          "away": "hamkam_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-11-22",
@@ -11975,7 +11975,7 @@
           "round": 28,
           "leg": 2,
           "home": "valerenga_m",
-          "away": "lillestrom_m",
+          "away": "fredrikstad_m",
           "venue": "intility_arena"
         },
         {
@@ -11992,15 +11992,6 @@
           "competition": "eliteserien_2026",
           "round": 29,
           "leg": 2,
-          "home": "aalesund_m",
-          "away": "brann_m",
-          "venue": "color_line_stadion"
-        },
-        {
-          "date": "2026-11-29",
-          "competition": "eliteserien_2026",
-          "round": 29,
-          "leg": 2,
           "home": "bodo_glimt_m",
           "away": "sarpsborg08_m",
           "venue": "aspmyra_stadion"
@@ -12010,8 +12001,17 @@
           "competition": "eliteserien_2026",
           "round": 29,
           "leg": 2,
+          "home": "brann_m",
+          "away": "aalesund_m",
+          "venue": "brann_stadion"
+        },
+        {
+          "date": "2026-11-29",
+          "competition": "eliteserien_2026",
+          "round": 29,
+          "leg": 2,
           "home": "fredrikstad_m",
-          "away": "rosenborg_m",
+          "away": "kristiansund_m",
           "venue": "fredrikstad_stadion"
         },
         {
@@ -12028,9 +12028,9 @@
           "competition": "eliteserien_2026",
           "round": 29,
           "leg": 2,
-          "home": "lillestrom_m",
-          "away": "kristiansund_m",
-          "venue": "araasen_stadion"
+          "home": "kfum_oslo_m",
+          "away": "rosenborg_m",
+          "venue": "kfum_arena"
         },
         {
           "date": "2026-11-29",
@@ -12056,8 +12056,17 @@
           "round": 29,
           "leg": 2,
           "home": "valerenga_m",
-          "away": "kfum_oslo_m",
+          "away": "lillestrom_m",
           "venue": "intility_arena"
+        },
+        {
+          "date": "2026-12-06",
+          "competition": "eliteserien_2026",
+          "round": 30,
+          "leg": 2,
+          "home": "aalesund_m",
+          "away": "molde_m",
+          "venue": "color_line_stadion"
         },
         {
           "date": "2026-12-06",
@@ -12073,27 +12082,9 @@
           "competition": "eliteserien_2026",
           "round": 30,
           "leg": 2,
-          "home": "fredrikstad_m",
-          "away": "start_m",
-          "venue": "fredrikstad_stadion"
-        },
-        {
-          "date": "2026-12-06",
-          "competition": "eliteserien_2026",
-          "round": 30,
-          "leg": 2,
-          "home": "kfum_oslo_m",
-          "away": "lillestrom_m",
-          "venue": "kfum_arena"
-        },
-        {
-          "date": "2026-12-06",
-          "competition": "eliteserien_2026",
-          "round": 30,
-          "leg": 2,
-          "home": "molde_m",
-          "away": "aalesund_m",
-          "venue": "aker_stadion"
+          "home": "lillestrom_m",
+          "away": "fredrikstad_m",
+          "venue": "araasen_stadion"
         },
         {
           "date": "2026-12-06",
@@ -12121,6 +12112,15 @@
           "home": "sarpsborg08_m",
           "away": "hamkam_m",
           "venue": "sarpsborg_stadion"
+        },
+        {
+          "date": "2026-12-06",
+          "competition": "eliteserien_2026",
+          "round": 30,
+          "leg": 2,
+          "home": "start_m",
+          "away": "kfum_oslo_m",
+          "venue": "sor_arena"
         },
         {
           "date": "2026-12-06",
