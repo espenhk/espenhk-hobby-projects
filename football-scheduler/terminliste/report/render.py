@@ -214,22 +214,40 @@ def _classify_events(world: World, events: list[Event]) -> tuple[list[Event], li
     return club_events, team_events
 
 
+def _count_by_club(world: World, club_events: list[Event]) -> dict[str, int]:
+    """Tally a list of already-classified club-coupling events by club id.
+    Shared by every place that needs this (fairness rows, per-club headlines,
+    the per-team occurrence summary) so the attribution logic — which event's
+    `team_ids[0]` names the club it belongs to — lives in exactly one place.
+    """
+    counts: dict[str, int] = defaultdict(int)
+    for event in club_events:
+        counts[world.team(event.team_ids[0]).club_id] += 1
+    return counts
+
+
 def _entity_counts(world: World, result: ConstraintResult) -> list[dict]:
     """How many of this rule's events touch each team (or each dual club, for
     the two club-coupling rules), worst/most-frequent first. Returns `[]` for
     a rule whose events carry no `team_ids` at all (e.g. `preferred_weekday`,
-    scored per competition rather than per team)."""
+    scored per competition rather than per team).
+
+    Picks whichever of the two event shapes is actually larger, the same way
+    `_fairness_row_for` does — a rule could in principle mix both shapes, and
+    picking consistently keeps the two report sections from disagreeing about
+    which bucket "the" occurrences for that rule come from.
+    """
     club_events, team_events = _classify_events(world, result.events)
+    if not club_events and not team_events:
+        return []
     counts: dict[str, int] = defaultdict(int)
-    if club_events:
-        for event in club_events:
-            counts[world.club(world.team(event.team_ids[0]).club_id).name] += 1
-    elif team_events:
+    if len(club_events) >= len(team_events):
+        for club_id, n in _count_by_club(world, club_events).items():
+            counts[world.club(club_id).name] = n
+    else:
         for event in team_events:
             for team_id in event.team_ids:
                 counts[world.team_label(team_id)] += 1
-    else:
-        return []
     return [
         {"label": label, "count": n}
         for label, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
@@ -279,10 +297,7 @@ def _club_event_counts(world: World, result: ConstraintResult | None) -> dict[st
     if result is None:
         return {}
     club_events, _ = _classify_events(world, result.events)
-    counts: dict[str, int] = defaultdict(int)
-    for event in club_events:
-        counts[world.team(event.team_ids[0]).club_id] += 1
-    return counts
+    return _count_by_club(world, club_events)
 
 
 def _club_headlines(world: World, candidate: Candidate, dual_club_ids: set[str]) -> dict[str, list[dict]]:
@@ -544,12 +559,8 @@ def _fairness_row_for(
     if len(club_events) >= len(team_events):
         if len(dual_club_ids) < 2:
             return None
-        counts = {club_id: 0 for club_id in dual_club_ids}
-        for event in club_events:
-            club_id = world.team(event.team_ids[0]).club_id
-            if club_id in counts:
-                counts[club_id] += 1
-        entries = [(world.club(cid).name, n) for cid, n in counts.items()]
+        raw_counts = _count_by_club(world, club_events)
+        entries = [(world.club(cid).name, raw_counts.get(cid, 0)) for cid in dual_club_ids]
     else:
         if len(participant_teams) < 2:
             return None

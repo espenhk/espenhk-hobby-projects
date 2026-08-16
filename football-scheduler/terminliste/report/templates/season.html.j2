@@ -84,6 +84,10 @@
   @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
   .col h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 10px; color: var(--muted); }
   .item { border-left: 3px solid var(--line); margin-bottom: 10px; }
+  /* The hard-violation box below still renders `.item` as a plain <div> (it
+     isn't collapsible), so it needs its own padding — the <details> version
+     gets padding from summary.top/.item-body instead, further down. */
+  .item:not(details) { padding: 8px 0 8px 12px; }
   .item.up { border-left-color: var(--good); }
   .item.down { border-left-color: var(--bad); }
   .item .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
