@@ -35,6 +35,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 from terminliste.model.loader import World  # noqa: E402
 from terminliste.model.schema import Season  # noqa: E402
 from terminliste.report.views import build_option, club_colors_for  # noqa: E402
+from terminliste.rounds.cup_schedule import CupSchedule  # noqa: E402
 from terminliste.solvers.base import SolverResult  # noqa: E402
 
 TEMPLATE_DIR = FRONTEND_ROOT / "templates"
@@ -48,6 +49,7 @@ def render_report(
     title: str | None = None,
     full_diagnostics: bool = False,
     warnings: list[str] | None = None,
+    cup_schedules: list[CupSchedule] | None = None,
 ) -> Path:
     """Render a solver result (or a single scored schedule) as one HTML page.
 
@@ -56,6 +58,10 @@ def render_report(
     rule is shown, not just the top few, and a dedicated section calls out
     broken hard rules by name. `warnings` surfaces non-fatal issues found while
     loading that schedule (e.g. a pair that never played) above the score.
+    `cup_schedules` are the season's cups already resolved to a date per team
+    (see `football-scheduler/terminliste/rounds/cup_schedule.py`) — the
+    caller resolves them once and passes the result in, rather than this
+    function resolving them again per render.
     """
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_DIR),
@@ -67,7 +73,7 @@ def render_report(
 
     club_colors = club_colors_for(world)
     options = [
-        build_option(world, season, candidate, club_colors, full_diagnostics)
+        build_option(world, season, candidate, club_colors, cup_schedules, full_diagnostics)
         for candidate in result.candidates
     ]
 

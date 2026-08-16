@@ -34,9 +34,7 @@ python -m pytest skate/tests/ -v
 
 ## Environment Setup
 
-Both projects share a single virtual environment managed by [Poetry](https://python-poetry.org/). Python 3.12 is recommended.
-
-> **Note:** `tminterface` and `pygbx` (required by `tmnf`) are not on PyPI — install them manually from their respective GitHub repos before running `poetry install`.
+All projects share a single virtual environment managed by [Poetry](https://python-poetry.org/). Python 3.12 is recommended.
 
 ### Install Poetry
 
@@ -78,7 +76,6 @@ Or set it permanently in `.vscode/settings.json`:
 
 ```bash
 poetry run python skate/race_predictor.py
-poetry run python tmnf/main.py <experiment_name>
 
 # Or activate the venv in your shell first:
 poetry shell

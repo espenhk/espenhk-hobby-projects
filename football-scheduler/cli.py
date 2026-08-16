@@ -8,10 +8,13 @@
     python cli.py explain schedules/2026.json      # score breakdown in the terminal
     python cli.py export-frontend --season 2026    # publish the frontend data
                                                     # contract to ../football-scheduler-frontend
+    python cli.py refresh-reference-data           # diff data/*.yml against a live API
 
 `validate` and `score` need no solver and run in well under a second.
 `generate` runs the local-search solver by default (`--solver cpsat` needs
-OR-Tools installed).
+OR-Tools installed). `refresh-reference-data` is the only command that
+touches the network, and only to read — it never rewrites `data/*.yml`
+itself; see `terminliste/refdata/refresh.py`.
 """
 
 from __future__ import annotations
@@ -37,10 +40,22 @@ from terminliste.external_schedule import ExternalScheduleError, load_external_s
 from terminliste.model.loader import DataError, World, load_world  # noqa: E402
 from terminliste.model.schema import Season  # noqa: E402
 from terminliste.model.travel import HaversineTravelModel  # noqa: E402
+from terminliste.refdata import refresh_competition  # noqa: E402
 from terminliste.report.render import write_frontend_json, write_json  # noqa: E402
+from terminliste.rounds.cup_schedule import CupSchedule, CupSchedulingError, schedule_cups  # noqa: E402
 from terminliste.scoring.base import EvalContext, Score, evaluate  # noqa: E402
 from terminliste.scoring.registry import build_constraints  # noqa: E402
 from terminliste.solvers import Candidate, SolveRequest, SolverResult, get_scheduler  # noqa: E402
+
+# TheSportsDB's league-name string for each competition this project knows
+# about. Unconfirmed against a live call in this sandbox — the network egress
+# policy here blocks the API host entirely (see README) — so treat these as
+# a documented best guess to verify the first time this runs somewhere that
+# can actually reach the API, not as tested constants.
+API_LEAGUE_NAMES = {
+    "eliteserien_2026": "Norwegian Eliteserien",
+    "toppserien_2026": "Norwegian Toppserien",
+}
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -57,19 +72,49 @@ def cmd_validate(args: argparse.Namespace) -> int:
     dual = world.dual_clubs()
     print(f"     {len(dual)} dual clubs: {', '.join(c.name for c in dual)}")
     for competition in world.competitions.values():
-        print(
-            f"     {competition.name}: {competition.team_count} teams, "
-            f"{competition.rounds} rounds, {competition.total_matches} matches"
-        )
+        if competition.format == "cup":
+            print(
+                f"     {competition.name}: {competition.team_count} teams entered, "
+                f"{competition.rounds} rounds tracked (forced/windowed dates, pairings TBD)"
+            )
+        else:
+            print(
+                f"     {competition.name}: {competition.team_count} teams, "
+                f"{competition.rounds} rounds, {competition.total_matches} matches"
+            )
+
+    for season in world.seasons.values():
+        if not season.cup_competitions:
+            continue
+        cup_competitions = [world.competition(c) for c in season.cup_competitions]
+        try:
+            schedules, warnings = schedule_cups(cup_competitions, season)
+        except CupSchedulingError as exc:
+            print(f"FAIL: {exc}", file=sys.stderr)
+            return 1
+        for schedule in schedules:
+            print(f"     {schedule.competition_name} resolves cleanly:")
+            for placement in schedule.rounds:
+                span = (
+                    f"{placement.earliest_date}"
+                    if placement.spread_days == 0
+                    else f"{placement.earliest_date} – {placement.latest_date}"
+                )
+                print(f"       {placement.round_name}: {span}")
+        for warning in warnings:
+            print(f"     ⚠ {warning}")
     return 0
 
 
-def _solve_season(args: argparse.Namespace) -> tuple[World, Season, SolverResult] | None:
+def _solve_season(
+    args: argparse.Namespace,
+) -> tuple[World, Season, SolverResult, list[CupSchedule], list[str]] | None:
     """Load, solve, and return candidates — shared by `generate` and `export-frontend`."""
     world = _load_world_or_exit()
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
-    constraints = build_constraints(world, season, competitions)
+    cup_schedules, cup_warnings = _schedule_cups_or_exit(world, season)
+    constraints = build_constraints(world, season, competitions, cup_schedules)
     travel = HaversineTravelModel(world)
     ctx = EvalContext(world=world, season=season, travel=travel)
 
@@ -78,6 +123,7 @@ def _solve_season(args: argparse.Namespace) -> tuple[World, Season, SolverResult
         world=world,
         season=season,
         competitions=competitions,
+        cup_schedules=cup_schedules,
         constraints=constraints,
         ctx=ctx,
         seed=args.seed,
@@ -86,6 +132,8 @@ def _solve_season(args: argparse.Namespace) -> tuple[World, Season, SolverResult
     )
 
     print(f"Solving with {scheduler.name} (budget {args.time_budget:.0f}s, seed {args.seed})...")
+    for warning in cup_warnings:
+        print(f"  ⚠ {warning}")
     try:
         result = scheduler.solve(request)
     except RuntimeError as exc:
@@ -98,21 +146,29 @@ def _solve_season(args: argparse.Namespace) -> tuple[World, Season, SolverResult
             print(f"  - {note}", file=sys.stderr)
         return None
 
-    return world, season, result
+    return world, season, result, cup_schedules, cup_warnings
 
 
 def cmd_generate(args: argparse.Namespace) -> int:
     solved = _solve_season(args)
     if solved is None:
         return 1
-    world, season, result = solved
+    world, season, result, cup_schedules, cup_warnings = solved
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
     html_path = out_dir / f"{season.id}.html"
     json_path = out_dir / f"{season.id}.json"
 
-    render_report(world, season, result, html_path, title=f"{season.year} season schedule")
+    render_report(
+        world,
+        season,
+        result,
+        html_path,
+        title=f"{season.year} season schedule",
+        warnings=cup_warnings,
+        cup_schedules=cup_schedules,
+    )
     write_json(result, json_path)
 
     _print_summary(result)
@@ -124,7 +180,7 @@ def cmd_export_frontend(args: argparse.Namespace) -> int:
     solved = _solve_season(args)
     if solved is None:
         return 1
-    world, season, result = solved
+    world, season, result, cup_schedules, _cup_warnings = solved
 
     frontend_repo = Path(args.frontend_repo)
     if not frontend_repo.is_dir():
@@ -132,7 +188,7 @@ def cmd_export_frontend(args: argparse.Namespace) -> int:
         return 1
 
     fixture_path = frontend_repo / "data" / f"{season.id}.frontend.json"
-    write_frontend_json(world, season, result, fixture_path)
+    write_frontend_json(world, season, result, fixture_path, cup_schedules=cup_schedules)
     print(f"Wrote {fixture_path}")
 
     subprocess.run(["git", "-C", str(frontend_repo), "add", str(fixture_path)], check=True)
@@ -159,7 +215,8 @@ def cmd_score(args: argparse.Namespace) -> int:
     world = _load_world_or_exit()
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
-    constraints = build_constraints(world, season, competitions)
+    cup_schedules, cup_warnings = _schedule_cups_or_exit(world, season)
+    constraints = build_constraints(world, season, competitions, cup_schedules)
     travel = HaversineTravelModel(world)
 
     try:
@@ -172,6 +229,7 @@ def cmd_score(args: argparse.Namespace) -> int:
         print("FAIL: schedule file contained no matches.", file=sys.stderr)
         return 1
 
+    warnings = [*warnings, *cup_warnings]
     ctx = EvalContext(world=world, season=season, travel=travel, detail=True)
     score = evaluate(matches, constraints, ctx)
 
@@ -197,6 +255,7 @@ def cmd_score(args: argparse.Namespace) -> int:
         title=f"Score report — {Path(args.schedule).name}",
         full_diagnostics=True,
         warnings=warnings,
+        cup_schedules=cup_schedules,
     )
     print(f"\nWrote {out_path}")
 
@@ -219,6 +278,7 @@ def cmd_explain(args: argparse.Namespace) -> int:
 
     for option in options:
         print(f"=== {option['label']} (seed {option.get('seed', '?')}) ===")
+        print(f"  points:          {option.get('points', '?')} / 100")
         print(f"  hard violations: {option['hard_violations']}")
         print(f"  soft total:      {option['soft_total']}")
         for row in sorted(option["breakdown"], key=lambda r: (r["kind"] != "hard", -abs(r["total"]))):
@@ -229,6 +289,44 @@ def cmd_explain(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_refresh_reference_data(args: argparse.Namespace) -> int:
+    world = _load_world_or_exit()
+    season = _season_or_exit(world, args.season)
+
+    any_diffs = False
+    for competition_id in season.competitions:
+        league_name = API_LEAGUE_NAMES.get(competition_id)
+        if league_name is None:
+            print(f"skipping {competition_id!r}: no API league name mapped for it")
+            continue
+
+        report = refresh_competition(world, competition_id, league_name, force=args.force)
+        print(f"\n=== {competition_id} ({league_name}) — source: {report.source} ===")
+        if report.error:
+            print(f"  note: {report.error}")
+        if report.source == "unavailable":
+            print("  no data to compare — using whatever is already in data/*.yml")
+            continue
+
+        if not report.diffs and not report.unmatched_api_teams and not report.unmatched_local_teams:
+            print("  no differences found")
+        for diff in report.diffs:
+            any_diffs = True
+            print(f"  {diff.team_id}: {diff.field} — file has {diff.current!r}, API has {diff.fetched!r}")
+        if report.unmatched_api_teams:
+            any_diffs = True
+            print(f"  API teams not matched to a local team: {', '.join(report.unmatched_api_teams)}")
+        if report.unmatched_local_teams:
+            any_diffs = True
+            print(f"  local teams not matched to an API team: {', '.join(report.unmatched_local_teams)}")
+
+    print(
+        "\nThis only reports differences — nothing in data/*.yml has been changed. "
+        "Fold in anything you trust by hand."
+    )
+    return 1 if any_diffs else 0
+
+
 def _print_summary(result: SolverResult) -> None:
     print(f"\n{len(result.candidates)} option(s), {result.iterations} iterations, "
           f"{result.elapsed_s:.1f}s elapsed")
@@ -236,7 +334,7 @@ def _print_summary(result: SolverResult) -> None:
         print(f"  note: {note}")
     for candidate in result.candidates:
         badge = "feasible" if candidate.score.feasible else f"{candidate.score.hard_violations} HARD VIOLATIONS"
-        print(f"  {candidate.label}: score={candidate.score.soft_total:.1f} ({badge})")
+        print(f"  {candidate.label}: {candidate.score.points:.0f}/100 ({badge})")
 
 
 def _print_score(score: Score) -> None:
@@ -254,6 +352,7 @@ def _print_score(score: Score) -> None:
                 print(f"      ...and {len(result.events) - 5} more")
         print()
 
+    print(f"Score: {score.points:.0f} / 100\n")
     print(f"Soft score: {score.soft_total:.1f}\n")
     print("Soft rules, worst first:")
     for result in sorted(score.soft_results(), key=lambda r: r.total):
@@ -273,6 +372,16 @@ def _season_or_exit(world, season_id: str):
     try:
         return world.season(season_id)
     except DataError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _schedule_cups_or_exit(world, season):
+    """Resolve the season's cups to dates, or exit with a clear reason why not."""
+    cup_competitions = [world.competition(c) for c in season.cup_competitions]
+    try:
+        return schedule_cups(cup_competitions, season)
+    except CupSchedulingError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)
 
@@ -320,6 +429,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_export.add_argument("--push", action="store_true", help="also `git push` the frontend repo (off by default)")
     p_export.set_defaults(func=cmd_export_frontend)
+
+    p_refresh = sub.add_parser(
+        "refresh-reference-data",
+        help="diff data/*.yml's team/venue data against a live API (read-only, needs network)",
+    )
+    p_refresh.add_argument("--season", default="2026")
+    p_refresh.add_argument(
+        "--force", action="store_true", help="ignore the cache and re-fetch from the API"
+    )
+    p_refresh.set_defaults(func=cmd_refresh_reference_data)
 
     return parser
 

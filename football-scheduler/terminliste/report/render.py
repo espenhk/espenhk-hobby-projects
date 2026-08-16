@@ -16,6 +16,7 @@ from pathlib import Path
 
 from ..model.loader import World
 from ..model.schema import Season
+from ..rounds.cup_schedule import CupSchedule
 from ..solvers.base import SolverResult
 from .frontend_schema import FrontendPayload
 from .views import build_option, club_colors_for
@@ -34,6 +35,7 @@ def write_json(result: SolverResult, output_path: Path) -> Path:
                 "seed": candidate.seed,
                 "hard_violations": candidate.score.hard_violations,
                 "soft_total": round(candidate.score.soft_total, 2),
+                "points": round(candidate.score.points, 1),
                 "breakdown": [
                     {
                         "constraint": r.constraint_id,
@@ -64,16 +66,24 @@ def write_json(result: SolverResult, output_path: Path) -> Path:
     return output_path
 
 
-def build_frontend_payload(world: World, season: Season, result: SolverResult) -> FrontendPayload:
+def build_frontend_payload(
+    world: World,
+    season: Season,
+    result: SolverResult,
+    cup_schedules: list[CupSchedule] | None = None,
+) -> FrontendPayload:
     """The full data contract for a solver result, as a validated model.
 
     Reuses `views.build_option()` — the same enrichment (resolved names,
-    weekday strings, dual-club colors, the `paired` flag) the HTML report
-    renders — so the JSON contract and the HTML report can never disagree
-    about what a schedule looks like.
+    weekday strings, dual-club colors, the `paired` flag, cup rounds) the
+    HTML report renders — so the JSON contract and the HTML report can never
+    disagree about what a schedule looks like.
     """
     club_colors = club_colors_for(world)
-    options = [build_option(world, season, candidate, club_colors) for candidate in result.candidates]
+    cup_schedules = cup_schedules or []
+    options = [
+        build_option(world, season, candidate, club_colors, cup_schedules) for candidate in result.candidates
+    ]
     return FrontendPayload(
         generated_at=datetime.now(timezone.utc),
         season_id=season.id,
@@ -86,9 +96,15 @@ def build_frontend_payload(world: World, season: Season, result: SolverResult) -
     )
 
 
-def write_frontend_json(world: World, season: Season, result: SolverResult, output_path: Path) -> Path:
+def write_frontend_json(
+    world: World,
+    season: Season,
+    result: SolverResult,
+    output_path: Path,
+    cup_schedules: list[CupSchedule] | None = None,
+) -> Path:
     """Write the documented frontend data contract (see CONTRACT.md)."""
-    payload = build_frontend_payload(world, season, result)
+    payload = build_frontend_payload(world, season, result, cup_schedules)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(payload.model_dump(mode="json"), indent=2), encoding="utf-8")
     return output_path

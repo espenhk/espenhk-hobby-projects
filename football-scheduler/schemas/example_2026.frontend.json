@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-08-16T05:50:22.626605Z",
+  "generated_at": "2026-08-16T12:17:37.729240Z",
   "season_id": "2026",
   "season_year": 2026,
-  "season_start": "2026-03-28",
+  "season_start": "2026-03-14",
   "season_end": "2026-12-06",
   "solver": "local",
   "club_colors": {
@@ -16,21 +16,22 @@
   "options": [
     {
       "label": "Option 1",
-      "seed": 7961,
+      "seed": 15880,
       "feasible": true,
       "hard_violations": 0,
-      "soft_total": 2479.515145299022,
+      "soft_total": 2643.9090088938547,
+      "points": 90.56499351412113,
       "headlines": [
         {
-          "value": "94%",
+          "value": "89%",
           "label": "on the preferred weekday"
         },
         {
-          "value": "45",
+          "value": "57",
           "label": "back-to-back home days"
         },
         {
-          "value": "26",
+          "value": "30",
           "label": "paired away days within travel range"
         }
       ],
@@ -38,81 +39,90 @@
         {
           "id": "home_away_breaks",
           "kind": "soft",
-          "total": -192.0,
-          "count": 22,
+          "total": -328.0,
+          "count": 35,
           "description": "Runs of three or more consecutive home or away matches.",
           "examples": [
-            "LSK Kvinner plays 3 consecutive home matches from 2026-04-18",
-            "LSK Kvinner plays 3 consecutive away matches from 2026-08-29",
-            "SK Brann Kvinner plays 3 consecutive home matches from 2026-06-06"
+            "FK Bod\u00f8/Glimt plays 3 consecutive away matches from 2026-07-19",
+            "Troms\u00f8 IL plays 3 consecutive home matches from 2026-04-26",
+            "Troms\u00f8 IL plays 3 consecutive away matches from 2026-09-13"
           ],
-          "more": 19
+          "more": 32
         },
         {
           "id": "rest_comfort",
           "kind": "soft",
-          "total": -48.0,
-          "count": 8,
+          "total": -213.0,
+          "count": 38,
           "description": "Rest gaps at or above the comfortable target, not just the legal minimum.",
           "examples": [
-            "SK Brann Kvinner gets 3 days' rest before 2026-05-19 (comfortable is 6)",
-            "Rosenborg BK Kvinner gets 3 days' rest before 2026-05-19 (comfortable is 6)",
-            "Molde FK gets 4 days' rest before 2026-07-02 (comfortable is 6)"
+            "FK Bod\u00f8/Glimt gets 5 days' rest before 2026-08-30 (comfortable is 6)",
+            "Troms\u00f8 IL gets 5 days' rest before 2026-07-16 (comfortable is 6)",
+            "Troms\u00f8 IL gets 3 days' rest before 2026-07-19 (comfortable is 6)"
           ],
-          "more": 5
+          "more": 35
         },
         {
           "id": "home_away_balance",
           "kind": "soft",
-          "total": -36.0,
-          "count": 6,
+          "total": -6.0,
+          "count": 1,
           "description": "Home and away spread evenly within each half of the season.",
           "examples": [
-            "FK Bod\u00f8/Glimt Kvinner plays 7 home and 4 away in the first half",
-            "FK Bod\u00f8/Glimt Kvinner plays 4 home and 7 away in the second half",
-            "Molde FK Kvinner plays 4 home and 7 away in the first half"
+            "Lyn Fotball plays 7 home and 10 away in the second half"
           ],
-          "more": 3
+          "more": 0
+        },
+        {
+          "id": "soft_venue_preference",
+          "kind": "soft",
+          "total": -5.0,
+          "count": 1,
+          "description": "Matches avoid dates that are legal but discouraged.",
+          "examples": [
+            "Troms\u00f8 IL v Fredrikstad FK on 2026-07-11 \u2014 Peak summer holiday \u2014 low attendance"
+          ],
+          "more": 0
         }
       ],
       "upsides": [
         {
           "id": "preferred_weekday",
           "kind": "soft",
-          "total": 1392.0,
-          "count": 348,
+          "total": 1560.0,
+          "count": 390,
           "description": "Matches on the league's preferred weekday.",
           "examples": [
-            "Toppserien: 115/132 matches (87%) on Saturday",
-            "Eliteserien: 233/240 matches (97%) on Sunday"
+            "Eliteserien: 210/240 matches (88%) on Sunday",
+            "Toppserien: 180/198 matches (91%) on Saturday"
           ],
           "more": 0
         },
         {
           "id": "consecutive_home_days",
           "kind": "soft",
-          "total": 1125.0,
-          "count": 45,
+          "total": 1425.0,
+          "count": 57,
           "description": "A club's two teams at home on back-to-back days.",
           "examples": [
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-03-28, Aalesunds FK home 2026-03-29",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-10-03, Aalesunds FK home 2026-10-04",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-11-21, Aalesunds FK home 2026-11-22"
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-04-18, Aalesunds FK home 2026-04-19",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-06-13, Aalesunds FK home 2026-06-14",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-09-12, Aalesunds FK home 2026-09-13"
           ],
-          "more": 42
+          "more": 54
         },
         {
           "id": "consecutive_away_days",
           "kind": "soft",
-          "total": 238.51514529902235,
-          "count": 26,
+          "total": 210.90900889385455,
+          "count": 30,
           "description": "A club's two teams away on back-to-back days, within travel range.",
           "examples": [
-            "Aalesunds FK: Aalesunds FK Kvinner away at R\u00f8a Kunstgress 2026-05-02, Aalesunds FK away at Lerkendal Stadion 2026-05-03 (7.2h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Aker Stadion 2026-08-29, Aalesunds FK away at Aker Stadion 2026-08-30 (0.0h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Kringsj\u00e5 Kunstgress 2026-05-30, Aalesunds FK away at Kristiansund Stadion 2026-05-31 (7.2h apart)"
+            "Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-05-30, Aalesunds FK away at S\u00f8r Arena 2026-05-31 (4.8h apart)",
+            "Aalesunds FK: Aalesunds FK Kvinner away at \u00c5r\u00e5sen Stadion 2026-04-25, Aalesunds FK away at \u00c5r\u00e5sen Stadion 2026-04-26 (0.0h apart)",
+            "Aalesunds FK: Aalesunds FK Kvinner away at Kringsj\u00e5 Kunstgress 2026-03-28, Aalesunds FK away at Lerkendal Stadion 2026-03-29 (7.1h apart)"
           ],
-          "more": 23
+          "more": 27
         }
       ],
       "breakdown": [
@@ -131,6 +141,15 @@
           "total": 0.0,
           "count": 0,
           "description": "A club's teams are never both at home on the same day.",
+          "examples": [],
+          "more": 0
+        },
+        {
+          "id": "cup_round_conflict",
+          "kind": "hard",
+          "total": 0.0,
+          "count": 0,
+          "description": "A team's league matches stay clear of its cup round dates.",
           "examples": [],
           "more": 0
         },
@@ -182,110 +201,107 @@
         {
           "id": "preferred_weekday",
           "kind": "soft",
-          "total": 1392.0,
-          "count": 348,
+          "total": 1560.0,
+          "count": 390,
           "description": "Matches on the league's preferred weekday.",
           "examples": [
-            "Toppserien: 115/132 matches (87%) on Saturday",
-            "Eliteserien: 233/240 matches (97%) on Sunday"
+            "Eliteserien: 210/240 matches (88%) on Sunday",
+            "Toppserien: 180/198 matches (91%) on Saturday"
           ],
           "more": 0
         },
         {
           "id": "consecutive_home_days",
           "kind": "soft",
-          "total": 1125.0,
-          "count": 45,
+          "total": 1425.0,
+          "count": 57,
           "description": "A club's two teams at home on back-to-back days.",
           "examples": [
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-03-28, Aalesunds FK home 2026-03-29",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-10-03, Aalesunds FK home 2026-10-04",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-11-21, Aalesunds FK home 2026-11-22",
             "Aalesunds FK: Aalesunds FK Kvinner home 2026-04-18, Aalesunds FK home 2026-04-19",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-06-13, Aalesunds FK home 2026-06-14",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-09-12, Aalesunds FK home 2026-09-13",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-09-19, Aalesunds FK home 2026-09-20",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-09-26, Aalesunds FK home 2026-09-27",
             "Aalesunds FK: Aalesunds FK Kvinner home 2026-07-25, Aalesunds FK home 2026-07-26",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-10-31, Aalesunds FK home 2026-11-01",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-06-06, Aalesunds FK home 2026-06-07",
-            "Aalesunds FK: Aalesunds FK Kvinner home 2026-08-22, Aalesunds FK home 2026-08-23"
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-08-08, Aalesunds FK home 2026-08-09",
+            "Aalesunds FK: Aalesunds FK Kvinner home 2026-07-12, Aalesunds FK home 2026-07-13"
           ],
-          "more": 37
-        },
-        {
-          "id": "consecutive_away_days",
-          "kind": "soft",
-          "total": 238.51514529902235,
-          "count": 26,
-          "description": "A club's two teams away on back-to-back days, within travel range.",
-          "examples": [
-            "Aalesunds FK: Aalesunds FK Kvinner away at R\u00f8a Kunstgress 2026-05-02, Aalesunds FK away at Lerkendal Stadion 2026-05-03 (7.2h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Aker Stadion 2026-08-29, Aalesunds FK away at Aker Stadion 2026-08-30 (0.0h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Kringsj\u00e5 Kunstgress 2026-05-30, Aalesunds FK away at Kristiansund Stadion 2026-05-31 (7.2h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Brann Stadion 2026-09-26, Aalesunds FK away at KFUM Arena 2026-09-27 (5.9h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-11-14, Aalesunds FK away at Sarpsborg Stadion 2026-11-15 (2.0h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Intility Arena 2026-12-05, Aalesunds FK away at Intility Arena 2026-12-06 (0.0h apart)",
-            "Aalesunds FK: Aalesunds FK Kvinner away at Haugesund Stadion 2026-04-11, Aalesunds FK away at \u00c5r\u00e5sen Stadion 2026-04-12 (6.2h apart)",
-            "FK Bod\u00f8/Glimt: FK Bod\u00f8/Glimt Kvinner away at Lerkendal Stadion 2026-08-29, FK Bod\u00f8/Glimt away at KFUM Arena 2026-08-30 (7.3h apart)"
-          ],
-          "more": 18
+          "more": 49
         },
         {
           "id": "home_away_breaks",
           "kind": "soft",
-          "total": -192.0,
-          "count": 22,
+          "total": -328.0,
+          "count": 35,
           "description": "Runs of three or more consecutive home or away matches.",
           "examples": [
-            "LSK Kvinner plays 3 consecutive home matches from 2026-04-18",
-            "LSK Kvinner plays 3 consecutive away matches from 2026-08-29",
-            "SK Brann Kvinner plays 3 consecutive home matches from 2026-06-06",
-            "SK Brann Kvinner plays 3 consecutive away matches from 2026-10-17",
-            "Rosenborg BK Kvinner plays 3 consecutive away matches from 2026-05-19",
-            "Rosenborg BK Kvinner plays 3 consecutive home matches from 2026-08-29",
-            "V\u00e5lerenga Fotball Kvinner plays 3 consecutive away matches from 2026-06-06",
-            "V\u00e5lerenga Fotball Kvinner plays 3 consecutive home matches from 2026-10-17"
+            "FK Bod\u00f8/Glimt plays 3 consecutive away matches from 2026-07-19",
+            "Troms\u00f8 IL plays 3 consecutive home matches from 2026-04-26",
+            "Troms\u00f8 IL plays 3 consecutive away matches from 2026-09-13",
+            "SK Brann plays 3 consecutive away matches from 2026-06-21",
+            "SK Brann plays 3 consecutive home matches from 2026-11-01",
+            "Sandefjord Fotball plays 3 consecutive away matches from 2026-07-12",
+            "Sandefjord Fotball plays 3 consecutive home matches from 2026-11-22",
+            "Hamarkameratene plays 3 consecutive away matches from 2026-10-25"
           ],
-          "more": 14
+          "more": 27
         },
         {
           "id": "rest_comfort",
           "kind": "soft",
-          "total": -48.0,
-          "count": 8,
+          "total": -213.0,
+          "count": 38,
           "description": "Rest gaps at or above the comfortable target, not just the legal minimum.",
           "examples": [
-            "SK Brann Kvinner gets 3 days' rest before 2026-05-19 (comfortable is 6)",
-            "Rosenborg BK Kvinner gets 3 days' rest before 2026-05-19 (comfortable is 6)",
-            "Molde FK gets 4 days' rest before 2026-07-02 (comfortable is 6)",
-            "Molde FK gets 5 days' rest before 2026-09-11 (comfortable is 6)",
-            "Fredrikstad FK gets 4 days' rest before 2026-07-23 (comfortable is 6)",
-            "Kristiansund BK gets 4 days' rest before 2026-07-02 (comfortable is 6)",
-            "Rosenborg BK gets 4 days' rest before 2026-07-23 (comfortable is 6)",
-            "Rosenborg BK gets 5 days' rest before 2026-09-11 (comfortable is 6)"
+            "FK Bod\u00f8/Glimt gets 5 days' rest before 2026-08-30 (comfortable is 6)",
+            "Troms\u00f8 IL gets 5 days' rest before 2026-07-16 (comfortable is 6)",
+            "Troms\u00f8 IL gets 3 days' rest before 2026-07-19 (comfortable is 6)",
+            "Troms\u00f8 IL gets 4 days' rest before 2026-07-23 (comfortable is 6)",
+            "Troms\u00f8 IL gets 4 days' rest before 2026-08-29 (comfortable is 6)",
+            "SK Brann gets 4 days' rest before 2026-08-13 (comfortable is 6)",
+            "SK Brann gets 5 days' rest before 2026-08-30 (comfortable is 6)",
+            "Sandefjord Fotball gets 5 days' rest before 2026-08-30 (comfortable is 6)"
           ],
-          "more": 0
+          "more": 30
+        },
+        {
+          "id": "consecutive_away_days",
+          "kind": "soft",
+          "total": 210.90900889385455,
+          "count": 30,
+          "description": "A club's two teams away on back-to-back days, within travel range.",
+          "examples": [
+            "Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-05-30, Aalesunds FK away at S\u00f8r Arena 2026-05-31 (4.8h apart)",
+            "Aalesunds FK: Aalesunds FK Kvinner away at \u00c5r\u00e5sen Stadion 2026-04-25, Aalesunds FK away at \u00c5r\u00e5sen Stadion 2026-04-26 (0.0h apart)",
+            "Aalesunds FK: Aalesunds FK Kvinner away at Kringsj\u00e5 Kunstgress 2026-03-28, Aalesunds FK away at Lerkendal Stadion 2026-03-29 (7.1h apart)",
+            "Aalesunds FK: Aalesunds FK Kvinner away at Haugesund Stadion 2026-05-02, Aalesunds FK away at Sarpsborg Stadion 2026-05-03 (6.3h apart)",
+            "FK Bod\u00f8/Glimt: FK Bod\u00f8/Glimt Kvinner away at R\u00f8a Kunstgress 2026-05-30, FK Bod\u00f8/Glimt away at Fredrikstad Stadion 2026-05-31 (2.1h apart)",
+            "FK Bod\u00f8/Glimt: FK Bod\u00f8/Glimt Kvinner away at AKA Arena 2026-04-18, FK Bod\u00f8/Glimt away at Kristiansund Stadion 2026-04-19 (6.6h apart)",
+            "FK Bod\u00f8/Glimt: FK Bod\u00f8/Glimt Kvinner away at Lerkendal Stadion 2026-06-13, FK Bod\u00f8/Glimt away at Aker Stadion 2026-06-14 (4.0h apart)",
+            "FK Bod\u00f8/Glimt: FK Bod\u00f8/Glimt Kvinner away at \u00c5r\u00e5sen Stadion 2026-09-12, FK Bod\u00f8/Glimt away at Sarpsborg Stadion 2026-09-13 (2.0h apart)"
+          ],
+          "more": 22
         },
         {
           "id": "home_away_balance",
           "kind": "soft",
-          "total": -36.0,
-          "count": 6,
+          "total": -6.0,
+          "count": 1,
           "description": "Home and away spread evenly within each half of the season.",
           "examples": [
-            "FK Bod\u00f8/Glimt Kvinner plays 7 home and 4 away in the first half",
-            "FK Bod\u00f8/Glimt Kvinner plays 4 home and 7 away in the second half",
-            "Molde FK Kvinner plays 4 home and 7 away in the first half",
-            "Molde FK Kvinner plays 7 home and 4 away in the second half",
-            "FK Bod\u00f8/Glimt plays 9 home and 6 away in the first half",
-            "FK Bod\u00f8/Glimt plays 6 home and 9 away in the second half"
+            "Lyn Fotball plays 7 home and 10 away in the second half"
           ],
           "more": 0
         },
         {
           "id": "soft_venue_preference",
           "kind": "soft",
-          "total": 0.0,
-          "count": 0,
+          "total": -5.0,
+          "count": 1,
           "description": "Matches avoid dates that are legal but discouraged.",
-          "examples": [],
+          "examples": [
+            "Troms\u00f8 IL v Fredrikstad FK on 2026-07-11 \u2014 Peak summer holiday \u2014 low attendance"
+          ],
           "more": 0
         }
       ],
@@ -293,41 +309,42 @@
         {
           "id": "eliteserien_2026",
           "name": "Eliteserien",
+          "is_cup": false,
           "preferred_weekday": "sunday",
           "match_count": 16,
           "rounds": [
             {
               "index": 1,
               "leg": 1,
-              "dates": "29 Mar",
+              "dates": "15 Mar",
               "matches": [
                 {
-                  "date": "2026-03-29",
-                  "weekday": "Sun",
-                  "home": "Aalesunds FK",
-                  "away": "Viking FK",
-                  "venue": "Color Line Stadion",
-                  "color": "#c0392b",
-                  "away_color": "",
-                  "paired": true,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-03-29",
+                  "date": "2026-03-15",
                   "weekday": "Sun",
                   "home": "FK Bod\u00f8/Glimt",
-                  "away": "Molde FK",
+                  "away": "Troms\u00f8 IL",
                   "venue": "Aspmyra Stadion",
                   "color": "#2471a3",
-                  "away_color": "#b9770e",
-                  "paired": true,
+                  "away_color": "",
+                  "paired": false,
                   "leg": 1
                 },
                 {
-                  "date": "2026-03-29",
+                  "date": "2026-03-15",
+                  "weekday": "Sun",
+                  "home": "SK Brann",
+                  "away": "Sandefjord Fotball",
+                  "venue": "Brann Stadion",
+                  "color": "#1e8449",
+                  "away_color": "",
+                  "paired": false,
+                  "leg": 1
+                },
+                {
+                  "date": "2026-03-15",
                   "weekday": "Sun",
                   "home": "Hamarkameratene",
-                  "away": "Fredrikstad FK",
+                  "away": "Sarpsborg 08",
                   "venue": "Briskeby Arena",
                   "color": "",
                   "away_color": "",
@@ -335,43 +352,32 @@
                   "leg": 1
                 },
                 {
-                  "date": "2026-03-29",
+                  "date": "2026-03-15",
                   "weekday": "Sun",
-                  "home": "KFUM Oslo",
-                  "away": "Troms\u00f8 IL",
-                  "venue": "KFUM Arena",
+                  "home": "Lillestr\u00f8m SK",
+                  "away": "Rosenborg BK",
+                  "venue": "\u00c5r\u00e5sen Stadion",
                   "color": "",
-                  "away_color": "",
+                  "away_color": "#7d3c98",
                   "paired": false,
                   "leg": 1
                 },
                 {
-                  "date": "2026-03-29",
+                  "date": "2026-03-15",
                   "weekday": "Sun",
-                  "home": "Kristiansund BK",
-                  "away": "Sandefjord Fotball",
-                  "venue": "Kristiansund Stadion",
-                  "color": "",
-                  "away_color": "",
+                  "home": "Molde FK",
+                  "away": "Aalesunds FK",
+                  "venue": "Aker Stadion",
+                  "color": "#b9770e",
+                  "away_color": "#c0392b",
                   "paired": false,
                   "leg": 1
                 },
                 {
-                  "date": "2026-03-29",
-                  "weekday": "Sun",
-                  "home": "Rosenborg BK",
-                  "away": "SK Brann",
-                  "venue": "Lerkendal Stadion",
-                  "color": "#7d3c98",
-                  "away_color": "#1e8449",
-                  "paired": true,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-03-29",
+                  "date": "2026-03-15",
                   "weekday": "Sun",
                   "home": "IK Start",
-                  "away": "Lillestr\u00f8m SK",
+                  "away": "Fredrikstad FK",
                   "venue": "S\u00f8r Arena",
                   "color": "",
                   "away_color": "",
@@ -379,14 +385,25 @@
                   "leg": 1
                 },
                 {
-                  "date": "2026-03-29",
+                  "date": "2026-03-15",
                   "weekday": "Sun",
                   "home": "V\u00e5lerenga Fotball",
-                  "away": "Sarpsborg 08",
+                  "away": "Kristiansund BK",
                   "venue": "Intility Arena",
                   "color": "#117a8b",
                   "away_color": "",
-                  "paired": true,
+                  "paired": false,
+                  "leg": 1
+                },
+                {
+                  "date": "2026-03-15",
+                  "weekday": "Sun",
+                  "home": "Viking FK",
+                  "away": "KFUM Oslo",
+                  "venue": "SR-Bank Arena",
+                  "color": "",
+                  "away_color": "",
+                  "paired": false,
                   "leg": 1
                 }
               ]
@@ -394,24 +411,24 @@
             {
               "index": 2,
               "leg": 1,
-              "dates": "12 Apr",
+              "dates": "22 Mar",
               "matches": [
                 {
-                  "date": "2026-04-12",
+                  "date": "2026-03-22",
                   "weekday": "Sun",
-                  "home": "SK Brann",
-                  "away": "KFUM Oslo",
-                  "venue": "Brann Stadion",
-                  "color": "#1e8449",
+                  "home": "Aalesunds FK",
+                  "away": "Hamarkameratene",
+                  "venue": "Color Line Stadion",
+                  "color": "#c0392b",
                   "away_color": "",
-                  "paired": true,
+                  "paired": false,
                   "leg": 1
                 },
                 {
-                  "date": "2026-04-12",
+                  "date": "2026-03-22",
                   "weekday": "Sun",
                   "home": "Fredrikstad FK",
-                  "away": "Kristiansund BK",
+                  "away": "Viking FK",
                   "venue": "Fredrikstad Stadion",
                   "color": "",
                   "away_color": "",
@@ -419,72 +436,94 @@
                   "leg": 1
                 },
                 {
-                  "date": "2026-04-12",
+                  "date": "2026-03-22",
                   "weekday": "Sun",
-                  "home": "Lillestr\u00f8m SK",
-                  "away": "Aalesunds FK",
-                  "venue": "\u00c5r\u00e5sen Stadion",
-                  "color": "",
-                  "away_color": "#c0392b",
-                  "paired": false,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-04-12",
-                  "weekday": "Sun",
-                  "home": "Molde FK",
-                  "away": "IK Start",
-                  "venue": "Aker Stadion",
-                  "color": "#b9770e",
-                  "away_color": "",
-                  "paired": true,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-04-12",
-                  "weekday": "Sun",
-                  "home": "Rosenborg BK",
-                  "away": "FK Bod\u00f8/Glimt",
-                  "venue": "Lerkendal Stadion",
-                  "color": "#7d3c98",
-                  "away_color": "#2471a3",
-                  "paired": true,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-04-12",
-                  "weekday": "Sun",
-                  "home": "Sarpsborg 08",
-                  "away": "Sandefjord Fotball",
-                  "venue": "Sarpsborg Stadion",
-                  "color": "",
-                  "away_color": "",
-                  "paired": false,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-04-12",
-                  "weekday": "Sun",
-                  "home": "Troms\u00f8 IL",
-                  "away": "Hamarkameratene",
-                  "venue": "Romssa Arena",
-                  "color": "",
-                  "away_color": "",
-                  "paired": false,
-                  "leg": 1
-                },
-                {
-                  "date": "2026-04-12",
-                  "weekday": "Sun",
-                  "home": "Viking FK",
+                  "home": "KFUM Oslo",
                   "away": "V\u00e5lerenga Fotball",
-                  "venue": "SR-Bank Arena",
+                  "venue": "KFUM Arena",
                   "color": "",
                   "away_color": "#117a8b",
                   "paired": false,
                   "leg": 1
+                },
+                {
+                  "date": "2026-03-22",
+                  "weekday": "Sun",
+                  "home": "Kristiansund BK",
+                  "away": "SK Brann",
+                  "venue": "Kristiansund Stadion",
+                  "color": "",
+                  "away_color": "#1e8449",
+                  "paired": false,
+                  "leg": 1
+                },
+                {
+                  "date": "2026-03-22",
+                  "weekday": "Sun",
+                  "home": "Lillestr\u00f8m SK",
+                  "away": "Troms\u00f8 IL",
+                  "venue": "\u00c5r\u00e5sen Stadion",
+                  "color": "",
+                  "away_color": "",
+                  "paired": false,
+                  "leg": 1
+                },
+                {
+                  "date": "2026-03-22",
+                  "weekday": "Sun",
+                  "home": "Sandefjord Fotball",
+                  "away": "FK Bod\u00f8/Glimt",
+                  "venue": "Jotun Arena",
+                  "color": "",
+                  "away_color": "#2471a3",
+                  "paired": false,
+                  "leg": 1
+                },
+                {
+                  "date": "2026-03-22",
+                  "weekday": "Sun",
+                  "home": "Sarpsborg 08",
+                  "away": "Rosenborg BK",
+                  "venue": "Sarpsborg Stadion",
+                  "color": "",
+                  "away_color": "#7d3c98",
+                  "paired": false,
+                  "leg": 1
+                },
+                {
+                  "date": "2026-03-22",
+                  "weekday": "Sun",
+                  "home": "IK Start",
+                  "away": "Molde FK",
+                  "venue": "S\u00f8r Arena",
+                  "color": "",
+                  "away_color": "#b9770e",
+                  "paired": false,
+                  "leg": 1
                 }
               ]
+            }
+          ]
+        },
+        {
+          "id": "cup_men_2027",
+          "name": "NM Cupen (menn)",
+          "is_cup": true,
+          "match_count": 16,
+          "rounds": [
+            {
+              "index": 1,
+              "name": "Round 1",
+              "dates": "22 Aug 2026",
+              "team_count": 16,
+              "note": "Confirmed \u2014 NFF terminliste. Eliteserien enters from Round 1 under the 2027 format."
+            },
+            {
+              "index": 2,
+              "name": "Round 2",
+              "dates": "01 Sep \u2013 04 Sep 2026",
+              "team_count": 16,
+              "note": "NFF has confirmed only that Round 2 is played midweek in September 2026; exact date not yet published."
             }
           ]
         }

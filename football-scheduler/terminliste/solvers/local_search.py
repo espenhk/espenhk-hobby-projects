@@ -28,7 +28,7 @@ import time
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from ..model.calendar import SeasonCalendar, build_calendar
+from ..model.calendar import SeasonCalendar, build_calendar, calendars_by_competition
 from ..model.loader import World
 from ..model.schema import Competition, Match
 from ..scoring.base import HARD_PENALTY, Constraint, EvalContext, ScheduleIndex, evaluate
@@ -99,6 +99,7 @@ class LocalSearchScheduler:
     def solve(self, request: SolveRequest) -> SolverResult:
         started = time.perf_counter()
         calendar = build_calendar(request.world, request.season)
+        by_competition = calendars_by_competition(calendar, request.competitions)
         budget_per_restart = request.time_budget_s / max(1, self.restarts)
 
         candidates: list[Candidate] = []
@@ -109,7 +110,12 @@ class LocalSearchScheduler:
             seed = request.seed + restart * 7919
             try:
                 initial, pinned = build_initial_schedule(
-                    request.world, request.season, request.competitions, seed, calendar
+                    request.world,
+                    request.season,
+                    request.competitions,
+                    seed,
+                    calendar,
+                    cup_schedules=request.cup_schedules,
                 )
             except ValueError as exc:
                 notes.append(f"restart {restart}: {exc}")
@@ -132,7 +138,7 @@ class LocalSearchScheduler:
                 working,
                 pinned,
                 request,
-                calendar,
+                by_competition,
                 seed=seed,
                 budget_s=budget_per_restart,
                 start_temperature=self.start_temperature,
@@ -198,33 +204,36 @@ def _anneal(
     matches: list[WorkingMatch],
     pinned: set[str],
     request: SolveRequest,
-    calendar: SeasonCalendar,
+    calendars: dict[str, SeasonCalendar],
     seed: int,
     budget_s: float,
     start_temperature: float,
     end_temperature: float,
 ) -> tuple[list[WorkingMatch], int]:
-    rng = random.Random(seed)
     ctx = request.ctx
     constraints = request.constraints
-    moves = _MoveSet(matches, pinned, request.world, request.competitions, calendar)
+
+    # Cooling is driven by iteration progress towards a target count rather
+    # than by polling the clock mid-search, so the exact number of draws made
+    # from the seeded RNG depends only on the seed and the calibrated rate
+    # below — not on scheduling jitter from one run to the next. The target
+    # count itself *is* time-budget-derived (and cached per problem size), so
+    # a slower machine still gets proportionally fewer iterations instead of
+    # the run simply taking longer.
+    total_iterations = max(1, round(budget_s * _iterations_per_second(matches, request, calendars)))
+
+    rng = random.Random(seed)
+    moves = _MoveSet(matches, pinned, request.world, request.competitions, calendars)
 
     current_cost = _cost(matches, constraints, ctx)
     best_cost = current_cost
     best_snapshot = _capture_all(matches)
 
-    started = time.perf_counter()
-    iterations = 0
-    # Cooling is driven by elapsed time rather than an iteration count so the
-    # schedule quality degrades gracefully on a slower machine instead of the
-    # run simply taking longer.
     decay = math.log(end_temperature / start_temperature)
 
-    while True:
-        elapsed = time.perf_counter() - started
-        if elapsed >= budget_s:
-            break
-        progress = elapsed / budget_s
+    iterations = 0
+    while iterations < total_iterations:
+        progress = iterations / max(1, total_iterations - 1)
         temperature = start_temperature * math.exp(decay * progress)
 
         undo = moves.apply(rng)
@@ -245,6 +254,48 @@ def _anneal(
 
     _restore(matches, best_snapshot)
     return matches, iterations
+
+
+# Iterations/second this process can push through a given problem size, keyed
+# by (match count, constraint count) and measured once — the first time that
+# shape is seen — rather than re-measured on every restart or every solve()
+# call. Re-measuring per call is exactly what made the search non-reproducible:
+# two back-to-back calls with the same seed could time slightly differently
+# and so run a different number of iterations before hitting the deadline.
+_RATE_CACHE: dict[tuple[int, int], float] = {}
+
+_CALIBRATION_PROBES = 200
+
+
+def _iterations_per_second(
+    matches: list[WorkingMatch],
+    request: SolveRequest,
+    calendars: dict[str, SeasonCalendar],
+) -> float:
+    key = (len(matches), len(request.constraints))
+    cached = _RATE_CACHE.get(key)
+    if cached is not None:
+        return cached
+
+    probe_moves = _MoveSet(matches, set(), request.world, request.competitions, calendars)
+    probe_rng = random.Random()
+    snapshot = _capture_all(matches)
+
+    started = time.perf_counter()
+    completed = 0
+    while completed < _CALIBRATION_PROBES:
+        undo = probe_moves.apply(probe_rng)
+        if undo is None:
+            continue
+        _cost(matches, request.constraints, request.ctx)
+        completed += 1
+    elapsed = time.perf_counter() - started
+
+    _restore(matches, snapshot)
+
+    rate = completed / elapsed if elapsed > 0 else float(completed)
+    _RATE_CACHE[key] = rate
+    return rate
 
 
 def _capture_all(matches: list[WorkingMatch]) -> list[_Snapshot]:
@@ -269,12 +320,12 @@ class _MoveSet:
         pinned: set[str],
         world: World,
         competitions: list[Competition],
-        calendar: SeasonCalendar,
+        calendars: dict[str, SeasonCalendar],
     ) -> None:
         self._matches = matches
         self._pinned = pinned
         self._world = world
-        self._calendar = calendar
+        self._calendars = calendars
         self._competitions = {c.id: c for c in competitions}
 
         # Pinned matches are tracked by list position, not by key: a key
@@ -347,7 +398,8 @@ class _MoveSet:
             return None
 
         anchor = self._anchors[(match.competition_id, match.round_index)]
-        window = self._calendar.window(anchor, competition.match_window_days, match.venue)
+        calendar = self._calendars[match.competition_id]
+        window = calendar.window(anchor, competition.match_window_days, match.venue)
         window = [d for d in window if d != match.date]
         if not window:
             return None

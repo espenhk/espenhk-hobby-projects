@@ -10,7 +10,6 @@ This repo contains independent hobby projects sharing a single Python virtual en
 espenhk-hobby-projects/
 ├── .venv/                       # Shared virtual environment (created by Poetry)
 ├── skate/                       # Ice skating race predictor
-├── tmnf/                        # Trackmania Nations Forever AI
 ├── conversational-analytics/    # NL -> semantic model -> DuckDB -> Vega-Lite dashboard prototype
 ├── football-scheduler/          # Football league season scheduler (terminliste)
 ├── football-scheduler-frontend/ # football-scheduler's presentation layer, staged for a Lovable handoff

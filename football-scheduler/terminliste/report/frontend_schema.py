@@ -10,6 +10,7 @@ Field shapes mirror what `views.build_option()` already produces; see
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -51,9 +52,33 @@ class FrontendRound(BaseModel):
 class FrontendCompetitionView(BaseModel):
     id: str
     name: str
+    is_cup: Literal[False] = False
     preferred_weekday: str
     match_count: int
     rounds: list[FrontendRound]
+
+
+class FrontendCupRound(BaseModel):
+    index: int
+    name: str
+    dates: str
+    team_count: int
+    note: str
+
+
+class FrontendCupView(BaseModel):
+    """A cup competition's rounds — no fixtures, just resolved date windows.
+
+    Pairings within a cup round are drawn round by round and unknown ahead
+    of time, unlike a league's `FrontendCompetitionView`, so there is no
+    `matches` list here — see CONTRACT.md.
+    """
+
+    id: str
+    name: str
+    is_cup: Literal[True] = True
+    match_count: int
+    rounds: list[FrontendCupRound]
 
 
 class FrontendOption(BaseModel):
@@ -62,11 +87,12 @@ class FrontendOption(BaseModel):
     feasible: bool
     hard_violations: int
     soft_total: float
+    points: float
     headlines: list[FrontendHeadline]
     problems: list[FrontendResultRow]
     upsides: list[FrontendResultRow]
     breakdown: list[FrontendResultRow]
-    competitions: list[FrontendCompetitionView]
+    competitions: list[FrontendCompetitionView | FrontendCupView]
 
 
 class FrontendPayload(BaseModel):

@@ -19,12 +19,12 @@ runs the CLI.
   via `FrontendPayload.model_json_schema()`. That file is the source of truth
   for field names and types — this document only explains what they *mean*.
 - **Example**: [`schemas/example_2026.frontend.json`](schemas/example_2026.frontend.json),
-  a real export for the 2026 season, **trimmed to one option and two
-  rounds of one competition** — enough to see the shape without committing
-  a full ~500KB season twice (the actual full export lives in
-  `football-scheduler-frontend/data/`, published by `export-frontend`
-  below). Regenerate this reference copy after any change to the payload
-  shape with:
+  a real export for the 2026 season, **trimmed to one option, two rounds of
+  one league, and two rounds of one cup** — enough to see both shapes
+  without committing a full ~500KB season twice (the actual full export
+  lives in `football-scheduler-frontend/data/`, published by
+  `export-frontend` below). Regenerate this reference copy after any change
+  to the payload shape with:
   ```
   python cli.py export-frontend --season 2026
   python - <<'PY'
@@ -34,7 +34,13 @@ runs the CLI.
   comp = dict(option["competitions"][0])
   comp["rounds"] = comp["rounds"][:2]
   comp["match_count"] = sum(len(r["matches"]) for r in comp["rounds"])
-  option["competitions"] = [comp]
+  cup = next((c for c in option["competitions"] if c.get("is_cup")), None)
+  competitions = [comp]
+  if cup:
+      cup = dict(cup)
+      cup["rounds"] = cup["rounds"][:2]
+      competitions.append(cup)
+  option["competitions"] = competitions
   full["options"] = [option]
   json.dump(full, open("schemas/example_2026.frontend.json", "w"), indent=2)
   PY
@@ -65,14 +71,17 @@ One candidate schedule.
 | `feasible` | `true` if no hard rule is broken. A frontend showing an infeasible option should say so prominently — it's not usable as-is. |
 | `hard_violations` | count of broken hard rules. `0` iff `feasible`. |
 | `soft_total` | the schedule's overall soft score — higher is better, no fixed scale (it's a sum of weighted rule contributions, meaningful only relative to the other options in the same payload). |
+| `points` | overall schedule quality on a fixed **0–100 scale**, comparable across seasons and across payloads (unlike `soft_total`). Any hard violation caps this at 20, decaying toward 0 as violations pile up; every feasible schedule lands strictly above 20, up to 100. This is the number to headline if a frontend only has room for one. |
 | `headlines` | 2–3 `{value, label}` pairs — the numbers a reader checks first (e.g. "62% on the preferred weekday"). Display order matters; don't re-sort. |
 | `problems`, `upsides` | the biggest negative/positive scoring rules for this option, each `{id, kind, total, count, description, examples, more}` — `examples` are a handful of concrete human-readable instances (e.g. a specific date clash), `more` is how many additional instances exist beyond `examples`. Hard-rule violations always sort to the top of `problems` regardless of point value. |
 | `breakdown` | every constraint's contribution, same row shape as `problems`/`upsides` — the full "why this score" table. |
-| `competitions` | the actual calendar — see below. |
+| `competitions` | the actual calendar — a mix of `FrontendCompetitionView` (leagues) and `FrontendCupView` (cups), distinguished by `is_cup`. See below. |
 
-## `FrontendCompetitionView` / `FrontendRound` / `FrontendMatch`
+## `FrontendCompetitionView` / `FrontendRound` / `FrontendMatch` — leagues
 
-The calendar, grouped by competition (league) then round.
+The calendar, grouped by competition (league) then round. `is_cup` is
+always `false` here — check it before assuming `rounds[].matches` exists,
+since `FrontendCupView`'s rounds don't have one.
 
 - `FrontendCompetitionView.preferred_weekday` — the league's preferred
   matchday (e.g. `"sunday"`); not necessarily every match's actual weekday.
@@ -90,6 +99,23 @@ The calendar, grouped by competition (league) then round.
   to produce more of these is the whole point (see the root README) — a
   frontend should visually call this out (the HTML report uses a green
   border and a ◆ marker), not treat it as a minor detail.
+
+## `FrontendCupView` / `FrontendCupRound` — cups
+
+Cups (`is_cup: true`) are a coarser-grained, separate shape — pairings
+within a round are drawn round by round and never known ahead of time
+(unlike a league's fixtures), so there is **no `matches` list**:
+
+- `FrontendCupRound.dates` — a human-readable date or date span the round
+  falls in (e.g. a single day if every team's placement landed on the same
+  date, otherwise a range) — the round is resolved to *when* it happens,
+  not *who plays whom*.
+- `FrontendCupRound.team_count` — how many of the tracked teams are placed
+  in this round, on the assumption that every entered team is still alive
+  through the final (see `football-scheduler/README.md`'s cup section).
+- `FrontendCupRound.note` — a free-text annotation from the source data
+  (e.g. flagging an estimated vs. NFF-confirmed date) — render it, don't
+  discard it.
 
 ## What's deliberately *not* in this payload
 

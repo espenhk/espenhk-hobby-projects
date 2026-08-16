@@ -10,6 +10,12 @@
           "title": "Name",
           "type": "string"
         },
+        "is_cup": {
+          "const": false,
+          "default": false,
+          "title": "Is Cup",
+          "type": "boolean"
+        },
         "preferred_weekday": {
           "title": "Preferred Weekday",
           "type": "string"
@@ -34,6 +40,77 @@
         "rounds"
       ],
       "title": "FrontendCompetitionView",
+      "type": "object"
+    },
+    "FrontendCupRound": {
+      "properties": {
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "dates": {
+          "title": "Dates",
+          "type": "string"
+        },
+        "team_count": {
+          "title": "Team Count",
+          "type": "integer"
+        },
+        "note": {
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "name",
+        "dates",
+        "team_count",
+        "note"
+      ],
+      "title": "FrontendCupRound",
+      "type": "object"
+    },
+    "FrontendCupView": {
+      "description": "A cup competition's rounds \u2014 no fixtures, just resolved date windows.\n\nPairings within a cup round are drawn round by round and unknown ahead\nof time, unlike a league's `FrontendCompetitionView`, so there is no\n`matches` list here \u2014 see CONTRACT.md.",
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "is_cup": {
+          "const": true,
+          "default": true,
+          "title": "Is Cup",
+          "type": "boolean"
+        },
+        "match_count": {
+          "title": "Match Count",
+          "type": "integer"
+        },
+        "rounds": {
+          "items": {
+            "$ref": "#/$defs/FrontendCupRound"
+          },
+          "title": "Rounds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "match_count",
+        "rounds"
+      ],
+      "title": "FrontendCupView",
       "type": "object"
     },
     "FrontendHeadline": {
@@ -137,6 +214,10 @@
           "title": "Soft Total",
           "type": "number"
         },
+        "points": {
+          "title": "Points",
+          "type": "number"
+        },
         "headlines": {
           "items": {
             "$ref": "#/$defs/FrontendHeadline"
@@ -167,7 +248,14 @@
         },
         "competitions": {
           "items": {
-            "$ref": "#/$defs/FrontendCompetitionView"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/FrontendCompetitionView"
+              },
+              {
+                "$ref": "#/$defs/FrontendCupView"
+              }
+            ]
           },
           "title": "Competitions",
           "type": "array"
@@ -179,6 +267,7 @@
         "feasible",
         "hard_violations",
         "soft_total",
+        "points",
         "headlines",
         "problems",
         "upsides",
