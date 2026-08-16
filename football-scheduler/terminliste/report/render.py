@@ -20,7 +20,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from ..model.loader import World
 from ..model.schema import Match, Season
 from ..rounds.cup_schedule import CupSchedule
-from ..scoring.base import ConstraintResult, Score
+from ..scoring.base import ConstraintResult, Event, Score
 from ..scoring.registry import describe
 from ..solvers.base import Candidate, SolverResult
 
@@ -324,61 +324,90 @@ def _cup_views(cup_schedules: list[CupSchedule]) -> list[dict]:
 
 
 def _fairness_rows(world: World, candidate: Candidate) -> list[dict]:
-    """Per-team/per-club view of the soft rules, so a schedule that showers
-    one team in rewards (or penalties) another never sees is visible before
-    the schedule is accepted — see issue #23.
+    """Per-team/per-club view of every soft rule that can play favourites, so
+    a schedule that showers one team in rewards (or penalties) another never
+    sees is visible before the schedule is accepted — see issue #23.
 
-    Reuses the already-computed, already-weighted events on `candidate.score`
-    (built with `ctx.detail=True` for every rendered candidate — see
-    `solvers/local_search.py::_with_detail`) rather than re-deriving counts
-    from the raw matches, so this can never disagree with the score itself.
+    Discovered from `candidate.score.soft_results()` rather than a maintained
+    list of constraint ids: a soft rule earns a row here the moment its
+    events carry `team_ids` (see `scoring/base.py::Event`), so a new rule
+    added to `soft.py` shows up automatically as long as it tags its events —
+    nothing in this file needs to change for it. Reuses the already-computed,
+    already-weighted events on `candidate.score` (built with `ctx.detail=True`
+    for every rendered candidate — see `solvers/local_search.py::_with_detail`)
+    rather than re-deriving counts from the raw matches, so this can never
+    disagree with the score itself.
     """
     score = candidate.score
     participant_teams = sorted({t for m in candidate.matches for t in (m.home_team, m.away_team)})
     dual_club_ids = [c.id for c in world.dual_clubs()]
 
     rows = [
-        _club_fairness_row(world, score, "consecutive_home_days", dual_club_ids),
-        _club_fairness_row(world, score, "consecutive_away_days", dual_club_ids),
-        _team_fairness_row(world, score, "home_away_breaks", participant_teams),
-        _team_fairness_row(world, score, "home_away_balance", participant_teams),
-        _team_fairness_row(world, score, "rest_comfort", participant_teams),
-        _team_fairness_row(world, score, "soft_venue_preference", participant_teams),
+        _fairness_row_for(world, result, dual_club_ids, participant_teams)
+        for result in score.soft_results()
     ]
     return [row for row in rows if row is not None]
 
 
-def _club_fairness_row(
-    world: World, score: Score, constraint_id: str, club_ids: list[str]
+def _fairness_row_for(
+    world: World,
+    result: ConstraintResult,
+    dual_club_ids: list[str],
+    participant_teams: list[str],
 ) -> dict | None:
-    """A club-scoped rule (both a dual club's teams act together, e.g. a
-    back-to-back home weekend), so one event counts once for the club — not
-    once per team — to avoid double-counting the pairing it describes."""
-    result = score.result(constraint_id)
-    if result is None or len(club_ids) < 2:
-        return None
-    counts = {club_id: 0 for club_id in club_ids}
+    """One rule's events, shaped into a fairness row.
+
+    An event whose `team_ids` name two teams of the *same* club — the
+    back-to-back-home/away-day pairing, the only place that happens — is
+    attributed to that club once, since it describes something the club's
+    two teams did together rather than either one individually. Everything
+    else (a single team's own event, or two teams from different clubs, e.g.
+    a discouraged-date penalty hitting both the home and away side) is
+    attributed to each named team on its own.
+
+    Returns `None` for a rule whose events carry no `team_ids` at all (not
+    team-attributable — e.g. `preferred_weekday`, which is scored per
+    competition) or whose relevant entity universe has fewer than two
+    members to compare.
+    """
+    club_events: list[Event] = []
+    team_events: list[Event] = []
     for event in result.events:
         if not event.team_ids:
             continue
-        club_id = world.team(event.team_ids[0]).club_id
-        if club_id in counts:
-            counts[club_id] += 1
-    return _fairness_row(constraint_id, [(world.club(cid).name, n) for cid, n in counts.items()])
+        clubs = {world.team(t).club_id for t in event.team_ids}
+        if len(event.team_ids) > 1 and len(clubs) == 1:
+            club_events.append(event)
+        else:
+            team_events.append(event)
 
-
-def _team_fairness_row(
-    world: World, score: Score, constraint_id: str, team_ids: list[str]
-) -> dict | None:
-    result = score.result(constraint_id)
-    if result is None or len(team_ids) < 2:
+    if not club_events and not team_events:
         return None
-    counts = {team_id: 0 for team_id in team_ids}
-    for event in result.events:
-        for team_id in event.team_ids:
-            if team_id in counts:
-                counts[team_id] += 1
-    return _fairness_row(constraint_id, [(world.team_label(tid), n) for tid, n in counts.items()])
+
+    # In practice every soft rule's events are consistently one shape or the
+    # other — a rule either couples a club's own teams every time or scores
+    # individual teams every time, never a mix — but picking whichever
+    # bucket actually has events keeps this correct even if that changes.
+    if len(club_events) >= len(team_events):
+        if len(dual_club_ids) < 2:
+            return None
+        counts = {club_id: 0 for club_id in dual_club_ids}
+        for event in club_events:
+            club_id = world.team(event.team_ids[0]).club_id
+            if club_id in counts:
+                counts[club_id] += 1
+        entries = [(world.club(cid).name, n) for cid, n in counts.items()]
+    else:
+        if len(participant_teams) < 2:
+            return None
+        counts = {team_id: 0 for team_id in participant_teams}
+        for event in team_events:
+            for team_id in event.team_ids:
+                if team_id in counts:
+                    counts[team_id] += 1
+        entries = [(world.team_label(tid), n) for tid, n in counts.items()]
+
+    return _fairness_row(result.constraint_id, entries)
 
 
 def _fairness_row(constraint_id: str, entries: list[tuple[str, int]]) -> dict:

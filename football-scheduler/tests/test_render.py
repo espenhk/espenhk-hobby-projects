@@ -7,7 +7,7 @@ from datetime import date
 
 import factories as f
 from terminliste.report.render import _fairness_rows, _match_entries, render_report
-from terminliste.scoring.base import EvalContext, evaluate
+from terminliste.scoring.base import ConstraintResult, EvalContext, Event, evaluate
 from terminliste.scoring.soft import ConsecutiveHomeDays
 from terminliste.solvers.base import Candidate, SolverResult
 
@@ -99,6 +99,63 @@ def test_fairness_rows_omit_rules_that_were_not_evaluated():
 
     rows = _fairness_rows(world, candidate)
     assert all(r["id"] != "home_away_balance" for r in rows)
+
+
+def test_fairness_rows_pick_up_a_brand_new_team_scoped_rule_automatically():
+    """`_fairness_rows` must not need a per-rule registration list — a fresh
+    soft-rule id shows up here purely because its own events carry
+    `team_ids`, with no matching change needed in render.py."""
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [
+        f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va"),
+        f.match("elite", "b_m", "opp_m", date(2026, 6, 13), "vb", round_index=1),
+    ]
+    candidate = _candidate(world, season, matches, [])
+    candidate.score.results.append(
+        ConstraintResult(
+            constraint_id="brand_new_soft_rule",
+            kind="soft",
+            total=3.0,
+            count=2,
+            events=[
+                Event(delta=2.0, detail="a_m favoured", team_ids=("a_m",)),
+                Event(delta=1.0, detail="b_m favoured", team_ids=("b_m",)),
+            ],
+        )
+    )
+
+    rows = _fairness_rows(world, candidate)
+    row = next(r for r in rows if r["id"] == "brand_new_soft_rule")
+    counts = {e["label"]: e["count"] for e in row["entries"]}
+    assert counts[world.team_label("a_m")] == 1
+    assert counts[world.team_label("b_m")] == 1
+
+
+def test_fairness_rows_pick_up_a_brand_new_club_coupling_rule_automatically():
+    """Same guarantee for the other shape: an event pairing two teams of the
+    same club is attributed to that club, purely inferred from the event's
+    own `team_ids` — no `if constraint_id == ...` branch to update."""
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [
+        f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va"),
+        f.match("topp", "a_w", "opp_w", date(2026, 6, 7), "va"),
+    ]
+    candidate = _candidate(world, season, matches, [])
+    candidate.score.results.append(
+        ConstraintResult(
+            constraint_id="brand_new_club_rule",
+            kind="soft",
+            total=5.0,
+            count=1,
+            events=[Event(delta=5.0, detail="club a paired", team_ids=("a_m", "a_w"))],
+        )
+    )
+
+    rows = _fairness_rows(world, candidate)
+    row = next(r for r in rows if r["id"] == "brand_new_club_rule")
+    counts = {e["label"]: e["count"] for e in row["entries"]}
+    assert counts["Club A"] == 1
+    assert counts["Club B"] == 0
 
 
 # -- combined view -------------------------------------------------------
