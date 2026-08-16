@@ -68,8 +68,8 @@
   <details>
     <summary>Show compiled SQL (executed by DuckDB — never written by the LLM)</summary>
     <code class="sql">SELECT DATE_TRUNC('month', dim_date.date) AS date, SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) AS net_revenue
-FROM read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/fact_sales.parquet') AS fact_sales
-LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_date.parquet') AS dim_date ON fact_sales.date = dim_date.date
+FROM read_parquet('./data/fact_sales.parquet') AS fact_sales
+LEFT JOIN read_parquet('./data/dim_date.parquet') AS dim_date ON fact_sales.date = dim_date.date
 WHERE dim_date.year = CAST(? AS BIGINT)
 GROUP BY DATE_TRUNC('month', dim_date.date)
 ORDER BY date

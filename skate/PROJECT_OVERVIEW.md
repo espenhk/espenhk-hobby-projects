@@ -49,7 +49,7 @@ skate/
 
 ### Quick Start
 ```bash
-cd /home/espenhk/priv/skate
+cd skate
 python3 start.py
 ```
 

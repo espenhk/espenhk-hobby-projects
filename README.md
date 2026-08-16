@@ -20,8 +20,53 @@ A terminal application for live tracking of ice skating race times. Feed in lap 
 
 **State:** Functional — all core features work.
 
+Skater profiles are named after real professional speed skaters, but the bundled
+sample race data (times, laps, positions) is a mix of real results and data made
+up for testing — don't treat any of it as an accurate record of a real
+competition.
+
 ```bash
 python skate/race_predictor.py
+```
+
+---
+
+### `conversational-analytics` — Conversational Analytics Prototype
+
+A local, dependency-light prototype of a conversational-analytics architecture
+(the Microsoft Fabric data-agent pattern, built natively): a natural-language
+question about a fictional coffee-shop chain's sales is grounded in a
+file-defined semantic model, compiled to DuckDB SQL, executed against local
+Parquet, and rendered as a self-contained interactive HTML dashboard. Claude
+only ever produces *structure* (a logical query, chart encodings) — DuckDB is
+the sole source of truth for numbers.
+
+**State:** Functional. `validate` and `refresh` run fully offline; `ask` and
+`serve` need `ANTHROPIC_API_KEY`. See
+[`conversational-analytics/README.md`](conversational-analytics/README.md)
+for the full architecture writeup.
+
+```bash
+poetry run python conversational-analytics/cli.py validate
+```
+
+---
+
+### `football-scheduler` — Football League Season Scheduler
+
+Generates a season fixture list for coupled Norwegian football leagues
+(Eliteserien and Toppserien), scores it against hard rules and soft
+preferences, and reports the result as a browsable HTML page.
+
+**State:** Functional first version, runs fully offline. Club/venue/travel-time
+data in `football-scheduler/data/` is marked `verified: false` throughout —
+it was assembled from web search rather than a fetchable source, not fact-checked,
+and shouldn't be relied on as accurate. See
+[`football-scheduler/README.md`](football-scheduler/README.md) for the full
+writeup and constraint list.
+
+```bash
+poetry run python football-scheduler/cli.py generate
 ```
 
 ---
@@ -30,6 +75,8 @@ python skate/race_predictor.py
 
 ```bash
 python -m pytest skate/tests/ -v
+poetry run python -m pytest conversational-analytics/tests/
+poetry run python -m pytest football-scheduler/tests/
 ```
 
 ## Environment Setup
