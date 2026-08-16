@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>espenhk hobby projects</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --fg: #1a1a1a;
+    --muted: #666666;
+    --border: #e0e0e0;
+    --accent: #2471a3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181c;
+      --fg: #eaeaea;
+      --muted: #9aa0a6;
+      --border: #2a2f34;
+      --accent: #6fb3e0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 2rem 1.25rem 3rem;
+    background: var(--bg);
+    color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-width: 640px;
+    margin-inline: auto;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+  p.sub { color: var(--muted); margin-top: 0; margin-bottom: 2rem; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li + li { margin-top: 0.75rem; }
+  a.card {
+    display: block;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--fg);
+  }
+  a.card:active { background: var(--border); }
+  a.card .name { font-weight: 600; font-size: 1.05rem; }
+  a.card .desc { color: var(--muted); font-size: 0.9rem; margin-top: 0.2rem; }
+  footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.8rem; }
+  footer a { color: var(--accent); }
+</style>
+</head>
+<body>
+<h1>espenhk hobby projects</h1>
+<p class="sub">POC frontends published from this repo. Tap a project to open it.</p>
+<ul>
+  <li>
+    <a class="card" href="football-scheduler/">
+      <div class="name">Football scheduler</div>
+      <div class="desc">Eliteserien/Toppserien 2026 season schedule report</div>
+    </a>
+  </li>
+</ul>
+<footer>
+  Adding a new one? See <a href="https://github.com/espenhk/espenhk-hobby-projects/blob/main/docs/README.md">docs/README.md</a> for the convention.
+</footer>
+</body>
+</html>
