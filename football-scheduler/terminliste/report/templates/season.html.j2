@@ -16,6 +16,7 @@
     --accent: #2471a3;
   }
   * { box-sizing: border-box; }
+  html, body { overflow-x: hidden; }
   body {
     margin: 0;
     background: var(--bg);
@@ -84,10 +85,35 @@
   .item .delta { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 14px; white-space: nowrap; }
   .up .delta { color: var(--good); }
   .down .delta { color: var(--bad); }
-  .item .desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
-  .item ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: #45453f; }
-  .item li { margin: 2px 0; }
-  .item .more { color: var(--muted); font-size: 12px; font-style: italic; }
+  .desc { color: var(--muted); font-size: 13px; margin-top: 2px; }
+  .examples { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: #45453f; }
+  .examples li { margin: 2px 0; }
+  .more { color: var(--muted); font-size: 12px; font-style: italic; }
+
+  /* -- rule description tooltip (icon shows description on hover/click) -- */
+  .name-row { display: inline-flex; align-items: center; gap: 2px; }
+  .info-wrap { position: relative; display: inline-flex; vertical-align: middle; }
+  .info-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 15px; height: 15px; margin-left: 5px; padding: 0; flex: none;
+    border: none; border-radius: 50%; background: var(--line); color: var(--muted);
+    font: 700 10px/1 -apple-system, BlinkMacSystemFont, sans-serif; cursor: pointer;
+  }
+  .info-icon:hover, .info-icon:focus-visible { background: var(--accent); color: #fff; outline: none; }
+  .tooltip {
+    position: absolute; z-index: 20; left: 0; top: calc(100% + 6px);
+    width: max-content; max-width: min(280px, 78vw);
+    background: var(--ink); color: #fff; padding: 8px 10px; border-radius: 6px;
+    font: 400 12.5px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+    opacity: 0; visibility: hidden; transform: translateY(-4px); pointer-events: none;
+    transition: opacity 0.12s ease, transform 0.12s ease;
+  }
+  .info-wrap:hover .tooltip,
+  .info-wrap:focus-within .tooltip,
+  .info-wrap.open .tooltip {
+    opacity: 1; visibility: visible; transform: translateY(0); pointer-events: auto;
+  }
 
   /* -- full breakdown table -- */
   details { margin-top: 26px; }
@@ -120,6 +146,11 @@
   .swatch { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
   .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin: 14px 0 0; align-items: center; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12.5px; }
+
+  @media (max-width: 480px) {
+    .round { grid-template-columns: 1fr; gap: 4px; }
+    .fx { white-space: normal; }
+  }
 </style>
 </head>
 <body>
@@ -184,12 +215,17 @@
     {% for row in option.hard_violation_detail %}
     <div class="item down">
       <div class="top">
-        <span class="name">{{ row.id.replace('_', ' ') }}</span>
+        <span class="name-row">
+          <span class="name">{{ row.id.replace('_', ' ') }}</span>
+          <span class="info-wrap">
+            <button type="button" class="info-icon" aria-label="{{ row.id.replace('_', ' ') }} description">i</button>
+            <span class="tooltip" role="tooltip">{{ row.description }}</span>
+          </span>
+        </span>
         <span class="delta">{{ row.count }} violation{{ '' if row.count == 1 else 's' }}</span>
       </div>
-      <div class="desc">{{ row.description }}</div>
       {% if row.examples %}
-      <ul>{% for example in row.examples %}<li>{{ example }}</li>{% endfor %}</ul>
+      <ul class="examples">{% for example in row.examples %}<li>{{ example }}</li>{% endfor %}</ul>
       {% if row.more %}<div class="more">…and {{ row.more }} more</div>{% endif %}
       {% endif %}
     </div>
@@ -203,12 +239,18 @@
       {% for row in option.upsides %}
       <div class="item up">
         <div class="top">
-          <span class="name">{{ row.id.replace('_', ' ') }}</span>
+          <span class="name-row">
+            <span class="name">{{ row.id.replace('_', ' ') }}</span>
+            <span class="info-wrap">
+              <button type="button" class="info-icon" aria-label="{{ row.id.replace('_', ' ') }} description">i</button>
+              <span class="tooltip" role="tooltip">{{ row.description }}</span>
+            </span>
+          </span>
           <span class="delta">+{{ '%.0f'|format(row.total) }}</span>
         </div>
-        <div class="desc">{{ row.description }} ({{ row.count }})</div>
+        <div class="desc">×{{ row.count }}</div>
         {% if row.examples %}
-        <ul>{% for example in row.examples %}<li>{{ example }}</li>{% endfor %}</ul>
+        <ul class="examples">{% for example in row.examples %}<li>{{ example }}</li>{% endfor %}</ul>
         {% if row.more %}<div class="more">…and {{ row.more }} more</div>{% endif %}
         {% endif %}
       </div>
@@ -222,12 +264,18 @@
       {% for row in option.problems %}
       <div class="item down">
         <div class="top">
-          <span class="name">{{ row.id.replace('_', ' ') }}</span>
+          <span class="name-row">
+            <span class="name">{{ row.id.replace('_', ' ') }}</span>
+            <span class="info-wrap">
+              <button type="button" class="info-icon" aria-label="{{ row.id.replace('_', ' ') }} description">i</button>
+              <span class="tooltip" role="tooltip">{{ row.description }}</span>
+            </span>
+          </span>
           <span class="delta">{{ '%.0f'|format(row.total) }}</span>
         </div>
-        <div class="desc">{{ row.description }} ({{ row.count }})</div>
+        <div class="desc">×{{ row.count }}</div>
         {% if row.examples %}
-        <ul>{% for example in row.examples %}<li>{{ example }}</li>{% endfor %}</ul>
+        <ul class="examples">{% for example in row.examples %}<li>{{ example }}</li>{% endfor %}</ul>
         {% if row.more %}<div class="more">…and {{ row.more }} more</div>{% endif %}
         {% endif %}
       </div>
@@ -239,6 +287,7 @@
 
   <details>
     <summary>Full score breakdown — every rule</summary>
+    <div class="cal-wrap">
     <table>
       <thead>
         <tr><th>Rule</th><th>Type</th><th class="num">Contribution</th><th class="num">Events</th><th>Examples</th></tr>
@@ -247,15 +296,20 @@
       {% for row in option.breakdown %}
         <tr {% if row.kind == 'hard' and row.count %}class="violated"{% endif %}>
           <td>
-            <b>{{ row.id.replace('_', ' ') }}</b><br>
-            <span style="color:var(--muted);font-size:13px">{{ row.description }}</span>
+            <span class="name-row">
+              <b>{{ row.id.replace('_', ' ') }}</b>
+              <span class="info-wrap">
+                <button type="button" class="info-icon" aria-label="{{ row.id.replace('_', ' ') }} description">i</button>
+                <span class="tooltip" role="tooltip">{{ row.description }}</span>
+              </span>
+            </span>
           </td>
           <td><span class="kind {{ row.kind }}">{{ row.kind }}</span></td>
           <td class="num">{{ '%+.1f'|format(row.total) if row.total else '—' }}</td>
           <td class="num">{{ row.count }}</td>
           <td>
             {% if row.examples %}
-            <ul style="margin:0;padding-left:16px">
+            <ul class="examples" style="margin:0;padding-left:16px">
               {% for example in row.examples %}<li>{{ example }}</li>{% endfor %}
             </ul>
             {% if row.more %}<span class="more">…and {{ row.more }} more</span>{% endif %}
@@ -265,6 +319,7 @@
       {% endfor %}
       </tbody>
     </table>
+    </div>
   </details>
 
   <div class="cal-wrap">
@@ -300,7 +355,7 @@
   </div>
 
   <div class="legend">
-    <span><span class="star">◆</span> back-to-back home day for a dual club</span>
+    <span><span class="swatch" style="background:var(--good)"></span>green <span class="star">◆</span> = back-to-back home day for a dual club</span>
     {% for club in dual_clubs %}
     <span><span class="swatch" style="background:{{ club_colors[club.id] }}"></span>{{ club.name }}</span>
     {% endfor %}
@@ -326,6 +381,53 @@
         panel.hidden = panel.id !== tab.dataset.panel;
       });
     });
+  });
+
+  // Rule-description tooltips: hover/focus works via CSS alone; this adds
+  // tap-to-toggle for touch devices, which have no hover state, and keeps
+  // the tooltip from overflowing the viewport on narrow screens.
+  function clampTooltip(wrap) {
+    var tooltip = wrap.querySelector('.tooltip');
+    if (!tooltip) return;
+    tooltip.style.left = '0px';
+    var rect = tooltip.getBoundingClientRect();
+    var rightOverflow = rect.right - (window.innerWidth - 8);
+    var leftOverflow = 8 - rect.left;
+    if (rightOverflow > 0) {
+      tooltip.style.left = (-rightOverflow) + 'px';
+    } else if (leftOverflow > 0) {
+      tooltip.style.left = leftOverflow + 'px';
+    }
+  }
+  document.querySelectorAll('.info-wrap').forEach(function (wrap) {
+    wrap.addEventListener('mouseenter', function () { clampTooltip(wrap); });
+    wrap.addEventListener('focusin', function () { clampTooltip(wrap); });
+  });
+  document.querySelectorAll('.info-icon').forEach(function (icon) {
+    icon.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var wrap = icon.closest('.info-wrap');
+      var wasOpen = wrap.classList.contains('open');
+      document.querySelectorAll('.info-wrap.open').forEach(function (w) {
+        w.classList.remove('open');
+      });
+      if (!wasOpen) {
+        wrap.classList.add('open');
+        clampTooltip(wrap);
+      }
+    });
+  });
+  document.addEventListener('click', function () {
+    document.querySelectorAll('.info-wrap.open').forEach(function (w) {
+      w.classList.remove('open');
+    });
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      document.querySelectorAll('.info-wrap.open').forEach(function (w) {
+        w.classList.remove('open');
+      });
+    }
   });
 </script>
 </body>
