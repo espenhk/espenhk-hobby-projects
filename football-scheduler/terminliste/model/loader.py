@@ -308,7 +308,16 @@ def validate_world(world: World) -> list[str]:
 
 
 def _validate_cup_rounds(competition: Competition) -> list[str]:
-    """A cup must declare at least one round, with unique, strictly-increasing dates."""
+    """A cup must declare at least one round, with unique ids in a sane order.
+
+    This is the cheap, structural check: ids are unique, and no round's whole
+    possible range (`earliest`..`latest` — a forced date collapses both to the
+    same day) falls entirely before the previous round's. It cannot rule out
+    every infeasible case — a round's window can still be too narrow once the
+    previous round's *actual* placement and the required gap between rounds
+    are known — that deeper check happens when `schedule_cup` resolves the
+    rounds to real dates.
+    """
     errors: list[str] = []
     if competition.format != "cup":
         return errors
@@ -317,19 +326,20 @@ def _validate_cup_rounds(competition: Competition) -> list[str]:
         return errors
 
     seen_ids: set[str] = set()
-    previous_date = None
+    previous_round = None
     for round_ in competition.cup_rounds:
         if round_.id in seen_ids:
             errors.append(
                 f"competition {competition.id!r} has duplicate cup round id {round_.id!r}"
             )
         seen_ids.add(round_.id)
-        if previous_date is not None and round_.date <= previous_date:
+        if previous_round is not None and round_.latest < previous_round.earliest:
             errors.append(
-                f"competition {competition.id!r} cup round {round_.id!r} ({round_.date}) does "
-                f"not come after the previous round's date ({previous_date})"
+                f"competition {competition.id!r} cup round {round_.id!r} "
+                f"({round_.earliest}..{round_.latest}) falls entirely before the previous "
+                f"round {previous_round.id!r} ({previous_round.earliest}..{previous_round.latest})"
             )
-        previous_date = round_.date
+        previous_round = round_
     return errors
 
 

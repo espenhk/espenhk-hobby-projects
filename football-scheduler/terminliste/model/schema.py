@@ -13,7 +13,7 @@ without disturbing the league path.
 from __future__ import annotations
 
 from datetime import date
-from typing import Iterable, Literal
+from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -60,19 +60,62 @@ class Club(BaseModel):
     teams: list[Team]
 
 
-class CupRound(BaseModel):
-    """One round of a knockout cup: a name and the date its ties are played on.
+RoundGranularity = Literal["week", "month", "quarter"]
 
-    A single date is enough — NFF schedules every tie of a round inside the
-    same short window in practice, so there is no separate "date range" to
-    track. Pairings are drawn round by round and are not known ahead of time,
-    so this records only when the round falls, not who plays whom.
+
+class CupRound(BaseModel):
+    """One round of a knockout cup: when it may be played, not who plays whom.
+
+    Real-world cup rounds are announced at wildly different notice: a near-term
+    round may already have a confirmed date (`forced_date`), while a distant
+    one is only known to the week, month or quarter (`window_start`/
+    `window_end`, with `granularity` recording which). Exactly one of the two
+    must be set — never both, never neither.
+
+    Pairings are drawn round by round and are not known ahead of time, so this
+    only ever describes *when* a round falls; `terminliste/rounds/cup_schedule.py`
+    resolves it to an actual per-team date, honouring `forced_date` exactly and
+    picking a date inside the window otherwise.
     """
 
     id: str
     name: str
-    date: date
+    forced_date: date | None = None
+    window_start: date | None = None
+    window_end: date | None = None
+    granularity: RoundGranularity | None = None
     note: str = ""
+
+    @model_validator(mode="after")
+    def _forced_xor_window(self) -> "CupRound":
+        has_forced = self.forced_date is not None
+        has_window = self.window_start is not None or self.window_end is not None
+        if has_forced and has_window:
+            raise ValueError(f"cup round {self.id!r}: set forced_date OR a window, not both")
+        if not has_forced and not has_window:
+            raise ValueError(f"cup round {self.id!r}: needs either forced_date or a window")
+        if has_window and (self.window_start is None or self.window_end is None):
+            raise ValueError(f"cup round {self.id!r}: a window needs both window_start and window_end")
+        if has_window and self.window_end < self.window_start:
+            raise ValueError(
+                f"cup round {self.id!r}: window_end ({self.window_end}) is before "
+                f"window_start ({self.window_start})"
+            )
+        return self
+
+    @property
+    def is_forced(self) -> bool:
+        return self.forced_date is not None
+
+    @property
+    def earliest(self) -> date:
+        """The earliest date this round could conceivably land on."""
+        return self.forced_date if self.forced_date is not None else self.window_start
+
+    @property
+    def latest(self) -> date:
+        """The latest date this round could conceivably land on."""
+        return self.forced_date if self.forced_date is not None else self.window_end
 
 
 class Competition(BaseModel):
@@ -228,26 +271,6 @@ class Fixture(BaseModel):
     @property
     def key(self) -> str:
         return f"{self.competition_id}:{self.round_index}:{self.home_team}-{self.away_team}"
-
-
-def cup_rest_windows(competitions: Iterable[Competition]) -> dict[str, list[tuple[date, int]]]:
-    """Per-team (cup round date, min rest days) pairs, for conflict-avoidance.
-
-    Which teams reach which round is not known in advance, so every team
-    entered in a cup is treated as still alive through the final — this
-    blocks a window around every remaining round rather than just the ones a
-    team is realistically still in. Shared by the greedy placer and
-    `CupRoundConflict`, so both agree on what "too close to a cup match"
-    means.
-    """
-    windows: dict[str, list[tuple[date, int]]] = {}
-    for competition in competitions:
-        if competition.format != "cup":
-            continue
-        for round_ in competition.cup_rounds:
-            for team_id in competition.teams:
-                windows.setdefault(team_id, []).append((round_.date, competition.min_rest_days))
-    return windows
 
 
 class Match(BaseModel):

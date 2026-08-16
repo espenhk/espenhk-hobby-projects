@@ -23,6 +23,7 @@ from terminliste.model.schema import (
     Team,
     Venue,
 )
+from terminliste.rounds.cup_schedule import CupRoundPlacement, CupSchedule
 
 
 def venue(id: str, lat: float = 60.0, lon: float = 10.0, capacity: int = 1000) -> Venue:
@@ -74,8 +75,44 @@ def competition(
     )
 
 
-def cup_round(id: str, day: date, name: str | None = None, note: str = "") -> CupRound:
-    return CupRound(id=id, name=name or id, date=day, note=note)
+def cup_round(
+    id: str,
+    forced_date: date | None = None,
+    window_start: date | None = None,
+    window_end: date | None = None,
+    granularity: str | None = None,
+    name: str | None = None,
+    note: str = "",
+) -> CupRound:
+    return CupRound(
+        id=id,
+        name=name or id,
+        forced_date=forced_date,
+        window_start=window_start,
+        window_end=window_end,
+        granularity=granularity,
+        note=note,
+    )
+
+
+def cup_placement(
+    round_id: str, dates: dict[str, date], round_name: str | None = None, note: str = ""
+) -> CupRoundPlacement:
+    return CupRoundPlacement(round_id=round_id, round_name=round_name or round_id, dates=dates, note=note)
+
+
+def cup_schedule(
+    competition_id: str,
+    rounds: list[CupRoundPlacement],
+    min_rest_days: int = 3,
+    competition_name: str | None = None,
+) -> CupSchedule:
+    return CupSchedule(
+        competition_id=competition_id,
+        competition_name=competition_name or competition_id,
+        min_rest_days=min_rest_days,
+        rounds=rounds,
+    )
 
 
 def season(

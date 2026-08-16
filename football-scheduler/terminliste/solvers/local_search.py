@@ -115,7 +115,7 @@ class LocalSearchScheduler:
                     request.competitions,
                     seed,
                     calendar,
-                    cup_competitions=request.cup_competitions,
+                    cup_schedules=request.cup_schedules,
                 )
             except ValueError as exc:
                 notes.append(f"restart {restart}: {exc}")

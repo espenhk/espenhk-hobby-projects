@@ -10,7 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
-from ..model.schema import Competition, FixedRequirement, cup_rest_windows
+from ..model.schema import Competition, FixedRequirement
+from ..rounds.cup_schedule import CupSchedule, resolved_cup_windows
 from .base import Constraint, ConstraintResult, EvalContext, Event, ScheduleIndex
 
 
@@ -367,19 +368,17 @@ class OneMatchPerTeamPerDay:
 
 @dataclass
 class CupRoundConflict:
-    """No league match too close to a team's cup commitment.
+    """No league match too close to a team's resolved cup commitment.
 
-    Cup pairings are drawn round by round and not known in advance, so a team
-    entered in a cup is treated as still alive through the final — every
-    remaining round blocks a `min_rest_days`-wide window for every one of the
-    cup's teams, not just the ones still realistically in it. The cup itself
-    is not modelled as `Match` objects (real opponents are unknown), so the
-    (date, minimum) windows come from `cup_rest_windows` — the same helper the
-    greedy placer uses — rather than from the schedule index; the cup name
-    attached to each window is only for the report's event text.
+    The cup itself is not modelled as `Match` objects (real opponents are
+    unknown), so the (date, minimum) windows come from `resolved_cup_windows`
+    — the same helper the greedy placer uses — rather than from the schedule
+    index. `cup_schedules` holds each cup's rounds *already resolved* to a
+    date per team (see `rounds/cup_schedule.py`); the cup name attached to
+    each window is only for the report's event text.
     """
 
-    cup_competitions: list[Competition]
+    cup_schedules: list[CupSchedule]
     id: str = "cup_round_conflict"
     kind: str = "hard"
     weight: float = 1.0
@@ -387,12 +386,12 @@ class CupRoundConflict:
 
     def __post_init__(self) -> None:
         cup_name_by_team_date = {
-            (team_id, round_.date): competition.name
-            for competition in self.cup_competitions
-            for round_ in competition.cup_rounds
-            for team_id in competition.teams
+            (team_id, day): schedule.competition_name
+            for schedule in self.cup_schedules
+            for placement in schedule.rounds
+            for team_id, day in placement.dates.items()
         }
-        for team_id, windows in cup_rest_windows(self.cup_competitions).items():
+        for team_id, windows in resolved_cup_windows(self.cup_schedules).items():
             self._windows_by_team[team_id] = [
                 (round_date, minimum, cup_name_by_team_date[(team_id, round_date)])
                 for round_date, minimum in windows

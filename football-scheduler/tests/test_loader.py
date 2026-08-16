@@ -103,11 +103,31 @@ def test_cup_competitions_are_present_and_shaped_correctly(world):
         assert cup.format == "cup"
         assert cup.team_count == team_count
         assert len(cup.cup_rounds) > 0
-        dates = [r.date for r in cup.cup_rounds]
-        assert dates == sorted(dates), f"{cup_id} rounds are not in date order"
+        earliest_bounds = [r.earliest for r in cup.cup_rounds]
+        assert earliest_bounds == sorted(earliest_bounds), f"{cup_id} rounds are not in order"
 
     season = world.season("2026")
     assert set(season.cup_competitions) == {"cup_men_2027", "cup_women_2027"}
+
+
+def test_cup_schedules_resolve_cleanly_from_the_shipped_data(world):
+    """The shipped cup data isn't just well-formed — its forced dates and
+    windows actually resolve to a valid, ordered per-team schedule."""
+    from terminliste.rounds.cup_schedule import schedule_cups
+
+    season = world.season("2026")
+    cup_competitions = [world.competition(c) for c in season.cup_competitions]
+    schedules, warnings = schedule_cups(cup_competitions, season)
+    assert len(schedules) == 2
+    for schedule in schedules:
+        previous_latest = None
+        for placement in schedule.rounds:
+            if previous_latest is not None:
+                assert placement.earliest_date > previous_latest
+            previous_latest = placement.latest_date
+    # Every round is expected to fit inside its own week given the shipped
+    # match_window_days=3, so a clean resolve should carry no warnings.
+    assert warnings == []
 
 
 def test_cup_with_no_rounds_is_caught():
@@ -122,7 +142,7 @@ def test_cup_with_no_rounds_is_caught():
     assert any("cup" in e and "no cup_rounds" in e for e in errors)
 
 
-def test_cup_round_dates_out_of_order_are_caught():
+def test_cup_rounds_entirely_out_of_order_are_caught():
     import factories as f
 
     v = f.venue("v1")
@@ -133,13 +153,13 @@ def test_cup_round_dates_out_of_order_are_caught():
         ["t1"],
         format="cup",
         cup_rounds=[
-            f.cup_round("r1", date(2026, 9, 1), "Round 1"),
-            f.cup_round("r2", date(2026, 8, 1), "Round 2"),
+            f.cup_round("r1", forced_date=date(2026, 9, 1), name="Round 1"),
+            f.cup_round("r2", forced_date=date(2026, 8, 1), name="Round 2"),
         ],
     )
     bad_world = f.world(clubs, [v], [cup])
     errors = validate_world(bad_world)
-    assert any("does not come after the previous round" in e for e in errors)
+    assert any("falls entirely before the previous round" in e for e in errors)
 
 
 def test_cup_round_duplicate_ids_are_caught():
@@ -153,8 +173,8 @@ def test_cup_round_duplicate_ids_are_caught():
         ["t1"],
         format="cup",
         cup_rounds=[
-            f.cup_round("r1", date(2026, 8, 1), "Round 1"),
-            f.cup_round("r1", date(2026, 9, 1), "Round 2"),
+            f.cup_round("r1", forced_date=date(2026, 8, 1), name="Round 1"),
+            f.cup_round("r1", forced_date=date(2026, 9, 1), name="Round 2"),
         ],
     )
     bad_world = f.world(clubs, [v], [cup])
@@ -170,7 +190,7 @@ def test_season_competitions_rejects_a_cup_and_cup_competitions_rejects_a_league
     clubs = [f.club("c1", [t1])]
     league = f.competition("league", ["t1"])
     cup = f.competition(
-        "cup", ["t1"], format="cup", cup_rounds=[f.cup_round("r1", date(2026, 8, 1))]
+        "cup", ["t1"], format="cup", cup_rounds=[f.cup_round("r1", forced_date=date(2026, 8, 1))]
     )
     bad_world = f.world(clubs, [v], [league, cup])
 

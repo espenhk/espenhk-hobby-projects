@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from ..model.loader import World
 from ..model.schema import Competition, Season
+from ..rounds.cup_schedule import CupSchedule
 from .base import Constraint
 from .hard import (
     BlackoutDates,
@@ -36,12 +37,13 @@ def build_constraints(
     world: World,
     season: Season,
     competitions: list[Competition],
-    cup_competitions: list[Competition] | None = None,
+    cup_schedules: list[CupSchedule] | None = None,
 ) -> list[Constraint]:
     """Every rule in force for this season, hard first.
 
-    `competitions` are the league(s) actually being scheduled. `cup_competitions`
-    are real-world-dated cups that share teams with them — not scheduled
+    `competitions` are the league(s) actually being scheduled. `cup_schedules`
+    are real-world-dated cups (already resolved to a date per team — see
+    `rounds/cup_schedule.py`) that share teams with them — not scheduled
     themselves, but kept clear of via `CupRoundConflict`.
     """
     hard_requirements = [r for r in season.fixed_requirements if r.hard]
@@ -56,8 +58,8 @@ def build_constraints(
     ]
     if hard_requirements:
         constraints.append(FixedDateRequirement(requirements=hard_requirements))
-    if cup_competitions:
-        constraints.append(CupRoundConflict(cup_competitions=cup_competitions))
+    if cup_schedules:
+        constraints.append(CupRoundConflict(cup_schedules=cup_schedules))
 
     constraints.extend(
         [
