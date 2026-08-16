@@ -209,9 +209,6 @@ __marimo__/
 # Claude files
 .claude/
 
-tmnf/replays/
-tmnf/tracks/
-
 docs/codestyle/
 
 # football-scheduler: generated season/score reports, regenerate with cli.py

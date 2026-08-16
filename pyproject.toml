@@ -1,33 +1,12 @@
 [tool.poetry]
 name = "espenhk-hobby-projects"
 version = "0.1.0"
-description = "Ice skating race predictor and Trackmania AI"
+description = "Independent hobby projects sharing a Poetry-managed virtual environment"
 authors = []
 package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"
-
-[tool.poetry.group.tmnf.dependencies]
-pandas = ">=2.0"
-numpy = ">=1.26"
-scipy = ">=1.12"
-gymnasium = ">=0.29"
-stable-baselines3 = ">=2.0"
-pyyaml = ">=6.0"
-tensorboard = ">=2.0"
-matplotlib = ">=3.8"
-opencv-python = ">=4.8"
-mss = ">=9.0"
-pywin32 = ">=306"
-tminterface = ">=1.0"
-pygbx = ">=0.3"
-
-[tool.poetry.group.tmnf-test.dependencies]
-pytest = ">=8.0"
-numpy = ">=1.26"
-scipy = ">=1.12"
-pyyaml = ">=6.0"
 
 [tool.poetry.group.skate.dependencies]
 pandas = ">=2.0"
@@ -66,10 +45,6 @@ optional = true
 
 [tool.poetry.group.football-scheduler-cpsat.dependencies]
 ortools = ">=9.9"
-
-# Not on PyPI — install from source first:
-# tminterface
-# pygbx
 
 [build-system]
 requires = ["poetry-core"]
