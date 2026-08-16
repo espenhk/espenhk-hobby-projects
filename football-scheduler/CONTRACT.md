@@ -19,15 +19,29 @@ runs the CLI.
   via `FrontendPayload.model_json_schema()`. That file is the source of truth
   for field names and types — this document only explains what they *mean*.
 - **Example**: [`schemas/example_2026.frontend.json`](schemas/example_2026.frontend.json),
-  a real, committed export for the 2026 season. Regenerate it after any
-  change to the payload shape with:
+  a real export for the 2026 season, **trimmed to one option and two
+  rounds of one competition** — enough to see the shape without committing
+  a full ~500KB season twice (the actual full export lives in
+  `football-scheduler-frontend/data/`, published by `export-frontend`
+  below). Regenerate this reference copy after any change to the payload
+  shape with:
   ```
   python cli.py export-frontend --season 2026
-  cp ../football-scheduler-frontend/data/2026.frontend.json schemas/example_2026.frontend.json
+  python - <<'PY'
+  import json
+  full = json.load(open("../football-scheduler-frontend/data/2026.frontend.json"))
+  option = dict(full["options"][0])
+  comp = dict(option["competitions"][0])
+  comp["rounds"] = comp["rounds"][:2]
+  comp["match_count"] = sum(len(r["matches"]) for r in comp["rounds"])
+  option["competitions"] = [comp]
+  full["options"] = [option]
+  json.dump(full, open("schemas/example_2026.frontend.json", "w"), indent=2)
+  PY
   ```
-  (`export-frontend` also commits the fresh fixture straight into the
-  frontend project — see its `--help` — the `cp` above is only for updating
-  this backend-side reference copy.)
+  (`export-frontend` commits the *full* fresh fixture straight into the
+  frontend project on its own — see its `--help` — the snippet above only
+  refreshes this trimmed backend-side reference copy.)
 
 ## Top-level shape
 
