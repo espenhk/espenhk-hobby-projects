@@ -213,3 +213,7 @@ tmnf/replays/
 tmnf/tracks/
 
 docs/codestyle/
+
+# football-scheduler: generated season/score reports, regenerate with cli.py
+football-scheduler/schedules/*.html
+football-scheduler/schedules/*.json

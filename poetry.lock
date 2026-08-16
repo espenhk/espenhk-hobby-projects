@@ -6,7 +6,7 @@ version = "2.4.0"
 description = "Abseil Python Common Libraries, see https://github.com/abseil/abseil-py."
 optional = false
 python-versions = ">=3.10"
-groups = ["tmnf"]
+groups = ["football-scheduler-cpsat", "tmnf"]
 files = [
     {file = "absl_py-2.4.0-py3-none-any.whl", hash = "sha256:88476fd881ca8aab94ffa78b7b6c632a782ab3ba1cd19c9bd423abc4fb4cd28d"},
     {file = "absl_py-2.4.0.tar.gz", hash = "sha256:8c6af82722b35cf71e0f4d1d47dcaebfff286e27110a99fc359349b247dfb5d4"},
@@ -30,7 +30,7 @@ version = "0.7.0"
 description = "Reusable constraint types to use with typing.Annotated"
 optional = false
 python-versions = ">=3.8"
-groups = ["conversational-analytics"]
+groups = ["conversational-analytics", "football-scheduler"]
 files = [
     {file = "annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53"},
     {file = "annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89"},
@@ -394,12 +394,12 @@ version = "0.4.6"
 description = "Cross-platform colored terminal text."
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
-groups = ["conversational-analytics", "conversational-analytics-test", "skate-test", "tmnf-test"]
+groups = ["conversational-analytics", "conversational-analytics-test", "football-scheduler-test", "skate-test", "tmnf-test"]
 files = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
-markers = {conversational-analytics = "platform_system == \"Windows\"", conversational-analytics-test = "sys_platform == \"win32\"", skate-test = "sys_platform == \"win32\"", tmnf-test = "sys_platform == \"win32\""}
+markers = {conversational-analytics = "platform_system == \"Windows\"", conversational-analytics-test = "sys_platform == \"win32\"", football-scheduler-test = "sys_platform == \"win32\"", skate-test = "sys_platform == \"win32\"", tmnf-test = "sys_platform == \"win32\""}
 
 [[package]]
 name = "contourpy"
@@ -1102,12 +1102,24 @@ files = [
 all = ["mypy (>=1.11.2)", "pytest (>=8.3.2)", "ruff (>=0.6.2)"]
 
 [[package]]
+name = "immutabledict"
+version = "4.3.1"
+description = "Immutable wrapper around dictionaries (a fork of frozendict)"
+optional = false
+python-versions = "<4.0,>=3.8"
+groups = ["football-scheduler-cpsat"]
+files = [
+    {file = "immutabledict-4.3.1-py3-none-any.whl", hash = "sha256:c9facdc0ff30fdb8e35bd16532026cac472a549e182c94fa201b51b25e4bf7bf"},
+    {file = "immutabledict-4.3.1.tar.gz", hash = "sha256:f844a669106cfdc73f47b1a9da003782fb17dc955a54c80972e0d93d1c63c514"},
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 description = "brain-dead simple config-ini parsing"
 optional = false
 python-versions = ">=3.10"
-groups = ["conversational-analytics-test", "skate-test", "tmnf-test"]
+groups = ["conversational-analytics-test", "football-scheduler-test", "skate-test", "tmnf-test"]
 files = [
     {file = "iniconfig-2.3.0-py3-none-any.whl", hash = "sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12"},
     {file = "iniconfig-2.3.0.tar.gz", hash = "sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730"},
@@ -1119,7 +1131,7 @@ version = "3.1.6"
 description = "A very fast and expressive template engine."
 optional = false
 python-versions = ">=3.7"
-groups = ["conversational-analytics", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler", "tmnf"]
 files = [
     {file = "jinja2-3.1.6-py3-none-any.whl", hash = "sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"},
     {file = "jinja2-3.1.6.tar.gz", hash = "sha256:0137fb05990d35f1275a587e9aee6d56da821fc83491a0fb838183be43f66d6d"},
@@ -1432,7 +1444,7 @@ version = "3.0.3"
 description = "Safely add untrusted strings to HTML/XML markup."
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler", "tmnf"]
 files = [
     {file = "markupsafe-3.0.3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:2f981d352f04553a7171b8e44369f2af4055f888dfb147d55e42d29e29e74559"},
     {file = "markupsafe-3.0.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:e1c1493fb6e50ab01d20a22826e57520f1284df32f2d8601fdd90b6304601419"},
@@ -1693,7 +1705,7 @@ version = "2.4.4"
 description = "Fundamental package for array computing in Python"
 optional = false
 python-versions = ">=3.11"
-groups = ["conversational-analytics", "skate", "tmnf", "tmnf-test"]
+groups = ["conversational-analytics", "football-scheduler-cpsat", "skate", "tmnf", "tmnf-test"]
 files = [
     {file = "numpy-2.4.4-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:f983334aea213c99992053ede6168500e5f086ce74fbc4acc3f2b00f5762e9db"},
     {file = "numpy-2.4.4-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:72944b19f2324114e9dc86a159787333b77874143efcf89a5167ef83cfee8af0"},
@@ -2234,12 +2246,54 @@ files = [
 numpy = {version = ">=2", markers = "python_version >= \"3.9\""}
 
 [[package]]
+name = "ortools"
+version = "9.10.4067"
+description = "Google OR-Tools python libraries and modules"
+optional = false
+python-versions = ">=3.8"
+groups = ["football-scheduler-cpsat"]
+files = [
+    {file = "ortools-9.10.4067-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:84ef1309a3e78519aaecd7bdee6af0f35cc0aa94fbd4122da1d43c03af44126d"},
+    {file = "ortools-9.10.4067-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:24b29cce73fb71e850321e64c16f18dd293d77a1678b3037a3b99bb1cec203cd"},
+    {file = "ortools-9.10.4067-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:887c3e42bac13f4ff1901a3e0e75c8edea4d3e58eb4d9cd01e358e904deabcab"},
+    {file = "ortools-9.10.4067-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:7eff7ea356dde5b55260433a5f64ce198e666e6ab8a3900971d8ff154b6948c3"},
+    {file = "ortools-9.10.4067-cp310-cp310-win_amd64.whl", hash = "sha256:945c8ac16d7165e3ca974e6a1758e583cf843c5441cd80b9adb8c5b0a7fe8089"},
+    {file = "ortools-9.10.4067-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:37e5344d0f2695aeec756962e434b715977b59aa489f88f96f87582748e7ae32"},
+    {file = "ortools-9.10.4067-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:9a385302d465ca4683e30e40ad04c276d7d5b3569324e35e965795480ff787d0"},
+    {file = "ortools-9.10.4067-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:56b7cdcbdcabd613cd297c770a56f41ccbfea72ca812a84adf536112a35a648f"},
+    {file = "ortools-9.10.4067-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c035610952c35cf247ed0ab07b7caa618a37839904196aa6d21d9d5172bb1685"},
+    {file = "ortools-9.10.4067-cp311-cp311-win_amd64.whl", hash = "sha256:6bb53096193bd887b92f73de6534e265ae71ff738b47d38efbeb97d584a9dcf7"},
+    {file = "ortools-9.10.4067-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:25ec7b23d7aca612ad98e5b2613f1a547e6ae8f39bcef04d93da49b3495f6312"},
+    {file = "ortools-9.10.4067-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:d21ffff6676ab3f0dc1b50993ddc569537232ef9d91ae94431be565d35e911c5"},
+    {file = "ortools-9.10.4067-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:751399f1122e1cc8e1c1e32d5e4f13add77230aae828a1bdbc5b685942aaa6ec"},
+    {file = "ortools-9.10.4067-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bdc8980266522e2c203e07fe7c83f286408f475998dd2748531455576a4fcdfd"},
+    {file = "ortools-9.10.4067-cp312-cp312-win_amd64.whl", hash = "sha256:ea445366009535bb230339f631bfe2977b56ebf2ff51e75f04d90a4781d6499c"},
+    {file = "ortools-9.10.4067-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:eb1a5ab87906d3c7855e932a1a271aca60470a9659833c4bee89ad6da2bc5475"},
+    {file = "ortools-9.10.4067-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:48c713c7d15b26d608d2ddc2f54c84c37108b4511dadfc763d2e31dd72d480bd"},
+    {file = "ortools-9.10.4067-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f8e1878f2ab92ae7acc39a0d979af07e21a004482554cf1af03b5da8cc768776"},
+    {file = "ortools-9.10.4067-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e7683af5047a85babff8351dcc9f99087a4d96dfaaa64ab9e76cd388c76328a8"},
+    {file = "ortools-9.10.4067-cp38-cp38-win_amd64.whl", hash = "sha256:1f894ec433a0008072008cf3b6c6bf99fa49e2c3ec8ba35cc35ab77bf81b1ff0"},
+    {file = "ortools-9.10.4067-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:2425575668c1179596038edb4afcbbc4dc252351b58b1e09a0abe5dace99cdd5"},
+    {file = "ortools-9.10.4067-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:1e4e885012d112343fd985fd0d9e2e5d6f3ec94b91cacd73d76b909ba51e8cb2"},
+    {file = "ortools-9.10.4067-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:0e3055ca335b974cd1d25278f58bde246b8421d0b64f9bd07629afec10451ff9"},
+    {file = "ortools-9.10.4067-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:26b28e7f5f31b199f4b58525239f7d34bcfab7f28614e5ea96e953457ebfca43"},
+    {file = "ortools-9.10.4067-cp39-cp39-win_amd64.whl", hash = "sha256:7d22d857be3bf48404e132fc835c41b9251182d1ad28dccb06b3b434bbd073e5"},
+]
+
+[package.dependencies]
+absl-py = ">=2.0.0"
+immutabledict = ">=3.0.0"
+numpy = ">=1.13.3"
+pandas = ">=2.0.0"
+protobuf = ">=5.26.1"
+
+[[package]]
 name = "packaging"
 version = "26.0"
 description = "Core utilities for Python packages"
 optional = false
 python-versions = ">=3.8"
-groups = ["conversational-analytics-test", "skate-test", "tmnf", "tmnf-test"]
+groups = ["conversational-analytics-test", "football-scheduler-test", "skate-test", "tmnf", "tmnf-test"]
 files = [
     {file = "packaging-26.0-py3-none-any.whl", hash = "sha256:b36f1fef9334a5588b4166f8bcd26a14e521f2b55e6b9de3aaa80d3ff7a37529"},
     {file = "packaging-26.0.tar.gz", hash = "sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4"},
@@ -2251,7 +2305,7 @@ version = "3.0.2"
 description = "Powerful data structures for data analysis, time series, and statistics"
 optional = false
 python-versions = ">=3.11"
-groups = ["conversational-analytics", "skate", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler-cpsat", "skate", "tmnf"]
 files = [
     {file = "pandas-3.0.2-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:a727a73cbdba2f7458dc82449e2315899d5140b449015d822f515749a46cbbe0"},
     {file = "pandas-3.0.2-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:dbbd4aa20ca51e63b53bbde6a0fa4254b1aaabb74d2f542df7a7959feb1d760c"},
@@ -2488,7 +2542,7 @@ version = "1.6.0"
 description = "plugin and hook calling mechanisms for python"
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics-test", "skate-test", "tmnf-test"]
+groups = ["conversational-analytics-test", "football-scheduler-test", "skate-test", "tmnf-test"]
 files = [
     {file = "pluggy-1.6.0-py3-none-any.whl", hash = "sha256:e920276dd6813095e9377c0bc5566d94c932c33b27a3e3945d8389c374dd4746"},
     {file = "pluggy-1.6.0.tar.gz", hash = "sha256:7dcc130b76258d33b90f61b658791dede3486c3e6bfb003ee5c9bfb396dd22f3"},
@@ -2504,7 +2558,7 @@ version = "7.34.1"
 description = ""
 optional = false
 python-versions = ">=3.10"
-groups = ["tmnf"]
+groups = ["football-scheduler-cpsat", "tmnf"]
 files = [
     {file = "protobuf-7.34.1-cp310-abi3-macosx_10_9_universal2.whl", hash = "sha256:d8b2cc79c4d8f62b293ad9b11ec3aebce9af481fa73e64556969f7345ebf9fc7"},
     {file = "protobuf-7.34.1-cp310-abi3-manylinux2014_aarch64.whl", hash = "sha256:5185e0e948d07abe94bb76ec9b8416b604cfe5da6f871d67aad30cbf24c3110b"},
@@ -2588,7 +2642,7 @@ version = "2.13.4"
 description = "Data validation using Python type hints"
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics"]
+groups = ["conversational-analytics", "football-scheduler"]
 files = [
     {file = "pydantic-2.13.4-py3-none-any.whl", hash = "sha256:45a282cde31d808236fd7ea9d919b128653c8b38b393d1c4ab335c62924d9aba"},
     {file = "pydantic-2.13.4.tar.gz", hash = "sha256:c40756b57adaa8b1efeeced5c196f3f3b7c435f90e84ea7f443901bec8099ef6"},
@@ -2610,7 +2664,7 @@ version = "2.46.4"
 description = "Core functionality for Pydantic validation and serialization"
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics"]
+groups = ["conversational-analytics", "football-scheduler"]
 files = [
     {file = "pydantic_core-2.46.4-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:a396dcc17e5a0b164dbe026896245a4fa9ff402edca1dff0be3d53a517f74de4"},
     {file = "pydantic_core-2.46.4-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:da4b951fe36dc7c3a1ccb4e3cd1747c3542b8c9ceede8fc86cae054e764485f5"},
@@ -2757,7 +2811,7 @@ version = "2.20.0"
 description = "Pygments is a syntax highlighting package written in Python."
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics-test", "skate-test", "tmnf-test"]
+groups = ["conversational-analytics-test", "football-scheduler-test", "skate-test", "tmnf-test"]
 files = [
     {file = "pygments-2.20.0-py3-none-any.whl", hash = "sha256:81a9e26dd42fd28a23a2d169d86d7ac03b46e2f8b59ed4698fb4785f946d0176"},
     {file = "pygments-2.20.0.tar.gz", hash = "sha256:6757cd03768053ff99f3039c1a36d6c0aa0b263438fcab17520b30a303a82b5f"},
@@ -2838,7 +2892,7 @@ version = "9.0.3"
 description = "pytest: simple powerful testing with Python"
 optional = false
 python-versions = ">=3.10"
-groups = ["conversational-analytics-test", "skate-test", "tmnf-test"]
+groups = ["conversational-analytics-test", "football-scheduler-test", "skate-test", "tmnf-test"]
 files = [
     {file = "pytest-9.0.3-py3-none-any.whl", hash = "sha256:2c5efc453d45394fdd706ade797c0a81091eccd1d6e4bccfcd476e2b8e0ab5d9"},
     {file = "pytest-9.0.3.tar.gz", hash = "sha256:b86ada508af81d19edeb213c681b1d48246c1a91d304c6c81a427674c17eb91c"},
@@ -2860,7 +2914,7 @@ version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
-groups = ["conversational-analytics", "skate", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler-cpsat", "skate", "tmnf"]
 files = [
     {file = "python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3"},
     {file = "python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427"},
@@ -2923,7 +2977,7 @@ version = "6.0.3"
 description = "YAML parser and emitter for Python"
 optional = false
 python-versions = ">=3.8"
-groups = ["conversational-analytics", "tmnf", "tmnf-test"]
+groups = ["conversational-analytics", "football-scheduler", "tmnf", "tmnf-test"]
 files = [
     {file = "PyYAML-6.0.3-cp38-cp38-macosx_10_13_x86_64.whl", hash = "sha256:c2514fceb77bc5e7a2f7adfaa1feb2fb311607c9cb518dbc378688ec73d8292f"},
     {file = "PyYAML-6.0.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:9c57bb8c96f6d1808c030b1687b9b5fb476abaa47f0db9c0101f5e9f394e97f4"},
@@ -3272,7 +3326,7 @@ version = "1.17.0"
 description = "Python 2 and 3 compatibility utilities"
 optional = false
 python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,>=2.7"
-groups = ["conversational-analytics", "skate", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler-cpsat", "skate", "tmnf"]
 files = [
     {file = "six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274"},
     {file = "six-1.17.0.tar.gz", hash = "sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81"},
@@ -3586,7 +3640,7 @@ version = "4.15.0"
 description = "Backported and Experimental Type Hints for Python 3.9+"
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler", "tmnf"]
 files = [
     {file = "typing_extensions-4.15.0-py3-none-any.whl", hash = "sha256:f0fa19c6845758ab08074a0cfa8b7aecb71c999ca73d62883bc25cc018c4e548"},
     {file = "typing_extensions-4.15.0.tar.gz", hash = "sha256:0cea48d173cc12fa28ecabc3b837ea3cf6f38c6d1136f85cbaaf598984861466"},
@@ -3598,7 +3652,7 @@ version = "0.4.2"
 description = "Runtime typing introspection tools"
 optional = false
 python-versions = ">=3.9"
-groups = ["conversational-analytics"]
+groups = ["conversational-analytics", "football-scheduler"]
 files = [
     {file = "typing_inspection-0.4.2-py3-none-any.whl", hash = "sha256:4ed1cacbdc298c220f1bd249ed5287caa16f34d44ef4e9c3d0cbad5b521545e7"},
     {file = "typing_inspection-0.4.2.tar.gz", hash = "sha256:ba561c48a67c5958007083d386c3295464928b01faa735ab8547c5692e87f464"},
@@ -3613,7 +3667,7 @@ version = "2026.1"
 description = "Provider of IANA time zone data"
 optional = false
 python-versions = ">=2"
-groups = ["conversational-analytics", "skate", "tmnf"]
+groups = ["conversational-analytics", "football-scheduler-cpsat", "skate", "tmnf"]
 markers = "sys_platform == \"win32\" or sys_platform == \"emscripten\""
 files = [
     {file = "tzdata-2026.1-py2.py3-none-any.whl", hash = "sha256:4b1d2be7ac37ceafd7327b961aa3a54e467efbdb563a23655fbfe0d39cfc42a9"},
@@ -3660,4 +3714,4 @@ watchdog = ["watchdog (>=2.3)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "849037f3f2620870e6df061da0deedd476c0e987911e178cce7949fd7a02876d"
+content-hash = "07fdaa1f9a0a38a86d8ae1ef95f070463fc8d44e2572cc1c16d6c10c3a97fc33"

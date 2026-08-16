@@ -12,6 +12,7 @@ espenhk-hobby-projects/
 ├── skate/                       # Ice skating race predictor
 ├── tmnf/                        # Trackmania Nations Forever AI
 ├── conversational-analytics/    # NL -> semantic model -> DuckDB -> Vega-Lite dashboard prototype
+├── football-scheduler/          # Football league season scheduler (terminliste)
 ├── pyproject.toml               # Shared dependencies for all projects
 ├── poetry.lock                  # Locked dependency versions
 ├── README.md
@@ -117,6 +118,56 @@ the Fabric-concept mapping table.
 
 ```bash
 poetry run python -m pytest conversational-analytics/tests/
+```
+
+---
+
+## Project: `football-scheduler`
+
+### Purpose
+
+Generates a season fixture list for a set of related football leagues,
+scores it against hard rules and soft preferences, and reports the result as
+a browsable HTML page. Built around the Norwegian Eliteserien (men, 16 clubs)
+and Toppserien (women, 12 clubs) for 2026 — six clubs field a team in both,
+and scheduling the two leagues together so those pairs get back-to-back home
+weekends (rather than clashing, or scheduled independently) is the reason
+this project exists rather than a generic single-league scheduler.
+
+### Structure
+
+```sh
+football-scheduler/
+├── data/                   # source of truth: venues, clubs/teams, competitions,
+│                            # season calendar, curated travel-time overrides — all YAML
+├── cli.py                  # validate / generate / score / explain
+├── terminliste/
+│   ├── model/               # Pydantic schema + loader (World), calendar, travel model
+│   ├── rounds/               # circle-method round-robin pairing generator
+│   ├── scoring/               # constraint framework: hard.py, soft.py, registry.py
+│   ├── solvers/                # local-search (default) and CP-SAT (--solver cpsat) backends
+│   ├── report/                  # Jinja2 -> self-contained HTML season report
+│   └── external_schedule.py      # score a real/proposed CSV or JSON schedule
+├── schedules/                # generated HTML + JSON output (gitignored)
+└── tests/
+```
+
+### State
+
+Complete and functional first version. `validate`, `generate` (local solver),
+and `score` all run fully offline with no external dependencies beyond
+`pydantic`/`pyyaml`/`jinja2`. `--solver cpsat` needs the optional
+`football-scheduler-cpsat` Poetry group (OR-Tools). Club/venue data in
+`data/` is marked `verified: false` — assembled from web search rather than a
+fetchable source, so check it before relying on it for anything real. See
+`football-scheduler/README.md` for the full architecture writeup, the
+constraint list, and suggested next steps (Norwegian Cup before European
+qualifiers, plus a handful of scoring rules the current set is missing).
+
+### Running tests
+
+```bash
+poetry run python -m pytest football-scheduler/tests/
 ```
 
 ---
