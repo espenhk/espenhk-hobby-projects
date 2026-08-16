@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 
-from ..model.schema import Competition, FixedRequirement
+from ..model.schema import Competition, FixedRequirement, cup_rest_windows
 from .base import Constraint, ConstraintResult, EvalContext, Event, ScheduleIndex
 
 
@@ -104,14 +104,24 @@ class BlackoutDates:
                 reason = f"season blackout: {reason}"
 
             if reason is None:
-                if not (season.start <= match.date <= season.end):
+                competition = ctx.world.competitions.get(match.competition_id)
+                window_start = season.start
+                window_end = season.end
+                if competition is not None:
+                    window_start = competition.start or season.start
+                    window_end = competition.end or season.end
+                if not (window_start <= match.date <= window_end):
                     count += 1
                     penalty -= self.weight
                     if ctx.detail:
                         events.append(
                             Event(
                                 delta=-self.weight,
-                                detail=f"{match.date} falls outside the season window",
+                                detail=(
+                                    f"{match.date} falls outside the "
+                                    f"{match.competition_id} window "
+                                    f"{window_start}..{window_end}"
+                                ),
                                 match_keys=(match.key,),
                             )
                         )
@@ -363,9 +373,10 @@ class CupRoundConflict:
     entered in a cup is treated as still alive through the final — every
     remaining round blocks a `min_rest_days`-wide window for every one of the
     cup's teams, not just the ones still realistically in it. The cup itself
-    is not modelled as `Match` objects (real opponents are unknown), so this
-    reads round dates straight from the cup competitions rather than from the
-    schedule index.
+    is not modelled as `Match` objects (real opponents are unknown), so the
+    (date, minimum) windows come from `cup_rest_windows` — the same helper the
+    greedy placer uses — rather than from the schedule index; the cup name
+    attached to each window is only for the report's event text.
     """
 
     cup_competitions: list[Competition]
@@ -375,12 +386,17 @@ class CupRoundConflict:
     _windows_by_team: dict[str, list[tuple[date, int, str]]] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
-        for competition in self.cup_competitions:
-            for round_ in competition.cup_rounds:
-                for team_id in competition.teams:
-                    self._windows_by_team.setdefault(team_id, []).append(
-                        (round_.date, competition.min_rest_days, competition.name)
-                    )
+        cup_name_by_team_date = {
+            (team_id, round_.date): competition.name
+            for competition in self.cup_competitions
+            for round_ in competition.cup_rounds
+            for team_id in competition.teams
+        }
+        for team_id, windows in cup_rest_windows(self.cup_competitions).items():
+            self._windows_by_team[team_id] = [
+                (round_date, minimum, cup_name_by_team_date[(team_id, round_date)])
+                for round_date, minimum in windows
+            ]
 
     def evaluate(self, index: ScheduleIndex, ctx: EvalContext) -> ConstraintResult:
         count = 0

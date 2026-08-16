@@ -51,6 +51,8 @@ def competition(
     rounds_per_pairing: int = 2,
     format: str = "league",
     cup_rounds: list[CupRound] | None = None,
+    start: date | None = None,
+    end: date | None = None,
 ) -> Competition:
     return Competition(
         id=id,
@@ -67,6 +69,8 @@ def competition(
         weights=weights or {},
         rounds_per_pairing=rounds_per_pairing,
         cup_rounds=cup_rounds or [],
+        start=start,
+        end=end,
     )
 
 
