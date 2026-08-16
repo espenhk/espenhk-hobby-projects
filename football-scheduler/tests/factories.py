@@ -13,7 +13,16 @@ from datetime import date
 from pathlib import Path
 
 from terminliste.model.loader import World
-from terminliste.model.schema import Club, Competition, FixedRequirement, Match, Season, Team, Venue
+from terminliste.model.schema import (
+    Club,
+    Competition,
+    CupRound,
+    FixedRequirement,
+    Match,
+    Season,
+    Team,
+    Venue,
+)
 
 
 def venue(id: str, lat: float = 60.0, lon: float = 10.0, capacity: int = 1000) -> Venue:
@@ -40,12 +49,15 @@ def competition(
     comfortable_rest_days: int = 6,
     weights: dict | None = None,
     rounds_per_pairing: int = 2,
+    format: str = "league",
+    cup_rounds: list[CupRound] | None = None,
 ) -> Competition:
     return Competition(
         id=id,
         name=id,
         season=2026,
         gender=gender,
+        format=format,
         team_count=len(teams),
         teams=teams,
         preferred_weekday=preferred_weekday,
@@ -54,12 +66,18 @@ def competition(
         comfortable_rest_days=comfortable_rest_days,
         weights=weights or {},
         rounds_per_pairing=rounds_per_pairing,
+        cup_rounds=cup_rounds or [],
     )
+
+
+def cup_round(id: str, day: date, name: str | None = None, note: str = "") -> CupRound:
+    return CupRound(id=id, name=name or id, date=day, note=note)
 
 
 def season(
     id: str = "test",
     competitions: list[str] | None = None,
+    cup_competitions: list[str] | None = None,
     global_blackouts=None,
     venue_blackouts=None,
     fixed_requirements: list[FixedRequirement] | None = None,
@@ -73,6 +91,7 @@ def season(
         start=start,
         end=end,
         competitions=competitions or [],
+        cup_competitions=cup_competitions or [],
         global_blackouts=global_blackouts or [],
         venue_blackouts=venue_blackouts or [],
         fixed_requirements=fixed_requirements or [],

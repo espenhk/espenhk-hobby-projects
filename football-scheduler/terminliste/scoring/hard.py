@@ -355,6 +355,63 @@ class OneMatchPerTeamPerDay:
         return ConstraintResult(self.id, "hard", penalty, count, events)
 
 
+@dataclass
+class CupRoundConflict:
+    """No league match too close to a team's cup commitment.
+
+    Cup pairings are drawn round by round and not known in advance, so a team
+    entered in a cup is treated as still alive through the final — every
+    remaining round blocks a `min_rest_days`-wide window for every one of the
+    cup's teams, not just the ones still realistically in it. The cup itself
+    is not modelled as `Match` objects (real opponents are unknown), so this
+    reads round dates straight from the cup competitions rather than from the
+    schedule index.
+    """
+
+    cup_competitions: list[Competition]
+    id: str = "cup_round_conflict"
+    kind: str = "hard"
+    weight: float = 1.0
+    _windows_by_team: dict[str, list[tuple[date, int, str]]] = field(default_factory=dict, init=False)
+
+    def __post_init__(self) -> None:
+        for competition in self.cup_competitions:
+            for round_ in competition.cup_rounds:
+                for team_id in competition.teams:
+                    self._windows_by_team.setdefault(team_id, []).append(
+                        (round_.date, competition.min_rest_days, competition.name)
+                    )
+
+    def evaluate(self, index: ScheduleIndex, ctx: EvalContext) -> ConstraintResult:
+        count = 0
+        penalty = 0.0
+        events: list[Event] = []
+
+        for team_id, windows in self._windows_by_team.items():
+            for match in index.by_team.get(team_id, ()):
+                for round_date, minimum, cup_name in windows:
+                    gap = abs((match.date - round_date).days)
+                    if gap >= minimum:
+                        continue
+                    count += 1
+                    shortfall = minimum - gap
+                    penalty -= self.weight * shortfall
+                    if ctx.detail:
+                        events.append(
+                            Event(
+                                delta=-self.weight * shortfall,
+                                detail=(
+                                    f"{ctx.world.team_label(team_id)} plays {match.date} in "
+                                    f"{match.competition_id}, {gap} day(s) from {cup_name} on "
+                                    f"{round_date} — needs {minimum}"
+                                ),
+                                match_keys=(match.key,),
+                            )
+                        )
+
+        return ConstraintResult(self.id, "hard", penalty, count, events)
+
+
 def _day_after(day: date) -> date:
     return day + timedelta(days=1)
 
@@ -363,6 +420,7 @@ __all__: list[str] = [
     "BlackoutDates",
     "ClubHomeClash",
     "Constraint",
+    "CupRoundConflict",
     "FixedDateRequirement",
     "LegOrdering",
     "MinRestDays",

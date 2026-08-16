@@ -18,7 +18,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from ..model.loader import World
-from ..model.schema import Match, Season
+from ..model.schema import Competition, Match, Season
 from ..scoring.base import ConstraintResult, Score
 from ..scoring.registry import describe
 from ..solvers.base import Candidate, SolverResult
@@ -67,9 +67,10 @@ def render_report(
         club.id: DUAL_CLUB_COLORS[i % len(DUAL_CLUB_COLORS)]
         for i, club in enumerate(sorted(world.dual_clubs(), key=lambda c: c.id))
     }
+    cup_competitions = [world.competition(c) for c in season.cup_competitions]
 
     options = [
-        _build_option(world, season, candidate, club_colors, full_diagnostics)
+        _build_option(world, season, candidate, club_colors, cup_competitions, full_diagnostics)
         for candidate in result.candidates
     ]
 
@@ -88,7 +89,12 @@ def render_report(
 
 
 def _build_option(
-    world: World, season: Season, candidate: Candidate, club_colors, full_diagnostics: bool = False
+    world: World,
+    season: Season,
+    candidate: Candidate,
+    club_colors,
+    cup_competitions: list[Competition],
+    full_diagnostics: bool = False,
 ) -> dict:
     score = candidate.score
     limit = 200 if full_diagnostics else 4
@@ -108,7 +114,7 @@ def _build_option(
         "problems": [_result_row(r, full=full_diagnostics) for r in score.biggest_problems(limit=limit)],
         "upsides": [_result_row(r, full=full_diagnostics) for r in score.biggest_upsides(limit=limit)],
         "breakdown": [_result_row(r, full=True) for r in _ordered_results(score)],
-        "competitions": _competition_views(world, candidate, club_colors),
+        "competitions": _competition_views(world, candidate, club_colors) + _cup_views(cup_competitions),
     }
 
 
@@ -213,6 +219,37 @@ def _competition_views(world: World, candidate: Candidate, club_colors) -> list[
                         "matches": entries,
                     }
                     for round_index, entries in sorted(rounds.items())
+                ],
+            }
+        )
+    return views
+
+
+def _cup_views(cup_competitions: list[Competition]) -> list[dict]:
+    """Cup rounds, in the same shape `_competition_views` uses for leagues.
+
+    Pairings are drawn round by round and unknown ahead of time, so there is
+    no fixture list here — just the real-world date each round falls on and
+    how many of the tracked teams are still assumed to be in it.
+    """
+    views: list[dict] = []
+    for competition in sorted(cup_competitions, key=lambda c: c.id):
+        rounds = sorted(competition.cup_rounds, key=lambda r: r.date)
+        views.append(
+            {
+                "id": competition.id,
+                "name": competition.name,
+                "is_cup": True,
+                "match_count": len(competition.teams),
+                "rounds": [
+                    {
+                        "index": i + 1,
+                        "name": round_.name,
+                        "dates": round_.date.strftime("%d %b %Y"),
+                        "team_count": len(competition.teams),
+                        "note": round_.note,
+                    }
+                    for i, round_ in enumerate(rounds)
                 ],
             }
         )

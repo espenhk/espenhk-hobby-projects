@@ -15,6 +15,7 @@ from terminliste.scoring.base import EvalContext, evaluate
 from terminliste.scoring.hard import (
     BlackoutDates,
     ClubHomeClash,
+    CupRoundConflict,
     FixedDateRequirement,
     LegOrdering,
     MinRestDays,
@@ -293,6 +294,62 @@ def test_one_match_per_team_per_day():
         f.match("comp", "t3", "t1", date(2026, 6, 1), "v1", round_index=1),
     ]
     result = evaluate(matches, [OneMatchPerTeamPerDay()], _ctx(world, season))
+    assert result.hard_violations == 1
+
+
+# -- cup_round_conflict -------------------------------------------------
+
+
+def _cup_world():
+    v1 = f.venue("v1")
+    t1 = f.team("t1", "c1", "v1")
+    t2 = f.team("t2", "c2", "v1")
+    clubs = [f.club("c1", [t1]), f.club("c2", [t2])]
+    cup = f.competition(
+        "cup",
+        ["t1", "t2"],
+        min_rest_days=3,
+        format="cup",
+        cup_rounds=[f.cup_round("r1", date(2026, 8, 22), "Round 1")],
+    )
+    world = f.world(clubs, [v1], [cup])
+    season = f.season(competitions=[], cup_competitions=["cup"])
+    return world, season, cup
+
+
+def test_cup_round_conflict_fires_at_a_two_day_gap_but_not_three():
+    world, season, cup = _cup_world()
+    constraint = CupRoundConflict(cup_competitions=[cup])
+
+    ok = [f.match("league", "t1", "t2", date(2026, 8, 25), "v1")]
+    assert evaluate(ok, [constraint], _ctx(world, season)).hard_violations == 0
+
+    bad = [f.match("league", "t1", "t2", date(2026, 8, 24), "v1")]
+    result = evaluate(bad, [constraint], _ctx(world, season))
+    # Both teams are entered in the cup, so both sides of the league match see
+    # the same shortfall.
+    assert result.hard_violations == 2
+
+
+def test_cup_round_conflict_is_silent_for_a_team_not_entered_in_the_cup():
+    v1 = f.venue("v1")
+    t1 = f.team("t1", "c1", "v1")
+    t3 = f.team("t3", "c3", "v1")
+    clubs = [f.club("c1", [t1]), f.club("c3", [t3])]
+    cup = f.competition(
+        "cup",
+        ["t1"],
+        min_rest_days=3,
+        format="cup",
+        cup_rounds=[f.cup_round("r1", date(2026, 8, 22), "Round 1")],
+    )
+    world = f.world(clubs, [v1], [cup])
+    season = f.season(competitions=[], cup_competitions=["cup"])
+
+    matches = [f.match("league", "t3", "t1", date(2026, 8, 23), "v1")]
+    result = evaluate(matches, [CupRoundConflict(cup_competitions=[cup])], _ctx(world, season))
+    # t1 (entered in the cup) is one day from the round — a violation. t3 is
+    # not entered, so it contributes nothing of its own.
     assert result.hard_violations == 1
 
 

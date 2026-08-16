@@ -69,21 +69,35 @@ Venue     id, name, city, lat/lon, capacity, surface
 Team      id, gender, level (senior|second|youth), home_venue, club_id
 Club      id, name, teams[]                    # 1+ teams; "dual clubs" have 2+ senior teams
 Competition  id, season, gender, format (league|cup), teams[], preferred_weekday, weights{}
-Season    id, year, window, global_blackouts[], venue_blackouts[], fixed_requirements[]
-Fixture   an unscheduled pairing (home, away, leg, round)
-Match     a Fixture placed on a date at a venue
+             cup_rounds[]                       # cup only: real-world (name, date) per round
+Season    id, year, window, competitions[], cup_competitions[], global_blackouts[],
+          venue_blackouts[], fixed_requirements[]
+Fixture   an unscheduled pairing (home, away, leg, round)         # league only
+Match     a Fixture placed on a date at a venue                    # league only
 ```
 
-`Team.level` and `Competition.format` are wider than today's use needs on
-purpose — a reserve side is a data edit (`level: second`), and a cup is a new
-`Competition` subtype, not a rewrite. See "Suggested next steps" below.
+`Team.level` is wider than today's use needs on purpose — a reserve side is a
+data edit (`level: second`), not a rewrite.
+
+A **league** (`format: league`) is generated and dated by the solver, the way
+Eliteserien and Toppserien are. A **cup** (`format: cup`) is the opposite: its
+`cup_rounds` are real-world fixed dates the solver treats as given rather than
+something to search over — see `data/competitions/cup_men_2027.yml` and
+`cup_women_2027.yml` for the 2026-27 Norwegian Cup. A season lists which
+competitions of each kind it holds under `competitions` (leagues) and
+`cup_competitions` (cups) respectively; the two are kept separate because only
+the former is fed to the round-robin/solver pipeline. Since cup pairings are
+drawn round by round, `CupRoundConflict` treats every team entered in a cup as
+still alive through the final and keeps league fixtures a `min_rest_days`-wide
+window clear of every remaining round, rather than modelling actual ties.
 
 ## Constraints implemented
 
 **Hard** (`terminliste/scoring/hard.py`) — a schedule with any of these
 present is not feasible, full stop:
 `min_rest_days`, `blackout_dates`, `venue_double_booking`, `club_home_clash`,
-`leg_ordering`, `fixed_requirement`, `one_match_per_team_per_day`.
+`leg_ordering`, `fixed_requirement`, `one_match_per_team_per_day`,
+`cup_round_conflict`.
 
 **Soft** (`terminliste/scoring/soft.py`) — scored, signed (reward positive,
 penalty negative), and shown ranked in the report:
@@ -121,7 +135,11 @@ python -m pytest tests/ -v
 ## Suggested next steps
 
 See the write-up delivered alongside this project for the full discussion.
-In short: add a Norwegian Cup (single elimination, mid-week slots, all four
-top-flight tiers feeding in) before European qualifiers, since it exercises
-new competition machinery (byes, replays, cross-competition rest) without
-requiring calendar data terminliste has no way to source reliably yet.
+The Norwegian Cup is now in (`cup_men_2027.yml` / `cup_women_2027.yml`,
+`CupRoundConflict`) — only the top-flight clubs' rounds are tracked, and only
+Round 1 (men) / Round 2 (women) and the "final in spring 2027" framing are
+NFF-confirmed; everything after is a placeholder date, flagged per round via
+`note`, pending NFF publishing the real ones (see each file's header).
+Natural next steps from here: European qualifiers for the tournaments this
+project doesn't control the scheduling of (issue #31), and cascading
+Champions/Europa/Conference League qualifier progression (issue #29).

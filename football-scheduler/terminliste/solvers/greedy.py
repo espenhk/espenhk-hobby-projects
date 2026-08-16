@@ -20,7 +20,7 @@ from datetime import date, timedelta
 
 from ..model.calendar import SeasonCalendar, anchor_dates, build_calendar
 from ..model.loader import World
-from ..model.schema import WEEKDAYS, Competition, Fixture, Match, Season
+from ..model.schema import WEEKDAYS, Competition, Fixture, Match, Season, cup_rest_windows
 from ..rounds.round_robin import generate_fixtures
 
 # Local-heuristic weights. Deliberately crude — the real scoring lives in
@@ -29,6 +29,7 @@ _BLOCKED = 1e9
 _REST_VIOLATION = 1e6
 _VENUE_CLASH = 1e6
 _CLUB_HOME_CLASH = 1e6
+_CUP_CONFLICT = 1e6
 _OFF_PREFERRED_WEEKDAY = 12.0
 _DISCOURAGED_DATE = 20.0
 _CONSECUTIVE_HOME_BONUS = 40.0
@@ -251,6 +252,7 @@ def build_initial_schedule(
     seed: int = 42,
     calendar: SeasonCalendar | None = None,
     align: bool = True,
+    cup_competitions: list[Competition] | None = None,
 ) -> tuple[list[Match], set[str]]:
     """Return a complete schedule plus the keys of fixtures pinned to a date.
 
@@ -261,12 +263,17 @@ def build_initial_schedule(
     test to show what the coupled scheduling is actually worth, by comparing
     against the schedule this same greedy placer would produce if the two
     leagues were built without any awareness of each other.
+
+    `cup_competitions` steers placement away from each team's cup round dates
+    up front, so the local search starts from a schedule that mostly already
+    respects `CupRoundConflict` instead of having to fight its way there.
     """
     rng = random.Random(seed)
     calendar = calendar or build_calendar(world, season)
     planned = plan_competitions(world, season, competitions, calendar, rng)
     if align:
         align_dual_clubs(world, planned)
+    cup_windows = cup_rest_windows(cup_competitions or [])
 
     state = PlacementState()
     matches: list[Match] = []
@@ -312,7 +319,7 @@ def build_initial_schedule(
 
     for anchor, _, fixture in work:
         plan = by_id[fixture.competition_id]
-        match = _place_fixture(world, calendar, plan, fixture, anchor, state, rng)
+        match = _place_fixture(world, calendar, plan, fixture, anchor, state, rng, cup_windows)
         matches.append(match)
         state.place(world, match)
 
@@ -338,6 +345,7 @@ def _place_fixture(
     anchor: date,
     state: PlacementState,
     rng: random.Random,
+    cup_windows: dict[str, list[tuple[date, int]]],
 ) -> Match:
     competition = plan.competition
     venue = world.team(fixture.home_team).home_venue
@@ -354,7 +362,8 @@ def _place_fixture(
 
     for day in window:
         cost = _placement_cost(
-            world, calendar, competition, fixture, venue, day, anchor, preferred_weekday, state
+            world, calendar, competition, fixture, venue, day, anchor, preferred_weekday, state,
+            cup_windows,
         )
         # A little noise so different seeds explore different starting points;
         # small enough never to outweigh a real preference.
@@ -383,6 +392,7 @@ def _placement_cost(
     anchor: date,
     preferred_weekday: int,
     state: PlacementState,
+    cup_windows: dict[str, list[tuple[date, int]]],
 ) -> float:
     cost = 0.0
 
@@ -394,6 +404,11 @@ def _placement_cost(
         cost += _REST_VIOLATION
     if state.rest_conflict(fixture.away_team, day, minimum):
         cost += _REST_VIOLATION
+
+    if _cup_conflict(cup_windows, fixture.home_team, day) or _cup_conflict(
+        cup_windows, fixture.away_team, day
+    ):
+        cost += _CUP_CONFLICT
 
     if (venue, day) in state.venue_dates:
         cost += _VENUE_CLASH
@@ -415,3 +430,9 @@ def _placement_cost(
 
     cost += _DRIFT_FROM_ANCHOR * abs((day - anchor).days)
     return cost
+
+
+def _cup_conflict(cup_windows: dict[str, list[tuple[date, int]]], team_id: str, day: date) -> bool:
+    return any(
+        abs((day - cup_date).days) < minimum for cup_date, minimum in cup_windows.get(team_id, ())
+    )

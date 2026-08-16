@@ -60,6 +60,9 @@ class SolveRequest:
     seed: int = 42
     top_n: int = 3
     time_budget_s: float = 30.0
+    # Real-world-dated cups sharing teams with `competitions`, not scheduled
+    # themselves but used to steer league placement away from their rounds.
+    cup_competitions: list[Competition] = field(default_factory=list)
 
 
 class Scheduler(Protocol):

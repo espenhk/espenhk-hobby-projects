@@ -28,7 +28,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from ..model.calendar import build_calendar
-from ..model.schema import Match
+from ..model.schema import Match, cup_rest_windows
 from ..scoring.base import evaluate
 from .base import Candidate, SolveRequest, SolverResult, select_diverse
 from .greedy import align_dual_clubs, plan_competitions
@@ -298,6 +298,20 @@ def _build_model(cp_model, request, planned, calendar, forbidden):
             for i in by_leg[leg]:
                 for day, var in placement[i].items():
                     model.Add(day.toordinal() > split).OnlyEnforceIf([var, leg_literal])
+
+    # H6 cup round conflict: no match too close to a team's cup commitment.
+    # Mirrors H1's window logic, but against fixed real-world cup dates
+    # instead of the team's own other matches.
+    cup_windows = cup_rest_windows(request.cup_competitions)
+    if cup_windows:
+        cup_literal = assume("cup_round_conflict")
+        for team_id, windows in cup_windows.items():
+            for cup_date, minimum in windows:
+                conflict_vars: list[object] = []
+                for offset in range(-(minimum - 1), minimum):
+                    conflict_vars.extend(team_on_date.get((team_id, cup_date + timedelta(days=offset)), []))
+                if conflict_vars:
+                    model.Add(sum(conflict_vars) == 0).OnlyEnforceIf(cup_literal)
 
     # -- objective: the soft rules CP-SAT can see ---------------------------
     objective_terms: list[tuple[int, object]] = []

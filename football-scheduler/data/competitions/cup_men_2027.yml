@@ -1,0 +1,73 @@
+# The 2026-27 Norwegian Football Cup (NM menn), men's side — NFF names this
+# edition "2027" even though it starts in August 2026, the same way UEFA names
+# a season by its later half. From the 2027 format onward, Eliteserien clubs
+# re-enter at Round 1 rather than a later round.
+#
+# verified: false — Round 1 and the "ordinary rounds start in August, final in
+# spring 2027" framing come from NFF's own pages via web search; NFF has not
+# yet published exact dates beyond Round 1, so Round 2 onward are placeholder
+# dates spaced the way NFF has said those rounds fall (midweek in September
+# and October 2026, then spring 2027) — see each round's `note`.
+# sources:
+#   - "fotball.no: NM menn 2027 — Slik spilles 1. runde (Round 1: 22 Aug 2026)"
+#   - "fotball.no: NM menn 2027 — kvalifisering 2026 (format change, Eliteserien from Round 1)"
+#   - "en.wikipedia.org: 2026-27 Norwegian Football Cup (tournament starts 21-22 Aug 2026)"
+id: cup_men_2027
+name: NM Cupen (menn)
+season: 2027
+gender: men
+format: cup
+
+# Same 16 clubs as eliteserien_2026 — the cup edition this data models only
+# tracks the top flight, not the ~150 lower-division sides also in the draw.
+team_count: 16
+teams:
+  - aalesund_m
+  - bodo_glimt_m
+  - brann_m
+  - fredrikstad_m
+  - hamkam_m
+  - kfum_oslo_m
+  - kristiansund_m
+  - lillestrom_m
+  - molde_m
+  - rosenborg_m
+  - sandefjord_m
+  - sarpsborg08_m
+  - start_m
+  - tromso_m
+  - valerenga_m
+  - viking_m
+
+# How close a league match may land to one of this cup's round dates.
+min_rest_days: 3
+
+cup_rounds:
+  - id: r1
+    name: Round 1
+    date: 2026-08-22
+    note: "Confirmed — NFF terminliste. Eliteserien enters from Round 1 under the 2027 format."
+  - id: r2
+    name: Round 2
+    date: 2026-09-16
+    note: "Estimated — NFF has said Round 2 is midweek in September 2026; exact date not yet published."
+  - id: r3
+    name: Round 3
+    date: 2026-10-21
+    note: "Estimated — NFF has said Round 3 is midweek in October 2026; exact date not yet published."
+  - id: r4
+    name: Round 4
+    date: 2027-03-10
+    note: "Estimated — NFF places Round 4 onward in spring 2027; exact date not yet published."
+  - id: qf
+    name: Quarter-final
+    date: 2027-04-07
+    note: "Estimated — spring 2027; exact date not yet published."
+  - id: sf
+    name: Semi-final
+    date: 2027-04-28
+    note: "Estimated — spring 2027; exact date not yet published."
+  - id: final
+    name: Final
+    date: 2027-05-30
+    note: "Estimated Sunday — NFF has said the final is planned for the end of May 2027; exact date not yet published."

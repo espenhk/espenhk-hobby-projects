@@ -48,10 +48,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
     dual = world.dual_clubs()
     print(f"     {len(dual)} dual clubs: {', '.join(c.name for c in dual)}")
     for competition in world.competitions.values():
-        print(
-            f"     {competition.name}: {competition.team_count} teams, "
-            f"{competition.rounds} rounds, {competition.total_matches} matches"
-        )
+        if competition.format == "cup":
+            print(
+                f"     {competition.name}: {competition.team_count} teams entered, "
+                f"{competition.rounds} rounds tracked (real-world dates, pairings TBD)"
+            )
+        else:
+            print(
+                f"     {competition.name}: {competition.team_count} teams, "
+                f"{competition.rounds} rounds, {competition.total_matches} matches"
+            )
     return 0
 
 
@@ -59,7 +65,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
     world = _load_world_or_exit()
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
-    constraints = build_constraints(world, season, competitions)
+    cup_competitions = [world.competition(c) for c in season.cup_competitions]
+    constraints = build_constraints(world, season, competitions, cup_competitions)
     travel = HaversineTravelModel(world)
     ctx = EvalContext(world=world, season=season, travel=travel)
 
@@ -68,6 +75,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         world=world,
         season=season,
         competitions=competitions,
+        cup_competitions=cup_competitions,
         constraints=constraints,
         ctx=ctx,
         seed=args.seed,
@@ -105,7 +113,8 @@ def cmd_score(args: argparse.Namespace) -> int:
     world = _load_world_or_exit()
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
-    constraints = build_constraints(world, season, competitions)
+    cup_competitions = [world.competition(c) for c in season.cup_competitions]
+    constraints = build_constraints(world, season, competitions, cup_competitions)
     travel = HaversineTravelModel(world)
 
     try:
