@@ -13,6 +13,7 @@ espenhk-hobby-projects/
 ├── tmnf/                        # Trackmania Nations Forever AI
 ├── conversational-analytics/    # NL -> semantic model -> DuckDB -> Vega-Lite dashboard prototype
 ├── football-scheduler/          # Football league season scheduler (terminliste)
+├── football-scheduler-frontend/ # football-scheduler's presentation layer, staged for a Lovable handoff
 ├── pyproject.toml               # Shared dependencies for all projects
 ├── poetry.lock                  # Locked dependency versions
 ├── README.md
@@ -140,17 +141,28 @@ this project exists rather than a generic single-league scheduler.
 football-scheduler/
 ├── data/                   # source of truth: venues, clubs/teams, competitions,
 │                            # season calendar, curated travel-time overrides — all YAML
-├── cli.py                  # validate / generate / score / explain
+├── cli.py                  # validate / generate / score / explain / export-frontend
 ├── terminliste/
 │   ├── model/               # Pydantic schema + loader (World), calendar, travel model
 │   ├── rounds/               # circle-method round-robin pairing generator
 │   ├── scoring/               # constraint framework: hard.py, soft.py, registry.py
 │   ├── solvers/                # local-search (default) and CP-SAT (--solver cpsat) backends
-│   ├── report/                  # Jinja2 -> self-contained HTML season report
+│   ├── report/                  # views.py (shared display view-model) + render.py
+│   │                             # (write_json, write_frontend_json) + frontend_schema.py
 │   └── external_schedule.py      # score a real/proposed CSV or JSON schedule
 ├── schedules/                # generated HTML + JSON output (gitignored)
+├── schemas/                  # committed JSON Schema + example fixture for the frontend contract
+├── CONTRACT.md                # the frontend data contract, documented
 └── tests/
 ```
+
+The HTML report itself now lives in the sibling `football-scheduler-frontend/`
+project (see below) — `terminliste/report/` only produces machine-readable
+output (the original `write_json` plus the newer, documented
+`write_frontend_json`). This split, and the `football-scheduler-frontend`
+project, exist to prep for handing that presentation layer off to Lovable —
+see [issue #37](https://github.com/espenhk/espenhk-hobby-projects/issues/37)
+and `football-scheduler/CONTRACT.md`.
 
 ### State
 
@@ -169,6 +181,38 @@ qualifiers, plus a handful of scoring rules the current set is missing).
 ```bash
 poetry run python -m pytest football-scheduler/tests/
 ```
+
+---
+
+## Project: `football-scheduler-frontend`
+
+### Purpose
+
+The presentation layer for `football-scheduler`, split into its own
+top-level folder as prep work for handing it off to Lovable for further
+development (issue #37). Currently still the same plain Jinja2 → static
+HTML renderer it always was, just relocated so the frontend/backend
+boundary is explicit; the actual Vite/React/TypeScript conversion and
+extraction into its own repo (Lovable can't import an existing repo — see
+`football-scheduler/CONTRACT.md`) is tracked as separate follow-up work.
+
+### Structure
+
+```sh
+football-scheduler-frontend/
+├── render.py             # Jinja2 -> one self-contained HTML file
+├── templates/
+│   └── season.html.j2
+└── data/                 # published JSON fixtures from `cli.py export-frontend`
+```
+
+Depends on `football-scheduler/` being its sibling directory in this same
+checkout (imports `terminliste.report.views` for the shared view-model
+logic) — see that project's README for what changes once this is extracted.
+
+### State
+
+Prep-only. Not yet a Vite/React project; see its README for next steps.
 
 ---
 

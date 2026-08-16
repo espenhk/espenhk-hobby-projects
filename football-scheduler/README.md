@@ -18,6 +18,8 @@ cd football-scheduler
 python cli.py validate                              # data integrity, no solving
 python cli.py generate --season 2026                 # solve, write schedules/2026.html
 python cli.py score my_schedule.csv --season 2026     # score a real/proposed schedule
+python cli.py export-frontend --season 2026            # publish the JSON contract to
+                                                          # ../football-scheduler-frontend
 python -m pytest ..                                   # -m pytest tests/ from the repo root
 ```
 
@@ -53,14 +55,26 @@ python -m pytest ..                                   # -m pytest tests/ from th
   - `cpsat.py` (`--solver cpsat`): OR-Tools CP-SAT, assigning dates to a
     fixed pairing structure. Needs the optional `football-scheduler-cpsat`
     dependency group.
-- **`terminliste/report/`** — Jinja2 → one self-contained HTML file. Tabs
-  between candidate schedules, a score header, ranked "biggest upsides /
-  biggest problems", a full per-rule breakdown table, and a calendar grid
-  with dual-club back-to-back home days highlighted.
+- **`terminliste/report/`** — the machine-readable side of reporting:
+  `views.py` derives the display-ready view model from a solver result
+  (resolved names, weekday strings, dual-club colors, the back-to-back-home-day
+  `paired` flag) and is shared by both consumers of it; `render.py` writes
+  `write_json` (the original solver-metadata export, for diffing/snapshots)
+  and `write_frontend_json` (the documented frontend data contract — see
+  `CONTRACT.md`); `frontend_schema.py` holds the Pydantic models that
+  *are* that contract.
 - **`terminliste/external_schedule.py`** — loads a CSV or JSON schedule from
   anywhere (a real league's published fixtures, a hand-drafted proposal) and
   scores it against the same rules, so `cli.py score` can point out exactly
   what's wrong with a schedule the tool didn't generate.
+- **`CONTRACT.md`** / **`schemas/`** — the frontend data contract: what
+  `write_frontend_json` promises, a generated JSON Schema, and a committed
+  example. See [issue #37](https://github.com/espenhk/espenhk-hobby-projects/issues/37).
+- **The HTML report itself has moved** to the sibling
+  [`football-scheduler-frontend/`](../football-scheduler-frontend) project —
+  a prep step ahead of eventually handing it off to Lovable for further
+  development. `cli.py` still renders it via that project's `render.py`;
+  see that project's README for why it's split out and what's next.
 
 ## Data model
 

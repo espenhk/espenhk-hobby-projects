@@ -6,6 +6,8 @@
     python cli.py score my_schedule.csv --season 2026
                                                    # score a real/proposed schedule
     python cli.py explain schedules/2026.json      # score breakdown in the terminal
+    python cli.py export-frontend --season 2026    # publish the frontend data
+                                                    # contract to ../football-scheduler-frontend
 
 `validate` and `score` need no solver and run in well under a second.
 `generate` runs the local-search solver by default (`--solver cpsat` needs
@@ -16,19 +18,26 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_ROOT = PROJECT_ROOT / "data"
 SCHEDULES_ROOT = PROJECT_ROOT / "schedules"
+# The frontend prep folder is a sibling project today (see CONTRACT.md); once
+# it's extracted into its own repo, point --frontend-repo at that checkout.
+DEFAULT_FRONTEND_ROOT = PROJECT_ROOT.parent / "football-scheduler-frontend"
 
 sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(DEFAULT_FRONTEND_ROOT))
 
+from render import render_report  # noqa: E402  (football-scheduler-frontend/render.py)
 from terminliste.external_schedule import ExternalScheduleError, load_external_schedule  # noqa: E402
-from terminliste.model.loader import DataError, load_world  # noqa: E402
+from terminliste.model.loader import DataError, World, load_world  # noqa: E402
+from terminliste.model.schema import Season  # noqa: E402
 from terminliste.model.travel import HaversineTravelModel  # noqa: E402
-from terminliste.report.render import render_report, write_json  # noqa: E402
+from terminliste.report.render import write_frontend_json, write_json  # noqa: E402
 from terminliste.scoring.base import EvalContext, Score, evaluate  # noqa: E402
 from terminliste.scoring.registry import build_constraints  # noqa: E402
 from terminliste.solvers import Candidate, SolveRequest, SolverResult, get_scheduler  # noqa: E402
@@ -55,7 +64,8 @@ def cmd_validate(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_generate(args: argparse.Namespace) -> int:
+def _solve_season(args: argparse.Namespace) -> tuple[World, Season, SolverResult] | None:
+    """Load, solve, and return candidates — shared by `generate` and `export-frontend`."""
     world = _load_world_or_exit()
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
@@ -80,13 +90,22 @@ def cmd_generate(args: argparse.Namespace) -> int:
         result = scheduler.solve(request)
     except RuntimeError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
-        return 1
+        return None
 
     if not result.candidates:
         print("FAIL: solver produced no candidates.", file=sys.stderr)
         for note in result.notes:
             print(f"  - {note}", file=sys.stderr)
+        return None
+
+    return world, season, result
+
+
+def cmd_generate(args: argparse.Namespace) -> int:
+    solved = _solve_season(args)
+    if solved is None:
         return 1
+    world, season, result = solved
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -98,6 +117,41 @@ def cmd_generate(args: argparse.Namespace) -> int:
 
     _print_summary(result)
     print(f"\nWrote {html_path} and {json_path}")
+    return 0
+
+
+def cmd_export_frontend(args: argparse.Namespace) -> int:
+    solved = _solve_season(args)
+    if solved is None:
+        return 1
+    world, season, result = solved
+
+    frontend_repo = Path(args.frontend_repo)
+    if not frontend_repo.is_dir():
+        print(f"FAIL: no such frontend project: {frontend_repo}", file=sys.stderr)
+        return 1
+
+    fixture_path = frontend_repo / "data" / f"{season.id}.frontend.json"
+    write_frontend_json(world, season, result, fixture_path)
+    print(f"Wrote {fixture_path}")
+
+    subprocess.run(["git", "-C", str(frontend_repo), "add", str(fixture_path)], check=True)
+    commit = subprocess.run(
+        ["git", "-C", str(frontend_repo), "commit", "-m", f"chore: refresh {season.id} season fixture"],
+        capture_output=True,
+        text=True,
+    )
+    if commit.returncode != 0:
+        # Most commonly "nothing to commit" — the fixture didn't change.
+        print((commit.stdout + commit.stderr).strip())
+        return 0
+
+    print(commit.stdout.strip())
+    if args.push:
+        subprocess.run(["git", "-C", str(frontend_repo), "push"], check=True)
+        print("Pushed.")
+    else:
+        print("Not pushed — rerun with --push, or push manually, when ready.")
     return 0
 
 
@@ -249,6 +303,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_explain.add_argument("schedule_json")
     p_explain.add_argument("--option", default=None, help="only this option's label, e.g. 'Option 1'")
     p_explain.set_defaults(func=cmd_explain)
+
+    p_export = sub.add_parser(
+        "export-frontend",
+        help="solve, write the frontend JSON contract, and commit it into the frontend project",
+    )
+    p_export.add_argument("--season", default="2026")
+    p_export.add_argument("--solver", choices=["local", "cpsat"], default="local")
+    p_export.add_argument("--seed", type=int, default=42)
+    p_export.add_argument("--top-n", type=int, default=3)
+    p_export.add_argument("--time-budget", type=float, default=60.0, help="seconds")
+    p_export.add_argument(
+        "--frontend-repo",
+        default=str(DEFAULT_FRONTEND_ROOT),
+        help="path to the football-scheduler-frontend checkout to publish into",
+    )
+    p_export.add_argument("--push", action="store_true", help="also `git push` the frontend repo (off by default)")
+    p_export.set_defaults(func=cmd_export_frontend)
 
     return parser
 

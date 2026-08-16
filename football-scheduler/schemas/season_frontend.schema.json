@@ -1,0 +1,325 @@
+{
+  "$defs": {
+    "FrontendCompetitionView": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "preferred_weekday": {
+          "title": "Preferred Weekday",
+          "type": "string"
+        },
+        "match_count": {
+          "title": "Match Count",
+          "type": "integer"
+        },
+        "rounds": {
+          "items": {
+            "$ref": "#/$defs/FrontendRound"
+          },
+          "title": "Rounds",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "preferred_weekday",
+        "match_count",
+        "rounds"
+      ],
+      "title": "FrontendCompetitionView",
+      "type": "object"
+    },
+    "FrontendHeadline": {
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "title": "FrontendHeadline",
+      "type": "object"
+    },
+    "FrontendMatch": {
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "weekday": {
+          "title": "Weekday",
+          "type": "string"
+        },
+        "home": {
+          "title": "Home",
+          "type": "string"
+        },
+        "away": {
+          "title": "Away",
+          "type": "string"
+        },
+        "venue": {
+          "title": "Venue",
+          "type": "string"
+        },
+        "color": {
+          "title": "Color",
+          "type": "string"
+        },
+        "away_color": {
+          "title": "Away Color",
+          "type": "string"
+        },
+        "paired": {
+          "title": "Paired",
+          "type": "boolean"
+        },
+        "leg": {
+          "title": "Leg",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "date",
+        "weekday",
+        "home",
+        "away",
+        "venue",
+        "color",
+        "away_color",
+        "paired",
+        "leg"
+      ],
+      "title": "FrontendMatch",
+      "type": "object"
+    },
+    "FrontendOption": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Seed"
+        },
+        "feasible": {
+          "title": "Feasible",
+          "type": "boolean"
+        },
+        "hard_violations": {
+          "title": "Hard Violations",
+          "type": "integer"
+        },
+        "soft_total": {
+          "title": "Soft Total",
+          "type": "number"
+        },
+        "headlines": {
+          "items": {
+            "$ref": "#/$defs/FrontendHeadline"
+          },
+          "title": "Headlines",
+          "type": "array"
+        },
+        "problems": {
+          "items": {
+            "$ref": "#/$defs/FrontendResultRow"
+          },
+          "title": "Problems",
+          "type": "array"
+        },
+        "upsides": {
+          "items": {
+            "$ref": "#/$defs/FrontendResultRow"
+          },
+          "title": "Upsides",
+          "type": "array"
+        },
+        "breakdown": {
+          "items": {
+            "$ref": "#/$defs/FrontendResultRow"
+          },
+          "title": "Breakdown",
+          "type": "array"
+        },
+        "competitions": {
+          "items": {
+            "$ref": "#/$defs/FrontendCompetitionView"
+          },
+          "title": "Competitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label",
+        "seed",
+        "feasible",
+        "hard_violations",
+        "soft_total",
+        "headlines",
+        "problems",
+        "upsides",
+        "breakdown",
+        "competitions"
+      ],
+      "title": "FrontendOption",
+      "type": "object"
+    },
+    "FrontendResultRow": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "total": {
+          "title": "Total",
+          "type": "number"
+        },
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "examples": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Examples",
+          "type": "array"
+        },
+        "more": {
+          "title": "More",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "total",
+        "count",
+        "description",
+        "examples",
+        "more"
+      ],
+      "title": "FrontendResultRow",
+      "type": "object"
+    },
+    "FrontendRound": {
+      "properties": {
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "leg": {
+          "title": "Leg",
+          "type": "integer"
+        },
+        "dates": {
+          "title": "Dates",
+          "type": "string"
+        },
+        "matches": {
+          "items": {
+            "$ref": "#/$defs/FrontendMatch"
+          },
+          "title": "Matches",
+          "type": "array"
+        }
+      },
+      "required": [
+        "index",
+        "leg",
+        "dates",
+        "matches"
+      ],
+      "title": "FrontendRound",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "season_id": {
+      "title": "Season Id",
+      "type": "string"
+    },
+    "season_year": {
+      "title": "Season Year",
+      "type": "integer"
+    },
+    "season_start": {
+      "format": "date",
+      "title": "Season Start",
+      "type": "string"
+    },
+    "season_end": {
+      "format": "date",
+      "title": "Season End",
+      "type": "string"
+    },
+    "solver": {
+      "title": "Solver",
+      "type": "string"
+    },
+    "club_colors": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Club Colors",
+      "type": "object"
+    },
+    "options": {
+      "items": {
+        "$ref": "#/$defs/FrontendOption"
+      },
+      "title": "Options",
+      "type": "array"
+    }
+  },
+  "required": [
+    "generated_at",
+    "season_id",
+    "season_year",
+    "season_start",
+    "season_end",
+    "solver",
+    "club_colors",
+    "options"
+  ],
+  "title": "football-scheduler frontend data contract",
+  "type": "object",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}
