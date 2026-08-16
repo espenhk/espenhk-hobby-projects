@@ -174,3 +174,21 @@ poetry run python -m pytest football-scheduler/tests/
 ## Dependencies
 
 Managed by Poetry. Run `poetry install` to create `.venv/` and install all dependencies.
+
+---
+
+## Git & PR conventions
+
+When a pull request's changes fix one or more GitHub issues, the PR
+description must list each one on its own line as `closes #<number>` (or
+`fixes #<number>`), e.g.:
+
+```
+closes #18
+closes #19
+closes #21
+```
+
+This is what lets GitHub auto-close those issues when the PR merges — do
+this whether the PR was opened by a person or by an agent, and whether it
+fixes one issue or several.
