@@ -9,11 +9,13 @@ This repo contains independent hobby projects sharing a single Python virtual en
 ```sh
 espenhk-hobby-projects/
 ├── .venv/                       # Shared virtual environment (created by Poetry)
+├── docs/                        # GitHub Pages root — mobile-viewable POC frontends, one folder per project
 ├── skate/                       # Ice skating race predictor
 ├── conversational-analytics/    # NL -> semantic model -> DuckDB -> Vega-Lite dashboard prototype
 ├── football-scheduler/          # Football league season scheduler (terminliste)
 ├── pyproject.toml               # Shared dependencies for all projects
 ├── poetry.lock                  # Locked dependency versions
+├── GITHUB_PAGES_SETUP.md        # One-time GitHub Pages setup (do from a phone)
 ├── README.md
 └── CLAUDE.md
 ```
@@ -147,6 +149,8 @@ football-scheduler/
 │   ├── solvers/                # local-search (default) and CP-SAT (--solver cpsat) backends
 │   ├── report/                  # Jinja2 -> self-contained HTML season report
 │   └── external_schedule.py      # score a real/proposed CSV or JSON schedule
+├── scripts/
+│   └── publish_web.py       # generate + publish the report to docs/football-scheduler/
 ├── schedules/                # generated HTML + JSON output (gitignored)
 └── tests/
 ```
@@ -162,12 +166,33 @@ fetchable source, so check it before relying on it for anything real. See
 `football-scheduler/README.md` for the full architecture writeup, the
 constraint list, and suggested next steps (Norwegian Cup before European
 qualifiers, plus a handful of scoring rules the current set is missing).
+The season report is also published as a mobile-viewable POC — see
+`scripts/publish_web.py` and the "Mobile-viewable POC frontends" section
+above.
 
 ### Running tests
 
 ```bash
 poetry run python -m pytest football-scheduler/tests/
 ```
+
+---
+
+## Mobile-viewable POC frontends (`docs/`)
+
+Any project can publish a mobile-viewable POC frontend under `docs/<project-name>/`.
+`docs/` is the GitHub Pages publishing root for the whole repo — whatever lands
+there is live at `https://espenhk.github.io/espenhk-hobby-projects/<project-name>/`
+within about a minute of a merge to `main`.
+
+Full convention, including the "vanilla JS, no build step, CDN dependencies"
+rule for hand-written frontends, is in `docs/README.md` — read it before
+adding a new project's POC. `football-scheduler/scripts/publish_web.py` is
+the reference example (publishes an already-self-contained generated HTML
+report rather than writing new frontend code).
+
+One-time GitHub setup (enabling Pages itself) is documented in
+`GITHUB_PAGES_SETUP.md` at the repo root, written to be done from a phone.
 
 ---
 
