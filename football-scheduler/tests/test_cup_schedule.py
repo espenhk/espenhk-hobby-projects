@@ -125,35 +125,85 @@ def test_windowed_round_too_narrow_after_the_gap_is_rejected():
         schedule_cup(cup, blackouts=set())
 
 
-# -- schedule_cup: team spread within a round --------------------------------
+# -- schedule_cup: team spread within a windowed round -----------------------
 
 
-def test_teams_spread_across_the_round_window_not_all_on_one_day():
+def test_teams_spread_across_a_windowed_rounds_span_not_all_on_one_day():
     cup = f.competition(
         "cup",
         [f"t{i}" for i in range(8)],
         format="cup",
         match_window_days=3,
-        cup_rounds=[f.cup_round("r1", forced_date=date(2026, 8, 22), name="Round 1")],
+        cup_rounds=[
+            f.cup_round(
+                "r1",
+                window_start=date(2026, 9, 1),
+                window_end=date(2026, 9, 30),
+                granularity="month",
+                name="Round 1",
+            )
+        ],
     )
     schedule, warnings = schedule_cup(cup, blackouts=set())
     placement = schedule.rounds[0]
-    assert len(set(placement.dates.values())) > 1, "8 teams over a 7-day window should not clump"
+    assert len(set(placement.dates.values())) > 1, "8 teams over several legal days should not clump"
     assert placement.spread_days <= 6
     assert warnings == []
 
 
-def test_a_single_forced_date_round_puts_every_team_on_it_when_window_is_zero():
+# -- schedule_cup: a forced round never moves -------------------------------
+
+
+def test_a_forced_round_puts_every_team_on_the_confirmed_date_regardless_of_match_window_days():
+    """match_window_days would spread a windowed round's placements across
+    several days — it must have no effect on a forced one, since a confirmed
+    date isn't something placement is free to drift away from."""
     cup = f.competition(
         "cup",
         ["t1", "t2", "t3"],
         format="cup",
-        match_window_days=0,
+        match_window_days=3,
         cup_rounds=[f.cup_round("r1", forced_date=date(2026, 8, 22), name="Round 1")],
     )
     schedule, warnings = schedule_cup(cup, blackouts=set())
     assert set(schedule.rounds[0].dates.values()) == {date(2026, 8, 22)}
     assert warnings == []
+
+
+def test_forced_round_never_drifts_even_if_the_confirmed_date_is_blacked_out():
+    """A blacked-out confirmed date still gets used exactly as announced —
+    falling back to a nearby non-blackout day would silently move a date
+    that, by definition, cannot move. It's flagged with a warning instead."""
+    cup = f.competition(
+        "cup",
+        ["t1", "t2"],
+        format="cup",
+        match_window_days=3,
+        cup_rounds=[f.cup_round("r1", forced_date=date(2026, 8, 22), name="Round 1")],
+    )
+    schedule, warnings = schedule_cup(cup, blackouts={date(2026, 8, 22)})
+    assert set(schedule.rounds[0].dates.values()) == {date(2026, 8, 22)}
+    assert warnings and "Round 1" in warnings[0]
+
+
+def test_forced_round_too_close_to_the_previous_round_honours_min_rest_days():
+    """The old check only required the forced date to be strictly after the
+    previous round's last date — it ignored min_rest_days entirely. A forced
+    date that violates the configured rest gap is a genuine data conflict,
+    not something placement can resolve by moving a date that cannot move."""
+    cup = f.competition(
+        "cup",
+        ["t1"],
+        format="cup",
+        min_rest_days=10,
+        cup_rounds=[
+            f.cup_round("r1", forced_date=date(2026, 8, 22), name="Round 1"),
+            # Only 5 days after round 1 — short of the 10-day minimum gap.
+            f.cup_round("r2", forced_date=date(2026, 8, 27), name="Round 2"),
+        ],
+    )
+    with pytest.raises(CupSchedulingError, match="does not leave room"):
+        schedule_cup(cup, blackouts=set())
 
 
 def test_fully_blacked_out_window_falls_back_to_the_anchor_with_a_warning():

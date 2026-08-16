@@ -51,9 +51,11 @@ teams:
 # real spacing. Also how close a league match may land to a team's cup date.
 min_rest_days: 3
 
-# How many days either side of a round's anchor its teams' placements may
-# spread across. 3 gives a 7-day span — one calendar week, matching the "all
-# games of round X in the same week" preference.
+# How many days forward from a windowed round's earliest legal date its teams'
+# placements may spread across (3 gives a 4-day span, well inside a calendar
+# week — matching the "all games of round X in the same week" preference). A
+# forced round ignores this entirely: every team lands on the exact confirmed
+# date, not spread near it.
 match_window_days: 3
 
 cup_rounds:

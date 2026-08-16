@@ -19,21 +19,27 @@ Two rules are enforced here, matching how the season's own round-robin
 guarantees things by construction rather than leaving them to be discovered
 as violations later:
 
-- Hard: round N is fully placed before round N+1's first placement. Enforced
-  by construction — each round's earliest possible placement is bumped past
-  the previous round's latest actual one — and `CupSchedulingError` is raised
-  if a round's own window leaves no room left to satisfy it.
+- Hard: round N is fully placed before round N+1's first placement, honouring
+  `min_rest_days` as the required gap between them. Enforced by construction
+  — each round's earliest possible placement is bumped past the previous
+  round's latest actual one, plus the gap — and `CupSchedulingError` is
+  raised if a round's own window (or, for a forced round, the confirmed date
+  itself) leaves no room left to satisfy it. A forced round never moves to
+  make room; if it's too close to the previous round, that is the data's
+  problem to fix, not something placement can paper over.
 - Soft ("as far as possible"): every team's placement for a round falls
-  inside one calendar week. Enforced by construction too, the same way: a
-  round's placements only ever run forward from its anchor (never before a
-  forced date, and never before a windowed round's earliest permitted start)
-  across at most `match_window_days` days, so the competition's own data —
-  `match_window_days: 3` gives a 4-day span — is what keeps this inside a
-  week rather than a runtime check that could fail. What genuinely can't be
-  guaranteed is a *legal* date existing at all inside that span once
-  blackouts are subtracted; if every candidate is blacked out, placement
-  falls back to the round's own anchor regardless, and that gets a
-  plain-English warning rather than a raised error.
+  inside one calendar week. Enforced by construction too: a windowed round's
+  placements run forward from its earliest legal start across at most
+  `match_window_days` days (`match_window_days: 3` gives a 4-day span), so
+  the competition's own data is what keeps this inside a week rather than a
+  runtime check that could fail. A forced round has no spread at all — every
+  team lands on the exact confirmed date, since spreading it across nearby
+  days would be moving a date that, by definition, cannot move. What
+  genuinely can't be guaranteed, in either case, is a *legal* date existing
+  at all once blackouts are subtracted; if every candidate is blacked out
+  (including a forced round's own confirmed date), placement falls back to
+  the round's own anchor regardless, and that gets a plain-English warning
+  rather than a raised error.
 """
 
 from __future__ import annotations
@@ -48,9 +54,9 @@ class CupSchedulingError(Exception):
     """A cup's declared rounds cannot be resolved to a valid schedule.
 
     Raised when a round's own window (or forced date) leaves no room to
-    satisfy round N-before-round-N+1 ordering, or when a round has no
-    non-blackout date available at all — a data problem (the window needs
-    widening), not something a solver retry can fix.
+    satisfy round N-before-round-N+1 ordering and the required rest gap
+    between them — a data problem (the window needs widening, or the forced
+    date needs revisiting), not something a solver retry can fix.
     """
 
 
@@ -142,17 +148,24 @@ def _resolve_anchor(
 ) -> tuple[date, date | None, date | None]:
     """The round's anchor date, plus the bounds team placements must respect.
 
-    Bounds are `None` for a forced round — a confirmed date is a confirmed
-    date, not something to clip team placements back inside a window for.
+    A forced round's bounds are the confirmed date itself, both ends — a
+    confirmed date is a confirmed date, not a suggestion `_spread_teams`
+    should feel free to drift away from onto a nearby day (e.g. because the
+    exact date happens to be a blackout). It still goes through the same
+    minimum-rest gap check a windowed round's earliest placement does, since
+    a confirmed date too close to the previous round's last one is a genuine
+    conflict — one the data needs to fix, not something scheduling can paper
+    over by moving a date that, by definition, cannot move.
     """
     if round_.is_forced:
         anchor = round_.forced_date
-        if previous_latest is not None and anchor <= previous_latest:
+        if previous_latest is not None and (anchor - previous_latest).days < gap:
             raise CupSchedulingError(
                 f"{competition.id!r}: {round_.name} is forced to {anchor}, which does not "
-                f"leave room after the previous round's last date ({previous_latest})"
+                f"leave room after the previous round's last date ({previous_latest}) — needs "
+                f"at least {gap} day(s)"
             )
-        return anchor, None, None
+        return anchor, anchor, anchor
 
     earliest = round_.window_start
     if previous_latest is not None:
@@ -180,11 +193,14 @@ def _spread_teams(
     before it: `anchor` is either a confirmed date or a window's earliest
     legal start, and no team's placement should ever land earlier than that.
     A real cup round genuinely plays out over a few days, not all at once,
-    which is what `spread` (`match_window_days`) is for. Candidates are
-    clipped to `lower_bound`/`upper_bound` when set and blackout dates are
-    dropped; if that leaves nothing at all, every team falls back onto the
-    bare `anchor` and the second return value flags it, since a blacked-out
-    anchor is better than failing outright over one clashing day.
+    which is what `spread` (`match_window_days`) is for — except for a
+    forced round, where `lower_bound`/`upper_bound` are both set to `anchor`
+    itself, collapsing the candidate range to that one exact day: a confirmed
+    date isn't something to spread away from. Blackout dates are dropped from
+    whatever range survives the bounds; if that leaves nothing at all, every
+    team falls back onto the bare `anchor` and the second return value flags
+    it, since a blacked-out anchor is better than failing outright over one
+    clashing day.
     """
     candidates: list[date] = []
     for offset in range(0, spread + 1):
