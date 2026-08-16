@@ -208,14 +208,16 @@ def cmd_refresh_reference_data(args: argparse.Namespace) -> int:
             print("  no data to compare — using whatever is already in data/*.yml")
             continue
 
-        if not report.diffs:
+        if not report.diffs and not report.unmatched_api_teams and not report.unmatched_local_teams:
             print("  no differences found")
         for diff in report.diffs:
             any_diffs = True
             print(f"  {diff.team_id}: {diff.field} — file has {diff.current!r}, API has {diff.fetched!r}")
         if report.unmatched_api_teams:
+            any_diffs = True
             print(f"  API teams not matched to a local team: {', '.join(report.unmatched_api_teams)}")
         if report.unmatched_local_teams:
+            any_diffs = True
             print(f"  local teams not matched to an API team: {', '.join(report.unmatched_local_teams)}")
 
     print(

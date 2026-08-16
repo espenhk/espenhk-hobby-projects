@@ -74,9 +74,10 @@ def _parse_team(raw: dict) -> TeamRecord:
             capacity = int(capacity_raw)
         except (TypeError, ValueError):
             capacity = None
+    team_id = raw.get("idTeam")
     return TeamRecord(
-        api_team_id=str(raw.get("idTeam", "")),
-        name=raw.get("strTeam", ""),
+        api_team_id=str(team_id) if team_id is not None else "",
+        name=raw.get("strTeam") or "",
         stadium_name=raw.get("strStadium") or None,
         stadium_capacity=capacity,
     )

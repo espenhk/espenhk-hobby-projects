@@ -98,18 +98,37 @@ def _load_records(
     if not force:
         entry = cache.read(cache_path)
         if entry is not None and entry.is_fresh(ttl_s):
-            return [TeamRecord(**r) for r in entry.payload], "cache", None
+            records = _records_from_payload(entry.payload)
+            if records is not None:
+                return records, "cache", None
 
     try:
         fetched = fetch_teams(league_name)
     except FetchError as exc:
         stale = cache.read(cache_path)
-        if stale is not None:
-            return [TeamRecord(**r) for r in stale.payload], "stale-cache", str(exc)
+        records = _records_from_payload(stale.payload) if stale is not None else None
+        if records is not None:
+            return records, "stale-cache", str(exc)
         return [], "unavailable", str(exc)
 
     cache.write(cache_path, [_record_to_dict(r) for r in fetched])
     return fetched, "api", None
+
+
+def _records_from_payload(payload: object) -> list[TeamRecord] | None:
+    """Deserialize a cached payload, or `None` if its shape isn't usable.
+
+    A cache file that's valid JSON but the wrong shape — hand-edited, or
+    left over from an older, incompatible version of this cache — must
+    never crash the refresh path; it's exactly as unusable as a missing
+    file, so it's treated the same way: fall through to the next fallback.
+    """
+    if not isinstance(payload, list):
+        return None
+    try:
+        return [TeamRecord(**r) for r in payload]
+    except (TypeError, ValueError):
+        return None
 
 
 def _record_to_dict(record: TeamRecord) -> dict:
