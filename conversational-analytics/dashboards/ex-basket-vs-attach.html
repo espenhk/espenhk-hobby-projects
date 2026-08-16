@@ -69,17 +69,17 @@
     <summary>Show compiled SQL (executed by DuckDB — never written by the LLM)</summary>
     <code class="sql">WITH simple_agg AS (
   SELECT dim_store.store_name AS store_name, SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) / NULLIF(COUNT(DISTINCT fact_sales.receipt_id), 0) AS avg_basket_value
-  FROM read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/fact_sales.parquet') AS fact_sales
-LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
-LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_store.parquet') AS dim_store ON fact_sales.store_id = dim_store.store_id
+  FROM read_parquet('./data/fact_sales.parquet') AS fact_sales
+LEFT JOIN read_parquet('./data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
+LEFT JOIN read_parquet('./data/dim_store.parquet') AS dim_store ON fact_sales.store_id = dim_store.store_id
   WHERE 1=1
   GROUP BY dim_store.store_name
 ),
 basket_level AS (
   SELECT fact_sales.receipt_id AS receipt_id, dim_store.store_name AS store_name, MAX(CASE WHEN dim_product.category = 'Food' THEN 1 ELSE 0 END) AS food_attach_rate_num, MAX(CASE WHEN dim_product.category IN ('Coffee', 'Tea', 'Cold Drink') THEN 1 ELSE 0 END) AS food_attach_rate_den
-  FROM read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/fact_sales.parquet') AS fact_sales
-LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
-LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_store.parquet') AS dim_store ON fact_sales.store_id = dim_store.store_id
+  FROM read_parquet('./data/fact_sales.parquet') AS fact_sales
+LEFT JOIN read_parquet('./data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
+LEFT JOIN read_parquet('./data/dim_store.parquet') AS dim_store ON fact_sales.store_id = dim_store.store_id
   WHERE 1=1
   GROUP BY fact_sales.receipt_id, dim_store.store_name
 ),

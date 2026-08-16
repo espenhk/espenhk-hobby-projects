@@ -70,8 +70,8 @@
   <details>
     <summary>Show compiled SQL (executed by DuckDB — never written by the LLM)</summary>
     <code class="sql">SELECT dim_product.name AS name, SUM(fact_sales.unit_price * fact_sales.quantity - fact_sales.discount) AS net_revenue, SUM(fact_sales.quantity) AS units_sold
-FROM read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/fact_sales.parquet') AS fact_sales
-LEFT JOIN read_parquet('/home/user/espenhk-hobby-projects/conversational-analytics/data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
+FROM read_parquet('./data/fact_sales.parquet') AS fact_sales
+LEFT JOIN read_parquet('./data/dim_product.parquet') AS dim_product ON fact_sales.product_id = dim_product.product_id
 WHERE 1=1
 GROUP BY dim_product.name
 ORDER BY net_revenue DESC

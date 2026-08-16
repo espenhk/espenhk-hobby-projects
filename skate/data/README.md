@@ -19,3 +19,10 @@ This data is used to:
 - Maintain leaderboards
 - Track the overall competition leader
 - Provide lap-by-lap comparison against best historical performance
+
+## Provenance
+
+Skater names are real professional speed skaters. The race times, laps, and
+positions attached to them are a mix of real results and data invented for
+testing — this directory is not a verified record of any real competition,
+and shouldn't be cited as one.
