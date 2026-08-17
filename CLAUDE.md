@@ -141,6 +141,8 @@ this project exists rather than a generic single-league scheduler.
 football-scheduler/
 ├── data/                   # source of truth: venues, clubs/teams, competitions,
 │                            # season calendar, curated travel-time overrides — all YAML
+├── baselines/              # real published fixture lists (sources/) + their committed
+│                            # score reports (reports/) — see baselines/README.md
 ├── cli.py                  # validate / generate / score / explain
 ├── terminliste/
 │   ├── model/               # Pydantic schema + loader (World), calendar, travel model
@@ -148,9 +150,11 @@ football-scheduler/
 │   ├── scoring/               # constraint framework: hard.py, soft.py, registry.py
 │   ├── solvers/                # local-search (default) and CP-SAT (--solver cpsat) backends
 │   ├── report/                  # Jinja2 -> self-contained HTML season report
-│   └── external_schedule.py      # score a real/proposed CSV or JSON schedule
+│   ├── external_schedule.py      # score a real/proposed CSV or JSON schedule
+│   └── baseline.py                # score the committed baselines, write their reports
 ├── scripts/
-│   └── publish_web.py       # generate + publish the report to docs/football-scheduler/
+│   ├── publish_web.py       # generate + publish the report to docs/football-scheduler/
+│   └── refresh_baselines.py  # re-score baselines/sources/ -> baselines/reports/
 ├── schedules/                # generated HTML + JSON output (gitignored)
 └── tests/
 ```
@@ -160,7 +164,11 @@ football-scheduler/
 Complete and functional first version. `validate`, `generate` (local solver),
 and `score` all run fully offline with no external dependencies beyond
 `pydantic`/`pyyaml`/`jinja2`. `--solver cpsat` needs the optional
-`football-scheduler-cpsat` Poetry group (OR-Tools). Club/venue data in
+`football-scheduler-cpsat` Poetry group (OR-Tools).
+`scripts/refresh_baselines.py` re-scores the real fixture lists committed
+under `baselines/` and rewrites their reports; run it (and commit the diff)
+after any change that could move a schedule's score, and note that its
+`--check` mode is asserted by the test suite. Club/venue data in
 `data/` is marked `verified: false` — assembled from web search rather than a
 fetchable source, so check it before relying on it for anything real. See
 `football-scheduler/README.md` for the full architecture writeup, the

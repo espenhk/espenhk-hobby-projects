@@ -19,6 +19,7 @@ python cli.py validate                              # data integrity, no solving
 python cli.py generate --season 2026                 # solve, write schedules/2026.html
 python cli.py score my_schedule.csv --season 2026     # score a real/proposed schedule
 python cli.py refresh-reference-data                  # diff data/*.yml against a live API
+python scripts/refresh_baselines.py                   # re-score the committed real-schedule baselines
 python -m pytest ..                                   # -m pytest tests/ from the repo root
 ```
 
@@ -76,6 +77,11 @@ reads: it prints a diff against `data/*.yml`, it never rewrites it. See
   anywhere (a real league's published fixtures, a hand-drafted proposal) and
   scores it against the same rules, so `cli.py score` can point out exactly
   what's wrong with a schedule the tool didn't generate.
+- **`terminliste/baseline.py`** + **`baselines/`** — the durable version of
+  that: the real published fixture lists, committed with their provenance,
+  re-scored on demand so there is always a real-world number to read a
+  generated schedule against. See "Baselines" below and
+  `baselines/README.md`.
 - **`terminliste/refdata/`** — an optional, explicit-opt-in fetch/cache
   layer for team and venue reference data. See "Reference-data refresh"
   below.
@@ -183,6 +189,33 @@ generated schedule.
 Run `python cli.py score <file> --season 2026` on any schedule to see every
 rule's contribution, with named examples for anything that fired.
 
+## Baselines
+
+A score is only meaningful against something. `baselines/` keeps the real,
+published fixture lists in-tree — each as a CSV plus a provenance sidecar
+saying where it came from, when, and whether anyone has verified it — and
+`scripts/refresh_baselines.py` re-scores them through the same constraint
+registry the solver uses, writing a committed JSON + Markdown report per
+baseline.
+
+```bash
+python scripts/refresh_baselines.py           # rewrite baselines/reports/
+python scripts/refresh_baselines.py --check    # non-zero exit if stale
+```
+
+Re-run it after any change that could move the number — a new constraint, a
+re-weighted old one, a correction to `data/` — and commit the report diff
+with the change. That diff is the artefact worth having: it says in points
+what the edit did to a schedule nobody made up. `tests/test_baselines.py`
+fails if the committed reports are stale, so this cannot be forgotten
+quietly.
+
+What's committed today is round 1 of both 2026 leagues, not the full season:
+every fixture source is blocked by this sandbox's egress policy, and search
+gave trustworthy pairings only for the opening rounds. `baselines/README.md`
+has the full account, the rules for reading a partial baseline's hard-violation
+count, and the procedure for extending it from a machine with network access.
+
 ## Reference-data refresh
 
 `python cli.py refresh-reference-data [--season 2026] [--force]` fetches
@@ -238,6 +271,9 @@ python -m pytest tests/ -v
 - `test_external_schedule.py` — CSV/JSON parsing, leg inference, coverage
   warnings, and a schedule with deliberate flaws scoring the right hard
   violations.
+- `test_baselines.py` — the committed baselines load and score, every
+  baseline has a report, the reports are not stale, and no baseline breaks a
+  hard rule its sidecar hasn't declared.
 - `test_solver_contract.py` — parametrized over both backends (`cpsat`
   skipped if OR-Tools isn't installed): diverse top-N candidates, every
   fixture placed once, feasibility achievable, determinism, and a graceful
