@@ -47,8 +47,11 @@ end: 2026-12-06
 # Eliteserien wants the bulk of its matches on Sunday.
 preferred_weekday: sunday
 
-# Hard rule parameters.
-min_rest_days: 3
+# Hard rule parameters. Governs the gap between a team's own Eliteserien
+# matches only — the gap between a league match and a club's European
+# commitments is a separate setting, on the european_* competition files
+# (see champions_league_2026.yml's `min_rest_days` comment).
+min_rest_days: 2
 
 # How far an individual match may float from its round's anchor date. A ±3 day
 # window turns a round into a Friday-to-Monday weekend, which is the freedom

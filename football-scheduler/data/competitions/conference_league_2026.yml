@@ -23,7 +23,8 @@ teams:
   - brann_m
   - tromso_m
 
-min_rest_days: 3
+# See champions_league_2026.yml's min_rest_days comment.
+min_rest_days: 2
 
 european_rounds:
   - id: q2

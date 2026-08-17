@@ -20,9 +20,10 @@ from .base import Constraint, ConstraintResult, EvalContext, Event, ScheduleInde
 class MinRestDays:
     """At least N days between any team's matches.
 
-    A gap of exactly N is fine: Saturday to Tuesday is three days and legal at
-    the default setting. Only gaps strictly below the minimum count — including
-    a gap of zero, which is a team playing twice in one day.
+    A gap of exactly N is fine: Thursday to Saturday is two days and legal at
+    the default setting — the gap a Thu-Sun-Thu week (two European legs either
+    side of one league match) leans on. Only gaps strictly below the minimum
+    count — including a gap of zero, which is a team playing twice in one day.
     """
 
     competitions: list[Competition]

@@ -43,7 +43,19 @@ teams:
   - bodo_glimt_m
   - viking_m
 
-min_rest_days: 3
+# The buffer `EuropeanCommitmentConflict` (terminliste/scoring/hard.py)
+# keeps clear on either side of a resolved window's edges — not the window
+# span itself, which is always off-limits regardless of this value. 2, not
+# 3, so a domestic match can land as close as two days before the next
+# window opens: the Thu-Sun-Thu week (a European leg, the league match, the
+# next European leg) is a real, common pattern once a club is through to a
+# second competition, and needs a Sunday sitting only 2 days ahead of a
+# Tuesday/Wednesday leg to be legal. Lowering this does nothing for a
+# domestic date that falls *inside* a single round's own window (both legs
+# of one tie plus the days between them are always blocked) — see the
+# README's "Suggested next steps" for the per-leg window granularity that
+# would be needed to free up that stretch too.
+min_rest_days: 2
 
 european_rounds:
   - id: q3

@@ -39,7 +39,8 @@ teams:
   - stabak_w
   - valerenga_w
 
-min_rest_days: 3
+# See cup_men_2027.yml's min_rest_days comment.
+min_rest_days: 2
 match_window_days: 3
 
 cup_rounds:

@@ -341,12 +341,13 @@ European window up front — `solvers/greedy.py`'s cost function
 (`_EUROPEAN_CONFLICT`) and `solvers/cpsat.py`'s candidate-set construction
 (`_european_clear`, composed with the existing `_cup_clear`) — mirroring
 how each already treats `cup_conflict`. Even so, the 2026 season's European
-windows are wide enough (Brann's resolved cascade blocks roughly 40 of the
-48 days between its entry and its last tracked round; Tromsø's is similar)
-that the default search budget needs real headroom to reliably land on a
-feasible schedule — `cli.py generate`'s default `--time-budget` is 300s for
-exactly this reason; 60s only reaches feasible on a minority of seeds once
-these windows are in play. A `EuropeanCommitmentWindow` currently blocks
+windows are wide enough (Brann's resolved cascade blocks roughly 34 of the
+42 days between its entry and its last tracked round, even at the current
+`min_rest_days: 2`; Tromsø's is similar) that the default search budget
+needs real headroom to reliably land on a feasible schedule — `cli.py
+generate`'s default `--time-budget` is 300s for exactly this reason; 60s
+only reaches feasible on a minority of seeds once these windows are in
+play. A `EuropeanCommitmentWindow` currently blocks
 the *entire* span from one leg of a tie to the other, including the days
 between them — modelling a round as two narrower windows (one per leg)
 instead of one spanning both would hand back a meaningful chunk of that

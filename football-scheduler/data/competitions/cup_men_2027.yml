@@ -53,7 +53,8 @@ teams:
 # The floor on the gap between one round's last placement and the next
 # round's first — a safety minimum, not a target; the windows below do the
 # real spacing. Also how close a league match may land to a team's cup date.
-min_rest_days: 3
+# See eliteserien_2026.yml's min_rest_days comment for why 2, not 3.
+min_rest_days: 2
 
 # How many days forward from a windowed round's earliest legal date its teams'
 # placements may spread across (3 gives a 4-day span, well inside a calendar

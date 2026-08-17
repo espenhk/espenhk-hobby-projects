@@ -240,7 +240,7 @@ class Competition(BaseModel):
     end: date | None = None
 
     preferred_weekday: Weekday = "sunday"
-    min_rest_days: int = 3
+    min_rest_days: int = 2
     match_window_days: int = 3
     comfortable_rest_days: int = 5
     weights: dict[str, float] = Field(default_factory=dict)
