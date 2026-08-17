@@ -1,8 +1,23 @@
 {
   "solver": "local",
-  "iterations": 30116,
-  "elapsed_s": 60.23,
+  "iterations": 29876,
+  "elapsed_s": 60.13,
   "notes": [],
+  "search_stats": {
+    "investigated": 29876,
+    "feasible": 5361,
+    "hard_violation_scenarios": 24515,
+    "feasible_rate": 0.1794,
+    "difficulty": "moderate",
+    "hard_violation_counts": {
+      "min_rest_days": 24037,
+      "one_match_per_team_per_day": 18522,
+      "venue_double_booking": 6180,
+      "leg_ordering": 2307,
+      "blackout_dates": 2067,
+      "cup_round_conflict": 1301
+    }
+  },
   "options": [
     {
       "label": "Option 1",
@@ -9030,7 +9045,7 @@
       "label": "Option 3",
       "seed": 15880,
       "hard_violations": 4,
-      "soft_total": 2587.68,
+      "soft_total": 2571.05,
       "points": 7.4,
       "breakdown": [
         {
@@ -9102,14 +9117,14 @@
         {
           "constraint": "consecutive_home_days",
           "kind": "soft",
-          "total": 1500.0,
-          "count": 60
+          "total": 1475.0,
+          "count": 59
         },
         {
           "constraint": "consecutive_away_days",
           "kind": "soft",
-          "total": 231.68,
-          "count": 33
+          "total": 240.05,
+          "count": 35
         },
         {
           "constraint": "home_away_breaks",
@@ -9158,82 +9173,82 @@
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
-          "home": "aalesund_m",
-          "away": "hamkam_m",
-          "venue": "color_line_stadion",
+          "home": "bodo_glimt_m",
+          "away": "tromso_m",
+          "venue": "aspmyra_stadion",
           "kickoff_time": "20:00"
         },
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
-          "home": "fredrikstad_m",
-          "away": "sandefjord_m",
-          "venue": "fredrikstad_stadion",
-          "kickoff_time": "18:00"
+          "home": "brann_m",
+          "away": "viking_m",
+          "venue": "brann_stadion",
+          "kickoff_time": "14:00"
         },
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
-          "home": "kfum_oslo_m",
-          "away": "valerenga_m",
-          "venue": "kfum_arena",
-          "kickoff_time": "18:00"
+          "home": "hamkam_m",
+          "away": "sarpsborg08_m",
+          "venue": "briskeby_arena",
+          "kickoff_time": "14:00"
         },
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
-          "leg": 1,
-          "home": "kristiansund_m",
-          "away": "brann_m",
-          "venue": "kristiansund_stadion",
-          "kickoff_time": "18:00"
-        },
-        {
-          "date": "2026-03-15",
-          "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
           "home": "lillestrom_m",
-          "away": "tromso_m",
+          "away": "rosenborg_m",
           "venue": "araasen_stadion",
-          "kickoff_time": "20:00"
+          "kickoff_time": "14:00"
         },
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
-          "home": "sarpsborg08_m",
-          "away": "rosenborg_m",
-          "venue": "sarpsborg_stadion",
+          "home": "molde_m",
+          "away": "aalesund_m",
+          "venue": "aker_stadion",
           "kickoff_time": "18:00"
         },
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
-          "home": "start_m",
-          "away": "molde_m",
-          "venue": "sor_arena",
-          "kickoff_time": "20:00"
+          "home": "sandefjord_m",
+          "away": "kfum_oslo_m",
+          "venue": "jotun_arena",
+          "kickoff_time": "14:00"
         },
         {
           "date": "2026-03-15",
           "competition": "eliteserien_2026",
-          "round": 2,
+          "round": 1,
           "leg": 1,
-          "home": "viking_m",
-          "away": "bodo_glimt_m",
-          "venue": "sr_bank_arena",
-          "kickoff_time": "20:00"
+          "home": "start_m",
+          "away": "fredrikstad_m",
+          "venue": "sor_arena",
+          "kickoff_time": "14:00"
+        },
+        {
+          "date": "2026-03-15",
+          "competition": "eliteserien_2026",
+          "round": 1,
+          "leg": 1,
+          "home": "valerenga_m",
+          "away": "kristiansund_m",
+          "venue": "intility_arena",
+          "kickoff_time": "14:00"
         },
         {
           "date": "2026-03-21",
@@ -9438,82 +9453,82 @@
         {
           "date": "2026-03-29",
           "competition": "eliteserien_2026",
-          "round": 1,
+          "round": 2,
           "leg": 1,
-          "home": "bodo_glimt_m",
-          "away": "tromso_m",
-          "venue": "aspmyra_stadion",
+          "home": "aalesund_m",
+          "away": "hamkam_m",
+          "venue": "color_line_stadion",
           "kickoff_time": "20:00"
         },
         {
           "date": "2026-03-29",
           "competition": "eliteserien_2026",
-          "round": 1,
+          "round": 2,
           "leg": 1,
-          "home": "brann_m",
-          "away": "viking_m",
-          "venue": "brann_stadion",
-          "kickoff_time": "14:00"
-        },
-        {
-          "date": "2026-03-29",
-          "competition": "eliteserien_2026",
-          "round": 1,
-          "leg": 1,
-          "home": "hamkam_m",
-          "away": "sarpsborg08_m",
-          "venue": "briskeby_arena",
-          "kickoff_time": "14:00"
-        },
-        {
-          "date": "2026-03-29",
-          "competition": "eliteserien_2026",
-          "round": 1,
-          "leg": 1,
-          "home": "lillestrom_m",
-          "away": "rosenborg_m",
-          "venue": "araasen_stadion",
-          "kickoff_time": "14:00"
-        },
-        {
-          "date": "2026-03-29",
-          "competition": "eliteserien_2026",
-          "round": 1,
-          "leg": 1,
-          "home": "molde_m",
-          "away": "aalesund_m",
-          "venue": "aker_stadion",
+          "home": "fredrikstad_m",
+          "away": "sandefjord_m",
+          "venue": "fredrikstad_stadion",
           "kickoff_time": "18:00"
         },
         {
           "date": "2026-03-29",
           "competition": "eliteserien_2026",
-          "round": 1,
+          "round": 2,
           "leg": 1,
-          "home": "sandefjord_m",
-          "away": "kfum_oslo_m",
-          "venue": "jotun_arena",
-          "kickoff_time": "14:00"
+          "home": "kfum_oslo_m",
+          "away": "valerenga_m",
+          "venue": "kfum_arena",
+          "kickoff_time": "18:00"
         },
         {
           "date": "2026-03-29",
           "competition": "eliteserien_2026",
-          "round": 1,
+          "round": 2,
+          "leg": 1,
+          "home": "kristiansund_m",
+          "away": "brann_m",
+          "venue": "kristiansund_stadion",
+          "kickoff_time": "18:00"
+        },
+        {
+          "date": "2026-03-29",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "lillestrom_m",
+          "away": "tromso_m",
+          "venue": "araasen_stadion",
+          "kickoff_time": "20:00"
+        },
+        {
+          "date": "2026-03-29",
+          "competition": "eliteserien_2026",
+          "round": 2,
+          "leg": 1,
+          "home": "sarpsborg08_m",
+          "away": "rosenborg_m",
+          "venue": "sarpsborg_stadion",
+          "kickoff_time": "18:00"
+        },
+        {
+          "date": "2026-03-29",
+          "competition": "eliteserien_2026",
+          "round": 2,
           "leg": 1,
           "home": "start_m",
-          "away": "fredrikstad_m",
+          "away": "molde_m",
           "venue": "sor_arena",
-          "kickoff_time": "14:00"
+          "kickoff_time": "20:00"
         },
         {
           "date": "2026-03-29",
           "competition": "eliteserien_2026",
-          "round": 1,
+          "round": 2,
           "leg": 1,
-          "home": "valerenga_m",
-          "away": "kristiansund_m",
-          "venue": "intility_arena",
-          "kickoff_time": "14:00"
+          "home": "viking_m",
+          "away": "bodo_glimt_m",
+          "venue": "sr_bank_arena",
+          "kickoff_time": "20:00"
         },
         {
           "date": "2026-04-04",
