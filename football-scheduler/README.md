@@ -261,9 +261,11 @@ python -m pytest tests/ -v
 ```
 
 - `test_round_robin.py` — exhaustive n=2..20 checks on the pairing generator,
-  plus the triple-round-robin (`rounds_per_pairing=3`) checks backing
-  Toppserien: every pairing meets three times with a 2-1 split, and every
-  team's season-total home/away count is within 1 of even.
+  plus generic triple-round-robin (`rounds_per_pairing=3`) checks: every
+  pairing meets three times with a 2-1 split, and every team's season-total
+  home/away count is within 1 of even. Both leagues this project actually
+  schedules are double round-robins; the generator supports any
+  `rounds_per_pairing`, and these tests are what back that generality.
 - `test_hard_constraints.py` / `test_soft_constraints.py` — each rule at its
   boundary, hand-built 4-team schedules, plus a check that every hard rule is
   silent on a clean schedule.

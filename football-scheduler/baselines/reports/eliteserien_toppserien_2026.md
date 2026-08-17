@@ -33,8 +33,8 @@ Some of those hard violations are expected, and are artefacts of this baseline's
 
 - Eliteserien: 112 pair(s) never meet (expected 2 meetings each) — e.g. Aalesunds FK v FK Bodø/Glimt
 - Eliteserien: 8 pair(s) meet a different number of times than 2 — e.g. Aalesunds FK v Lillestrøm SK met 1 time(s)
-- Toppserien: 60 pair(s) never meet (expected 3 meetings each) — e.g. Aalesunds FK Kvinner v FK Bodø/Glimt Kvinner
-- Toppserien: 6 pair(s) meet a different number of times than 3 — e.g. Aalesunds FK Kvinner v Vålerenga Fotball Kvinner met 1 time(s)
+- Toppserien: 60 pair(s) never meet (expected 2 meetings each) — e.g. Aalesunds FK Kvinner v FK Bodø/Glimt Kvinner
+- Toppserien: 6 pair(s) meet a different number of times than 2 — e.g. Aalesunds FK Kvinner v Vålerenga Fotball Kvinner met 1 time(s)
 
 ## Hard rules broken
 
