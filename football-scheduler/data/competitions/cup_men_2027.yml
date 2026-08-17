@@ -25,6 +25,10 @@ season: 2027
 gender: men
 format: cup
 
+# NFF fixes these rounds' dates (forced or windowed) — issue #31 — never
+# something this project's solver proposes moving.
+movable: false
+
 # Same 16 clubs as eliteserien_2026 — the cup edition this data models only
 # tracks the top flight, not the ~150 lower-division sides also in the draw.
 team_count: 16

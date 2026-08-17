@@ -4,6 +4,12 @@ season: 2026
 gender: men
 format: league
 
+# This project generates and dates Eliteserien's fixtures — issue #31's
+# "scheduler-controlled" case, as opposed to a cup or European competition,
+# whose real-world dates the solver only schedules around (movable: false —
+# see cup_men_2027.yml and champions_league_2026.yml).
+movable: true
+
 # Double league: everyone meets twice, once home and once away. The second leg
 # is the mirror of the first, so all first meetings are complete before any
 # second meeting starts. Set to 1 for a single league; the round generator

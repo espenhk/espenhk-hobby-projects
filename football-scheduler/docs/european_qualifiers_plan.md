@@ -1,0 +1,179 @@
+# European qualifiers: representation plan (issues #29, #30, #31, #32)
+
+This is the written plan issue #29 asks for, covering all four issues
+together — #30, #31 and #32 were opened as the general mechanisms this
+project needed in order to model #29's actual use case, and the shipped
+implementation treats them as one piece of work rather than four unrelated
+ones. Where a section says "implemented", the corresponding code and data
+already exist and are tested; "sketched" means the mechanism supports it
+but the real 2026-27 data doesn't currently exercise it.
+
+## The problem, restated
+
+Champions League, Europa League and Conference League qualifying interact:
+a team eliminated from one competition's qualifying round can drop into a
+different competition's equivalent round rather than being out of Europe
+entirely. From this project's point of view — scheduling Eliteserien and
+Toppserien around commitments it doesn't control — three things make this
+harder than the Norwegian Cup, which already had a similar-looking
+"forced date or vague window" mechanism (`CupRound`) before this work
+started:
+
+1. **Not every entrant plays every round.** A cup's entered teams are all
+   assumed to reach the final (opponents are unknown, but survival isn't in
+   question for scheduling purposes). A European qualifying round's entrant
+   list is different per round — Norway's 2026-27 Champions League
+   runner-up enters at the third qualifying round, its champion enters
+   directly at the play-off round — so "which teams are in this round" has
+   to be a property of the round, not the competition.
+2. **Whether a team is even in a given round is genuinely unknown.** A cup
+   round's *date* might be vague, but the team's presence in it isn't. A
+   European qualifying round's date can be just as vague (real dates are
+   published a season ahead as target weeks, then confirmed leg by leg),
+   *and* whether the team survived to play it is unknown until the previous
+   tie is decided.
+3. **A loss doesn't mean "out" — it means "somewhere else."** Losing a
+   Champions League qualifying round can mean dropping into the Europa
+   League's equivalent round, which itself cascades into the Conference
+   League. The domestic scheduler needs to treat the team as still
+   potentially committed on those dates regardless of which branch is real,
+   until a result narrows it down.
+
+## Representation (issue #29, #30)
+
+`EuropeanRound` (`terminliste/model/schema.py`) is a sibling of `CupRound`,
+both sharing a `_ScheduledRound` base that carries the forced-date-XOR-window
+mechanics issue #30 asked for generalised: `forced_date` when a date is
+confirmed, `window_start`/`window_end` (+ `granularity`) when only the week,
+month or quarter is known, and a `forced_date` can always replace a window
+later without touching anything downstream — narrowing a vague date is a
+data edit, not a re-model. This was already true for cup rounds before this
+work; extracting the shared base just means a European round gets the same
+guarantee for free.
+
+`EuropeanRound` adds three things `CupRound` doesn't need:
+
+- `entrants: list[str]` — which of the competition's teams actually play
+  this specific round, addressing point 1 above.
+- `drop_to_competition` / `drop_to_round` — where an entrant lands if
+  eliminated *here*, naming a round in a different `Competition`. Both are
+  `None` when a loss here has no further qualifying round to track (see
+  "Scope boundary: qualifying only" below).
+
+A `Competition` gains `format: "european"` alongside `"league"`/`"cup"`,
+and `european_rounds: list[EuropeanRound]` alongside `cup_rounds`. Three
+competitions carry this format for 2026-27:
+`data/competitions/champions_league_2026.yml`, `europa_league_2026.yml`,
+`conference_league_2026.yml` — one per UEFA competition, each declaring
+only the rounds that have a live Norwegian entrant.
+
+## Movable vs. fixed (issue #31)
+
+`Competition.movable: bool` is an explicit flag rather than something
+inferred from `format`. In the shipped data every `league` competition is
+`movable: true` and every `cup`/`european` competition is `movable: false`,
+but making it explicit means the data says outright which tournaments this
+project schedules and which it only schedules *around* — exactly what issue
+#31 asked for as an acceptance criterion, not just a re-statement of
+`format`. Mechanically, a movable competition's fixtures are generated and
+dated by the solver (`season.competitions`); a non-movable one is resolved
+once, up front (`cup_schedule.py` / `european_schedule.py`), and the result
+is handed to the solver as a set of dates to schedule around, never as
+something either solver backend proposes moving.
+
+## Resolving the cascade (issue #29, #32)
+
+`terminliste/rounds/european_schedule.py` walks a team's cascade from its
+entry round rather than trying to predict a result. Two edges leave any
+given round for a given team:
+
+- **Win-progression**: the next round in the same competition's
+  `european_rounds` list, if the team is listed among that round's
+  `entrants` — no cascade pointer needed, since staying in the same
+  competition is the default.
+- **Elimination**: `drop_to_competition`/`drop_to_round`, if set — a
+  cascade into a different, lower competition's round.
+
+Both are followed unconditionally, because which one is real is exactly the
+unknown. Every round reachable at the same cascade *depth* (0 = entry
+round, 1 = the round after, and so on) is merged into a single
+`EuropeanCommitmentWindow` — one blocked date range per depth, spanning the
+earliest start and latest end across every branch still open at that depth.
+
+This is a deliberate simplification rather than full branch tracking, and
+it works because of a real scheduling fact: UEFA keeps a qualifying
+*stage* — Q1, Q2, Q3, play-offs — within the same week or two across all
+three competitions, specifically so a team dropping down keeps roughly to
+schedule instead of getting an extra rest week for losing. That means the
+set of *weeks* a team might be required to play at a given depth is knowable
+even before the identity of the actual branch is. A full decision tree
+(which round, on which specific date, under which exact result) would be
+more precise but wouldn't change what the domestic scheduler actually needs
+— a date range to avoid — so the simpler structure is what's built.
+
+`EuropeanCommitmentConflict` (`terminliste/scoring/hard.py`) is the
+constraint that acts on the result: it is `CupRoundConflict`'s counterpart,
+keeping a team's league matches at least `min_rest_days` clear of every
+window in its resolved cascade. It differs from `CupRoundConflict` in being
+range-based rather than point-based, since a European commitment is a
+window (vague date, or a resolved-but-still-two-legged tie) even once which
+competition it belongs to is certain.
+
+**Issue #32's "harder case"** — a conditional fixture whose date, once
+triggered, is fixed and non-reschedulable, forcing other movable fixtures
+to move — falls out of this without new machinery. Resolving a real result
+is a data edit: delete the `EuropeanRound` on the branch not taken (or turn
+the surviving one's window into a `forced_date` once UEFA confirms it), and
+regenerate. The solver already treats a `forced_date` on a non-movable
+competition as a hard constraint to schedule around; a regenerated schedule
+reshuffles whatever movable fixture now conflicts, the same way it already
+would for a newly-added blackout date or fixed requirement. No mechanism
+this project didn't already have is needed for that half of issue #32 — the
+work was building the *conditional* half (issue #29's cascade), which this
+document is otherwise about.
+
+## Scope boundary: qualifying only
+
+This project tracks UEFA *qualifying* rounds, not the group/league phase
+that follows. A team eliminated from a competition's last qualifying round
+(or, on some paths, its third qualifying round) doesn't fall out of Europe
+under the post-2024 CL/EL/UECL format — it drops straight into the next
+competition's *league phase*: many matchdays spread across autumn, not a
+single round with a date to avoid. Modelling that would mean tracking a
+whole second competition structure (a mini-league, not a knockout cascade)
+for a team that might end up in any of three different ones depending on
+results neither this project nor its data source can know in advance.
+`drop_to_competition`/`drop_to_round` is `None` wherever the real rule sends
+a losing team into a league phase rather than another qualifying round —
+this is a deliberate boundary, not an oversight, and is called out in each
+data file's header at the specific round it applies to.
+
+## What's fully implemented vs. sketched, for 2026-27
+
+- **Champions League — fully implemented.** Both Norwegian entrants
+  (Bodø/Glimt at the third qualifying round, Viking at the play-off round)
+  are modelled with real dates. Neither round sets `drop_to_*`: League Path
+  Q3 losses and play-off losses on either path both go to the Europa
+  League league phase directly, which is the scope boundary above, not a
+  gap.
+- **Europa League — Conference League cascade — implemented, real data.**
+  Europa League's third-qualifying-round entry (`q3`) sets
+  `drop_to_competition: conference_league_2026`, `drop_to_round: playoff` —
+  the one real, sourced UEFA rule ("third-qualifying-round losers enter the
+  Conference League play-off round") that lands on another qualifying round
+  rather than a league phase, so it's the hop this project actually wires
+  between two competitions on live data rather than leaving as a documented
+  gap.
+- **Conference League — sketched.** Brann's own progression through the
+  competition (Q2 -> Q3 -> play-off) is modelled with real dates, including
+  receiving Europa League's cascade at the play-off round. What isn't
+  wired: the Conference League's own play-off round has no `drop_to_*`
+  (its losers enter the Conference League league phase itself, the same
+  scope boundary as everywhere else), and this project doesn't model
+  Conference League Q1 (no Norwegian entrant this cycle, so it's omitted
+  rather than added as an inert empty round).
+- **Mechanism generality — proven by tests, not just by the real data.**
+  `tests/test_european_schedule.py` exercises multi-hop cascades, branch
+  merging at a shared depth, and the error paths on synthetic data, so the
+  code path is verified independent of whether the current season's real
+  UEFA rules happen to exercise every hop.

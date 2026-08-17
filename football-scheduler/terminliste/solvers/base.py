@@ -14,6 +14,7 @@ from typing import Protocol
 from ..model.loader import World
 from ..model.schema import Competition, Match, Season
 from ..rounds.cup_schedule import CupSchedule
+from ..rounds.european_schedule import EuropeanCommitmentWindow
 from ..scoring.base import Constraint, EvalContext, Score
 
 # Two candidates must differ on at least this share of their match dates to
@@ -65,6 +66,9 @@ class SolveRequest:
     # resolved to a date per team (see `rounds/cup_schedule.py`) — not
     # scheduled themselves but used to steer league placement away from them.
     cup_schedules: list[CupSchedule] = field(default_factory=list)
+    # Same idea for resolved UEFA qualifying commitments — see
+    # `rounds/european_schedule.py`.
+    european_windows: dict[str, list[EuropeanCommitmentWindow]] = field(default_factory=dict)
 
 
 class Scheduler(Protocol):

@@ -122,6 +122,7 @@ class LocalSearchScheduler:
                     seed,
                     calendar,
                     cup_schedules=request.cup_schedules,
+                    european_windows=request.european_windows,
                 )
             except ValueError as exc:
                 notes.append(f"restart {restart}: {exc}")

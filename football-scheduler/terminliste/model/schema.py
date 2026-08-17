@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 Gender = Literal["men", "women"]
 TeamLevel = Literal["senior", "second", "youth"]
 Surface = Literal["grass", "artificial", "hybrid"]
-CompetitionFormat = Literal["league", "cup"]
+CompetitionFormat = Literal["league", "cup", "european"]
 
 WEEKDAYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
 Weekday = Literal["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -89,19 +89,18 @@ class Club(BaseModel):
 RoundGranularity = Literal["week", "month", "quarter"]
 
 
-class CupRound(BaseModel):
-    """One round of a knockout cup: when it may be played, not who plays whom.
+class _ScheduledRound(BaseModel):
+    """Shared shape for "a round whose date is either confirmed or a window".
 
-    Real-world cup rounds are announced at wildly different notice: a near-term
-    round may already have a confirmed date (`forced_date`), while a distant
-    one is only known to the week, month or quarter (`window_start`/
-    `window_end`, with `granularity` recording which). Exactly one of the two
-    must be set — never both, never neither.
-
-    Pairings are drawn round by round and are not known ahead of time, so this
-    only ever describes *when* a round falls; `terminliste/rounds/cup_schedule.py`
-    resolves it to an actual per-team date, honouring `forced_date` exactly and
-    picking a date inside the window otherwise.
+    Real-world rounds — a cup round, a European qualifying round — are
+    announced at wildly different notice: a near-term one may already have a
+    confirmed date (`forced_date`), while a distant one is only known to the
+    week, month or quarter (`window_start`/`window_end`, with `granularity`
+    recording which). Exactly one of the two must be set — never both, never
+    neither. This is issue #30's "vague/imprecise game dates" mechanism:
+    narrowing a window down to a `forced_date` once the real date is
+    announced is a data edit, not a re-model — see `CupRound` and
+    `EuropeanRound`, its two concrete users.
     """
 
     id: str
@@ -113,18 +112,18 @@ class CupRound(BaseModel):
     note: str = ""
 
     @model_validator(mode="after")
-    def _forced_xor_window(self) -> "CupRound":
+    def _forced_xor_window(self) -> "_ScheduledRound":
         has_forced = self.forced_date is not None
         has_window = self.window_start is not None or self.window_end is not None
         if has_forced and has_window:
-            raise ValueError(f"cup round {self.id!r}: set forced_date OR a window, not both")
+            raise ValueError(f"round {self.id!r}: set forced_date OR a window, not both")
         if not has_forced and not has_window:
-            raise ValueError(f"cup round {self.id!r}: needs either forced_date or a window")
+            raise ValueError(f"round {self.id!r}: needs either forced_date or a window")
         if has_window and (self.window_start is None or self.window_end is None):
-            raise ValueError(f"cup round {self.id!r}: a window needs both window_start and window_end")
+            raise ValueError(f"round {self.id!r}: a window needs both window_start and window_end")
         if has_window and self.window_end < self.window_start:
             raise ValueError(
-                f"cup round {self.id!r}: window_end ({self.window_end}) is before "
+                f"round {self.id!r}: window_end ({self.window_end}) is before "
                 f"window_start ({self.window_start})"
             )
         return self
@@ -144,6 +143,67 @@ class CupRound(BaseModel):
         return self.forced_date if self.forced_date is not None else self.window_end
 
 
+class CupRound(_ScheduledRound):
+    """One round of a knockout cup: when it may be played, not who plays whom.
+
+    Pairings are drawn round by round and are not known ahead of time, so this
+    only ever describes *when* a round falls; `terminliste/rounds/cup_schedule.py`
+    resolves it to an actual per-team date, honouring `forced_date` exactly and
+    picking a date inside the window otherwise.
+    """
+
+
+class EuropeanRound(_ScheduledRound):
+    """One qualifying round of a UEFA competition (Champions/Europa/Conference
+    League), for the Norwegian team(s) entered in it.
+
+    Built for issue #29 (the CL/EL/UECL qualifying cascade) and issue #32
+    (conditional fixtures): unlike a domestic cup round, not every team
+    listed on the competition necessarily enters every round — Norway's
+    Champions League runner-up enters at the third qualifying round while
+    the champion enters directly at the play-off round, for instance — so
+    `entrants` names exactly which of `Competition.teams` play this
+    particular round.
+
+    `drop_to_competition`/`drop_to_round` model the cascade: if an entrant
+    loses this round, that pair names the round (in a different, lower
+    competition) they drop into instead — e.g. a Champions League
+    Champions-Path third-qualifying-round loss drops into that season's
+    Europa League play-off round. Both are `None` when a loss here has no
+    further *qualifying* round to model, either because the real rule sends
+    the team straight into a competition's league phase (many matchdays,
+    not a single round — out of scope for this project, which only tracks
+    qualifying) or because this project simply hasn't sketched that hop yet
+    (see `data/competitions/europa_league_2026.yml`'s header for exactly
+    which hops are wired and which are left as a documented gap).
+
+    Because the outcome of a round is unknown ahead of time,
+    `terminliste/rounds/european_schedule.py` does not pick a branch: it
+    walks every reachable round from a team's entry point and blocks the
+    union of their windows, so the domestic scheduler stays clear of a
+    European commitment regardless of which branch of the cascade actually
+    happens. Once a real result is known, resolving the conditional is a
+    data edit — delete the round(s) on the branch not taken (or narrow the
+    surviving one's window to a `forced_date`) and regenerate; see the
+    module docstring for the mechanics.
+    """
+
+    entrants: list[str] = Field(default_factory=list)
+    drop_to_competition: str | None = None
+    drop_to_round: str | None = None
+
+    @model_validator(mode="after")
+    def _drop_to_is_paired(self) -> "EuropeanRound":
+        has_competition = self.drop_to_competition is not None
+        has_round = self.drop_to_round is not None
+        if has_competition != has_round:
+            raise ValueError(
+                f"european round {self.id!r}: drop_to_competition and drop_to_round must be "
+                f"set together, or not at all"
+            )
+        return self
+
+
 class Competition(BaseModel):
     """A league or a cup. `format` discriminates the two.
 
@@ -158,6 +218,15 @@ class Competition(BaseModel):
     season: int
     gender: Gender
     format: CompetitionFormat = "league"
+
+    # Issue #31: whether the solver is free to place this competition's
+    # fixtures (`True`, the league default) or must treat its dates as a
+    # given to schedule *around* (`False` — every cup and european
+    # competition; see `README.md`'s "Data model" section). Explicit rather
+    # than inferred from `format` so the flag is visible in the data itself,
+    # even though in practice every `format != "league"` competition sets
+    # it `False`.
+    movable: bool = True
 
     rounds_per_pairing: int = 2
     team_count: int
@@ -209,6 +278,11 @@ class Competition(BaseModel):
     # into, in the order they are played. Empty for a league.
     cup_rounds: list[CupRound] = Field(default_factory=list)
 
+    # European-only: the UEFA qualifying rounds this competition's Norwegian
+    # entrant(s) play, in the order they are played — see `EuropeanRound`
+    # and issue #29. Empty for a league or cup.
+    european_rounds: list[EuropeanRound] = Field(default_factory=list)
+
     @field_validator("rounds_per_pairing")
     @classmethod
     def _at_least_one_round(cls, v: int) -> int:
@@ -227,10 +301,13 @@ class Competition(BaseModel):
         """Total rounds.
 
         League: (n-1) per leg for even n, n for odd n (bye rounds). Cup: the
-        number of real-world rounds its teams are entered into.
+        number of real-world rounds its teams are entered into. European:
+        the number of qualifying rounds tracked, same idea as a cup.
         """
         if self.format == "cup":
             return len(self.cup_rounds)
+        if self.format == "european":
+            return len(self.european_rounds)
         n = self.team_count
         per_leg = n - 1 if n % 2 == 0 else n
         return per_leg * self.rounds_per_pairing
@@ -241,9 +318,11 @@ class Competition(BaseModel):
 
     @property
     def total_matches(self) -> int:
-        """League only — a cup's pairings are drawn round by round and are
-        not modelled as fixtures, so this is 0 for `format == "cup"`."""
-        if self.format == "cup":
+        """League only — a cup's or European competition's pairings are not
+        modelled as fixtures (opponents are drawn, or simply not this
+        project's concern), so this is 0 for anything but `format ==
+        "league"`."""
+        if self.format != "league":
             return 0
         return self.matches_per_leg * self.rounds_per_pairing
 
@@ -344,6 +423,11 @@ class Season(BaseModel):
     # August 2026 and runs into the following spring) — that is expected, not
     # a data error.
     cup_competitions: list[str] = Field(default_factory=list)
+    # European (UEFA qualifying) competitions tied to this season — issue
+    # #29 — kept separate for the same reason as `cup_competitions`: these
+    # are resolved once, up front (`rounds/european_schedule.py`), not fed
+    # to the round-robin/solver pipeline.
+    european_competitions: list[str] = Field(default_factory=list)
     global_blackouts: list[DatedNote] = Field(default_factory=list)
     discouraged_dates: list[DatedNote] = Field(default_factory=list)
     venue_blackouts: list[VenueBlackout] = Field(default_factory=list)

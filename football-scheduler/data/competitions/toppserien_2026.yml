@@ -4,6 +4,10 @@ season: 2026
 gender: women
 format: league
 
+# Scheduler-controlled, same as eliteserien_2026.yml — see its comment and
+# issue #31.
+movable: true
+
 # Triple round-robin: every pairing meets three times (2 home/1 away or
 # 1 home/2 away, alternating fairly across the roster) rather than the
 # standard home-and-away double. `generate_fixtures` handles any

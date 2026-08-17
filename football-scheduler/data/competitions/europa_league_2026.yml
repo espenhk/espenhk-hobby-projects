@@ -1,0 +1,72 @@
+# 2026-27 UEFA Europa League qualifying — Norway's two entrants, issue #29.
+#
+# format: european, movable: false — see champions_league_2026.yml's header
+# for the general shape of this file; the same notes on verification and on
+# only modelling rounds with a live Norwegian entrant apply here.
+#
+# Tromsø IL enter the second qualifying round; Lillestrøm SK enter directly
+# at the play-off round as NM Cupen's most recent winners. Q3 and the
+# play-off round both carry Tromsø as an entrant too (win-progression from
+# Q2 — see `EuropeanRound.entrants` on schema.py's docstring for how the
+# resolver reads that), not because their Q2 result is known, but because
+# it isn't: the window blocked for Tromsø needs to cover both "won Q2,
+# playing Q3" and "still eliminated, no further commitment" until a real
+# result narrows it, which is exactly issue #32's conditional-fixture case.
+# verified: false — see champions_league_2026.yml's header for sourcing;
+# specifically footballseeding.com's 2026-27 country-ranking breakdown for
+# the entrants/rounds, and UEFA.com's qualifying-schedule page for dates.
+#
+# Cascade: the four/six/seven losers of the third qualifying round (split
+# by path) drop into that season's Conference League play-off round under
+# the current format — the one hop this project wires end to end, both to
+# demonstrate the mechanism on real data and because, unlike the Champions
+# League cascade, it lands on another *qualifying* round rather than a
+# league phase. Every other round here (Q2, and a play-off loss) sends a
+# team into the next competition's *league phase* instead, which is out of
+# this project's scope the same way it is in champions_league_2026.yml.
+id: europa_league_2026
+name: UEFA Europa League qualifying
+season: 2026
+gender: men
+format: european
+movable: false
+
+team_count: 2
+teams:
+  - tromso_m
+  - lillestrom_m
+
+min_rest_days: 3
+
+european_rounds:
+  - id: q2
+    name: Second qualifying round
+    entrants:
+      - tromso_m
+    window_start: 2026-07-23
+    window_end: 2026-07-30
+    granularity: week
+    note: "Tromsø IL's entry round. First leg 23 July, second leg 30 July 2026."
+
+  - id: q3
+    name: Third qualifying round
+    entrants:
+      - tromso_m
+    window_start: 2026-08-06
+    window_end: 2026-08-13
+    granularity: week
+    note: "Reached only if Tromsø win Q2. First leg 6 August, second leg 13 August 2026."
+    drop_to_competition: conference_league_2026
+    drop_to_round: playoff
+
+  - id: playoff
+    name: Play-off round
+    entrants:
+      - tromso_m
+      - lillestrom_m
+    window_start: 2026-08-20
+    window_end: 2026-08-27
+    granularity: week
+    note: >-
+      Lillestrøm's entry round (cup-winner slot); reached by Tromsø only if
+      they also win Q3. First leg 20 August, second leg 27 August 2026.

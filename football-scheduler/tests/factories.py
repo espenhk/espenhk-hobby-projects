@@ -17,6 +17,7 @@ from terminliste.model.schema import (
     Club,
     Competition,
     CupRound,
+    EuropeanRound,
     FixedRequirement,
     FullRoundRequirement,
     Match,
@@ -74,7 +75,9 @@ def competition(
     weights: dict | None = None,
     rounds_per_pairing: int = 2,
     format: str = "league",
+    movable: bool | None = None,
     cup_rounds: list[CupRound] | None = None,
+    european_rounds: list[EuropeanRound] | None = None,
     start: date | None = None,
     end: date | None = None,
     final_round_kickoff_time: str = "18:00",
@@ -86,6 +89,7 @@ def competition(
         season=2026,
         gender=gender,
         format=format,
+        movable=movable if movable is not None else (format == "league"),
         team_count=len(teams),
         teams=teams,
         preferred_weekday=preferred_weekday,
@@ -95,6 +99,7 @@ def competition(
         weights=weights or {},
         rounds_per_pairing=rounds_per_pairing,
         cup_rounds=cup_rounds or [],
+        european_rounds=european_rounds or [],
         start=start,
         end=end,
         final_round_kickoff_time=final_round_kickoff_time,
@@ -119,6 +124,32 @@ def cup_round(
         window_end=window_end,
         granularity=granularity,
         note=note,
+    )
+
+
+def european_round(
+    id: str,
+    entrants: list[str] | None = None,
+    forced_date: date | None = None,
+    window_start: date | None = None,
+    window_end: date | None = None,
+    granularity: str | None = None,
+    name: str | None = None,
+    note: str = "",
+    drop_to_competition: str | None = None,
+    drop_to_round: str | None = None,
+) -> EuropeanRound:
+    return EuropeanRound(
+        id=id,
+        name=name or id,
+        entrants=entrants or [],
+        forced_date=forced_date,
+        window_start=window_start,
+        window_end=window_end,
+        granularity=granularity,
+        note=note,
+        drop_to_competition=drop_to_competition,
+        drop_to_round=drop_to_round,
     )
 
 
@@ -156,6 +187,7 @@ def season(
     id: str = "test",
     competitions: list[str] | None = None,
     cup_competitions: list[str] | None = None,
+    european_competitions: list[str] | None = None,
     global_blackouts=None,
     venue_blackouts=None,
     fixed_requirements: list[FixedRequirement] | None = None,
@@ -173,6 +205,7 @@ def season(
         end=end,
         competitions=competitions or [],
         cup_competitions=cup_competitions or [],
+        european_competitions=european_competitions or [],
         global_blackouts=global_blackouts or [],
         venue_blackouts=venue_blackouts or [],
         fixed_requirements=fixed_requirements or [],

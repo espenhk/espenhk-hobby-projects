@@ -34,6 +34,10 @@ from terminliste.model.travel import HaversineTravelModel  # noqa: E402
 from terminliste.refdata import refresh_competition  # noqa: E402
 from terminliste.report.render import render_report, write_json  # noqa: E402
 from terminliste.rounds.cup_schedule import CupSchedulingError, schedule_cups  # noqa: E402
+from terminliste.rounds.european_schedule import (  # noqa: E402
+    EuropeanCascadeError,
+    resolve_european_commitments,
+)
 from terminliste.scoring.base import EvalContext, Score, evaluate  # noqa: E402
 from terminliste.scoring.registry import build_constraints  # noqa: E402
 from terminliste.solvers import Candidate, SolveRequest, SolverResult, get_scheduler  # noqa: E402
@@ -66,34 +70,55 @@ def cmd_validate(args: argparse.Namespace) -> int:
         if competition.format == "cup":
             print(
                 f"     {competition.name}: {competition.team_count} teams entered, "
-                f"{competition.rounds} rounds tracked (forced/windowed dates, pairings TBD)"
+                f"{competition.rounds} rounds tracked (forced/windowed dates, pairings TBD), "
+                f"movable={competition.movable}"
+            )
+        elif competition.format == "european":
+            print(
+                f"     {competition.name}: {competition.team_count} teams entered, "
+                f"{competition.rounds} rounds tracked, movable={competition.movable}"
             )
         else:
             print(
                 f"     {competition.name}: {competition.team_count} teams, "
-                f"{competition.rounds} rounds, {competition.total_matches} matches"
+                f"{competition.rounds} rounds, {competition.total_matches} matches, "
+                f"movable={competition.movable}"
             )
 
     for season in world.seasons.values():
-        if not season.cup_competitions:
-            continue
-        cup_competitions = [world.competition(c) for c in season.cup_competitions]
-        try:
-            schedules, warnings = schedule_cups(cup_competitions, season)
-        except CupSchedulingError as exc:
-            print(f"FAIL: {exc}", file=sys.stderr)
-            return 1
-        for schedule in schedules:
-            print(f"     {schedule.competition_name} resolves cleanly:")
-            for placement in schedule.rounds:
-                span = (
-                    f"{placement.earliest_date}"
-                    if placement.spread_days == 0
-                    else f"{placement.earliest_date} – {placement.latest_date}"
-                )
-                print(f"       {placement.round_name}: {span}")
-        for warning in warnings:
-            print(f"     ⚠ {warning}")
+        if season.cup_competitions:
+            cup_competitions = [world.competition(c) for c in season.cup_competitions]
+            try:
+                schedules, warnings = schedule_cups(cup_competitions, season)
+            except CupSchedulingError as exc:
+                print(f"FAIL: {exc}", file=sys.stderr)
+                return 1
+            for schedule in schedules:
+                print(f"     {schedule.competition_name} resolves cleanly:")
+                for placement in schedule.rounds:
+                    span = (
+                        f"{placement.earliest_date}"
+                        if placement.spread_days == 0
+                        else f"{placement.earliest_date} – {placement.latest_date}"
+                    )
+                    print(f"       {placement.round_name}: {span}")
+            for warning in warnings:
+                print(f"     ⚠ {warning}")
+
+        if season.european_competitions:
+            european_competitions = [world.competition(c) for c in season.european_competitions]
+            try:
+                windows_by_team = resolve_european_commitments(european_competitions)
+            except EuropeanCascadeError as exc:
+                print(f"FAIL: {exc}", file=sys.stderr)
+                return 1
+            for team_id, windows in sorted(windows_by_team.items()):
+                print(f"     {world.team_label(team_id)} European commitments:")
+                for window in windows:
+                    print(
+                        f"       {' / '.join(window.labels)}: "
+                        f"{window.window_start} – {window.window_end}"
+                    )
     return 0
 
 
@@ -102,7 +127,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
     cup_schedules, cup_warnings = _schedule_cups_or_exit(world, season)
-    constraints = build_constraints(world, season, competitions, cup_schedules)
+    european_windows = _resolve_european_or_exit(world, season)
+    constraints = build_constraints(world, season, competitions, cup_schedules, european_windows)
     travel = HaversineTravelModel(world)
     ctx = EvalContext(world=world, season=season, travel=travel)
 
@@ -112,6 +138,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         season=season,
         competitions=competitions,
         cup_schedules=cup_schedules,
+        european_windows=european_windows,
         constraints=constraints,
         ctx=ctx,
         seed=args.seed,
@@ -160,7 +187,8 @@ def cmd_score(args: argparse.Namespace) -> int:
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
     cup_schedules, cup_warnings = _schedule_cups_or_exit(world, season)
-    constraints = build_constraints(world, season, competitions, cup_schedules)
+    european_windows = _resolve_european_or_exit(world, season)
+    constraints = build_constraints(world, season, competitions, cup_schedules, european_windows)
     travel = HaversineTravelModel(world)
 
     try:
@@ -326,6 +354,17 @@ def _schedule_cups_or_exit(world, season):
     try:
         return schedule_cups(cup_competitions, season)
     except CupSchedulingError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _resolve_european_or_exit(world, season):
+    """Resolve the season's European qualifying cascade, or exit with a
+    clear reason why not."""
+    european_competitions = [world.competition(c) for c in season.european_competitions]
+    try:
+        return resolve_european_commitments(european_competitions)
+    except EuropeanCascadeError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)
 
