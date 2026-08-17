@@ -151,6 +151,18 @@
   .kind.hard { background: #eef4fa; color: var(--accent); }
   tr.violated td { background: #fdf4f3; }
 
+  /* -- search difficulty (issue #34) -- */
+  .search-stats { margin-top: 16px; }
+  .search-stats > summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .difficulty-pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .difficulty-easy { background: #e8f6ee; color: var(--good); }
+  .difficulty-moderate { background: #fdf6ea; color: var(--warn); }
+  .difficulty-hard { background: #fdf0ee; color: var(--bad); }
+  .search-stats .desc { margin-top: 6px; }
+
   /* -- fairness across teams -- */
   .fairness-row { margin: 14px 0 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; }
   .fairness-row.flagged { border-color: #f0cf98; background: #fdf8ef; }
@@ -248,11 +260,63 @@
   <div class="sub">
     14 March 2026 – 06 December 2026
     · solver <b>local</b>
-· 30,116 iterations    · 60.2s
+· 29,876 iterations    · 60.1s
   </div>
 </header>
 
 
+
+<details class="search-stats">
+  <summary>
+    How hard was this to schedule?
+    <span class="difficulty-pill difficulty-moderate">moderate</span>
+    <span style="font-weight:400;color:var(--muted)">
+      · 29,876 scenarios investigated ·
+      18% viable
+    </span>
+  </summary>
+  <div class="item-body">
+    <div class="desc">Took real search — a large share of scenarios hit a hard rule.</div>
+    <div class="desc">
+      5,361 scenarios came out viable,
+      24,515 hit at least one hard-rule violation
+      (82% of everything tried).
+    </div>
+    <div style="font-weight:700;margin:14px 0 6px;font-size:13px">Where the dead ends came from</div>
+    <div class="fairness-bars">
+      <div class="fairness-bar" title="At least the configured number of days between a team's matches.">
+        <span class="flabel">min rest days</span>
+        <span class="ftrack"><span class="ffill" style="width:98.050173363247%"></span></span>
+        <span class="fcount">24,037</span>
+      </div>
+      <div class="fairness-bar" title="A team plays at most one match per day.">
+        <span class="flabel">one match per team per day</span>
+        <span class="ftrack"><span class="ffill" style="width:75.55374260656741%"></span></span>
+        <span class="fcount">18,522</span>
+      </div>
+      <div class="fairness-bar" title="A venue hosts at most one match per day.">
+        <span class="flabel">venue double booking</span>
+        <span class="ftrack"><span class="ffill" style="width:25.2090556801958%"></span></span>
+        <span class="fcount">6,180</span>
+      </div>
+      <div class="fairness-bar" title="Every first meeting is played before any second meeting.">
+        <span class="flabel">leg ordering</span>
+        <span class="ftrack"><span class="ffill" style="width:9.410564960228431%"></span></span>
+        <span class="fcount">2,307</span>
+      </div>
+      <div class="fairness-bar" title="No match on a blacked-out date, globally or at that venue.">
+        <span class="flabel">blackout dates</span>
+        <span class="ftrack"><span class="ffill" style="width:8.431572506628594%"></span></span>
+        <span class="fcount">2,067</span>
+      </div>
+      <div class="fairness-bar" title="A team's league matches stay clear of its cup round dates.">
+        <span class="flabel">cup round conflict</span>
+        <span class="ftrack"><span class="ffill" style="width:5.306954925555782%"></span></span>
+        <span class="fcount">1,301</span>
+      </div>
+    </div>
+  </div>
+</details>
 
 <div class="tabs" role="tablist">
   <button class="tab" role="tab" data-panel="panel-1"
@@ -615,7 +679,7 @@
           <td class="num">60</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK: Aalesunds FK home 2026-07-02, Aalesunds FK Kvinner home 2026-07-03</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-10-24, Aalesunds FK home 2026-10-25</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-05-30, Aalesunds FK home 2026-05-31</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-08-15, Aalesunds FK home 2026-08-16</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-04-25, Aalesunds FK home 2026-04-26</li><li>Aalesunds FK: Aalesunds FK home 2026-08-28, Aalesunds FK Kvinner home 2026-08-29</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-10-17, Aalesunds FK home 2026-10-18</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-09-19, Aalesunds FK home 2026-09-20</li>            </ul>
+<li>Aalesunds FK: Aalesunds FK Kvinner home 2026-10-24, Aalesunds FK home 2026-10-25</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-04-25, Aalesunds FK home 2026-04-26</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-10-17, Aalesunds FK home 2026-10-18</li><li>Aalesunds FK: Aalesunds FK home 2026-08-28, Aalesunds FK Kvinner home 2026-08-29</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-09-19, Aalesunds FK home 2026-09-20</li><li>Aalesunds FK: Aalesunds FK home 2026-07-02, Aalesunds FK Kvinner home 2026-07-03</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-05-30, Aalesunds FK home 2026-05-31</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-08-15, Aalesunds FK home 2026-08-16</li>            </ul>
 <span class="more">…and 52 more</span>          </td>
         </tr>
         <tr >
@@ -669,7 +733,7 @@
           <td class="num">30</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK: Aalesunds FK Kvinner away at Åråsen Stadion 2026-09-26, Aalesunds FK away at Brann Stadion 2026-09-27 (6.1h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Intility Arena 2026-08-08, Aalesunds FK away at Kristiansund Stadion 2026-08-09 (7.3h apart)</li><li>Aalesunds FK: Aalesunds FK away at Jotun Arena 2026-07-09, Aalesunds FK Kvinner away at AKA Arena 2026-07-10 (2.7h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Haugesund Stadion 2026-03-21, FK Bodø/Glimt away at SR-Bank Arena 2026-03-22 (1.7h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Lerkendal Stadion 2026-06-13, FK Bodø/Glimt away at KFUM Arena 2026-06-14 (7.3h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Kringsjå Kunstgress 2026-05-30, FK Bodø/Glimt away at Brann Stadion 2026-05-31 (5.8h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Røa Kunstgress 2026-10-31, FK Bodø/Glimt away at Aker Stadion 2026-11-01 (6.8h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at AKA Arena 2026-09-26, FK Bodø/Glimt away at Fredrikstad Stadion 2026-09-27 (2.6h apart)</li>            </ul>
+<li>Aalesunds FK: Aalesunds FK away at Jotun Arena 2026-07-09, Aalesunds FK Kvinner away at AKA Arena 2026-07-10 (2.7h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Intility Arena 2026-08-08, Aalesunds FK away at Kristiansund Stadion 2026-08-09 (7.3h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Åråsen Stadion 2026-09-26, Aalesunds FK away at Brann Stadion 2026-09-27 (6.1h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Nadderud Stadion 2026-09-12, FK Bodø/Glimt away at Åråsen Stadion 2026-09-13 (1.2h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Røa Kunstgress 2026-10-31, FK Bodø/Glimt away at Aker Stadion 2026-11-01 (6.8h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Lerkendal Stadion 2026-06-13, FK Bodø/Glimt away at KFUM Arena 2026-06-14 (7.3h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Kringsjå Kunstgress 2026-05-30, FK Bodø/Glimt away at Brann Stadion 2026-05-31 (5.8h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Haugesund Stadion 2026-03-21, FK Bodø/Glimt away at SR-Bank Arena 2026-03-22 (1.7h apart)</li>            </ul>
 <span class="more">…and 22 more</span>          </td>
         </tr>
         <tr >
@@ -23734,7 +23798,7 @@
           <td class="num">59</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK: Aalesunds FK Kvinner home 2026-03-21, Aalesunds FK home 2026-03-22</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-06-13, Aalesunds FK home 2026-06-14</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-05-23, Aalesunds FK home 2026-05-24</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-07-05, Aalesunds FK home 2026-07-06</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-10-31, Aalesunds FK home 2026-11-01</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-04-25, Aalesunds FK home 2026-04-26</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-08-08, Aalesunds FK home 2026-08-09</li><li>Aalesunds FK: Aalesunds FK home 2026-08-28, Aalesunds FK Kvinner home 2026-08-29</li>            </ul>
+<li>Aalesunds FK: Aalesunds FK Kvinner home 2026-08-08, Aalesunds FK home 2026-08-09</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-04-25, Aalesunds FK home 2026-04-26</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-07-05, Aalesunds FK home 2026-07-06</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-10-31, Aalesunds FK home 2026-11-01</li><li>Aalesunds FK: Aalesunds FK home 2026-08-28, Aalesunds FK Kvinner home 2026-08-29</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-05-23, Aalesunds FK home 2026-05-24</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-06-13, Aalesunds FK home 2026-06-14</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-03-21, Aalesunds FK home 2026-03-22</li>            </ul>
 <span class="more">…and 51 more</span>          </td>
         </tr>
         <tr >
@@ -23788,7 +23852,7 @@
           <td class="num">35</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK: Aalesunds FK Kvinner away at Kringsjå Kunstgress 2026-06-20, Aalesunds FK away at Fredrikstad Stadion 2026-06-21 (2.2h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Røa Kunstgress 2026-05-02, Aalesunds FK away at Intility Arena 2026-05-03 (0.9h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-04-18, Aalesunds FK away at Brann Stadion 2026-04-19 (5.6h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Lerkendal Stadion 2026-10-24, Aalesunds FK away at KFUM Arena 2026-10-25 (7.3h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-09-26, Aalesunds FK away at Aker Stadion 2026-09-27 (6.8h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at AKA Arena 2026-06-06, Aalesunds FK away at SR-Bank Arena 2026-06-07 (5.6h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Kringsjå Kunstgress 2026-03-21, FK Bodø/Glimt away at Color Line Stadion 2026-03-22 (6.9h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Røa Kunstgress 2026-04-18, FK Bodø/Glimt away at Sarpsborg Stadion 2026-04-19 (2.1h apart)</li>            </ul>
+<li>Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-04-18, Aalesunds FK away at Brann Stadion 2026-04-19 (5.6h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Røa Kunstgress 2026-05-02, Aalesunds FK away at Intility Arena 2026-05-03 (0.9h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Lerkendal Stadion 2026-10-24, Aalesunds FK away at KFUM Arena 2026-10-25 (7.3h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at AKA Arena 2026-06-06, Aalesunds FK away at SR-Bank Arena 2026-06-07 (5.6h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Kringsjå Kunstgress 2026-06-20, Aalesunds FK away at Fredrikstad Stadion 2026-06-21 (2.2h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-09-26, Aalesunds FK away at Aker Stadion 2026-09-27 (6.8h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Røa Kunstgress 2026-04-18, FK Bodø/Glimt away at Sarpsborg Stadion 2026-04-19 (2.1h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Haugesund Stadion 2026-08-08, FK Bodø/Glimt away at SR-Bank Arena 2026-08-09 (1.7h apart)</li>            </ul>
 <span class="more">…and 27 more</span>          </td>
         </tr>
         <tr >
@@ -46472,22 +46536,22 @@
 <section class="panel" id="panel-3" role="tabpanel" hidden>
 
   <div class="scoreline">
-    <div class="total">7<small>/ 100 · raw soft score 2587.7</small></div>
+    <div class="total">7<small>/ 100 · raw soft score 2571.1</small></div>
       <span class="badge fail">4 hard violations</span>
   </div>
 
   <div class="headline-scope"></div>
-  <div class="headlines" data-global="[{&quot;value&quot;: &quot;86%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;60&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}]" data-club="{&quot;aalesund&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;84%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;7&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;hamkam&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;80%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;fredrikstad&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;sandefjord&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;80%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;kfum_oslo&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;90%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;valerenga&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;84%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;12&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;kristiansund&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;brann&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;10&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;5&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;lillestrom&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;80%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;tromso&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;73%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;sarpsborg08&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;87%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;rosenborg&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;84%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;11&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;start&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;molde&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;86%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;10&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;3&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;viking&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;87%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;bodo_glimt&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;89%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;10&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;7&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;roa&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;lsk_kvinner&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;haugesund&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;94%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;honefoss&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;97%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;stabak&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;lyn&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}]}">
+  <div class="headlines" data-global="[{&quot;value&quot;: &quot;86%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;59&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;35&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}]" data-club="{&quot;bodo_glimt&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;89%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;9&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;7&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;tromso&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;73%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;brann&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;10&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;viking&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;87%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;hamkam&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;80%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;sarpsborg08&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;87%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;lillestrom&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;80%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;rosenborg&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;84%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;11&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;molde&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;86%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;10&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;4&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;aalesund&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;84%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;8&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;sandefjord&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;80%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;kfum_oslo&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;90%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;start&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;fredrikstad&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;valerenga&quot;: [{&quot;value&quot;: &quot;63&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;84%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}, {&quot;value&quot;: &quot;11&quot;, &quot;label&quot;: &quot;back-to-back home days&quot;}, {&quot;value&quot;: &quot;6&quot;, &quot;label&quot;: &quot;paired away days within travel range&quot;}], &quot;kristiansund&quot;: [{&quot;value&quot;: &quot;30&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;83%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;roa&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;lsk_kvinner&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;haugesund&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;94%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;honefoss&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;97%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;stabak&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}], &quot;lyn&quot;: [{&quot;value&quot;: &quot;33&quot;, &quot;label&quot;: &quot;matches&quot;}, {&quot;value&quot;: &quot;91%&quot;, &quot;label&quot;: &quot;on the preferred weekday&quot;}]}">
     <div class="headline">
       <div class="v">86%</div>
       <div class="l">on the preferred weekday</div>
     </div>
     <div class="headline">
-      <div class="v">60</div>
+      <div class="v">59</div>
       <div class="l">back-to-back home days</div>
     </div>
     <div class="headline">
-      <div class="v">33</div>
+      <div class="v">35</div>
       <div class="l">paired away days within travel range</div>
     </div>
   </div>
@@ -46520,11 +46584,11 @@
               <span class="tooltip" id="tt-58" role="tooltip">A club's two teams at home on back-to-back days.</span>
             </span>
           </span>
-          <span class="delta">+1500</span>
+          <span class="delta">+1475</span>
         </summary>
         <div class="item-body">
           <ul class="occurrences">
-<li>Vålerenga Fotball <span class="occ-count">×12</span></li><li>Rosenborg BK <span class="occ-count">×11</span></li><li>FK Bodø/Glimt <span class="occ-count">×10</span></li><li>Molde FK <span class="occ-count">×10</span></li><li>SK Brann <span class="occ-count">×10</span></li><li>Aalesunds FK <span class="occ-count">×7</span></li>          </ul>
+<li>Rosenborg BK <span class="occ-count">×11</span></li><li>Vålerenga Fotball <span class="occ-count">×11</span></li><li>Molde FK <span class="occ-count">×10</span></li><li>SK Brann <span class="occ-count">×10</span></li><li>FK Bodø/Glimt <span class="occ-count">×9</span></li><li>Aalesunds FK <span class="occ-count">×8</span></li>          </ul>
         </div>
       </details>
       <details class="item up">
@@ -46536,11 +46600,11 @@
               <span class="tooltip" id="tt-59" role="tooltip">A club's two teams away on back-to-back days, within travel range.</span>
             </span>
           </span>
-          <span class="delta">+232</span>
+          <span class="delta">+240</span>
         </summary>
         <div class="item-body">
           <ul class="occurrences">
-<li>FK Bodø/Glimt <span class="occ-count">×7</span></li><li>Aalesunds FK <span class="occ-count">×6</span></li><li>Rosenborg BK <span class="occ-count">×6</span></li><li>Vålerenga Fotball <span class="occ-count">×6</span></li><li>SK Brann <span class="occ-count">×5</span></li><li>Molde FK <span class="occ-count">×3</span></li>          </ul>
+<li>FK Bodø/Glimt <span class="occ-count">×7</span></li><li>Aalesunds FK <span class="occ-count">×6</span></li><li>Rosenborg BK <span class="occ-count">×6</span></li><li>SK Brann <span class="occ-count">×6</span></li><li>Vålerenga Fotball <span class="occ-count">×6</span></li><li>Molde FK <span class="occ-count">×4</span></li>          </ul>
         </div>
       </details>
       <details class="item up">
@@ -46622,7 +46686,7 @@
         </summary>
         <div class="item-body">
           <ul class="occurrences">
-<li>Rosenborg BK <span class="occ-count">×3</span></li><li>Hamarkameratene <span class="occ-count">×2</span></li><li>Aalesunds FK Kvinner <span class="occ-count">×1</span></li><li>FK Haugesund <span class="occ-count">×1</span></li><li>LSK Kvinner <span class="occ-count">×1</span></li><li>Lillestrøm SK <span class="occ-count">×1</span></li><li>Rosenborg BK Kvinner <span class="occ-count">×1</span></li><li>Røa IL <span class="occ-count">×1</span></li><li>SK Brann <span class="occ-count">×1</span></li><li>Sandefjord Fotball <span class="occ-count">×1</span></li><li>Sarpsborg 08 <span class="occ-count">×1</span></li><li>Viking FK <span class="occ-count">×1</span></li><li>Vålerenga Fotball <span class="occ-count">×1</span></li><li>Vålerenga Fotball Kvinner <span class="occ-count">×1</span></li>          </ul>
+<li>Rosenborg BK <span class="occ-count">×3</span></li><li>Aalesunds FK Kvinner <span class="occ-count">×1</span></li><li>FK Haugesund <span class="occ-count">×1</span></li><li>Hamarkameratene <span class="occ-count">×1</span></li><li>Kristiansund BK <span class="occ-count">×1</span></li><li>LSK Kvinner <span class="occ-count">×1</span></li><li>Lillestrøm SK <span class="occ-count">×1</span></li><li>Rosenborg BK Kvinner <span class="occ-count">×1</span></li><li>Røa IL <span class="occ-count">×1</span></li><li>SK Brann <span class="occ-count">×1</span></li><li>Sandefjord Fotball <span class="occ-count">×1</span></li><li>Sarpsborg 08 <span class="occ-count">×1</span></li><li>Viking FK <span class="occ-count">×1</span></li><li>Vålerenga Fotball <span class="occ-count">×1</span></li><li>Vålerenga Fotball Kvinner <span class="occ-count">×1</span></li>          </ul>
         </div>
       </details>
     </div>
@@ -46651,7 +46715,7 @@
           <td class="num">2</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>SK Brann has 0 day(s) between 2026-05-16 and 2026-05-16 — needs 3</li><li>Tromsø IL has 0 day(s) between 2026-05-16 and 2026-05-16 — needs 3</li>            </ul>
+<li>Tromsø IL has 0 day(s) between 2026-05-16 and 2026-05-16 — needs 3</li><li>SK Brann has 0 day(s) between 2026-05-16 and 2026-05-16 — needs 3</li>            </ul>
           </td>
         </tr>
         <tr class="violated">
@@ -46669,7 +46733,7 @@
           <td class="num">2</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>SK Brann plays 2 matches on 2026-05-16</li><li>Tromsø IL plays 2 matches on 2026-05-16</li>            </ul>
+<li>Tromsø IL plays 2 matches on 2026-05-16</li><li>SK Brann plays 2 matches on 2026-05-16</li>            </ul>
           </td>
         </tr>
         <tr >
@@ -46829,12 +46893,12 @@
             </span>
           </td>
           <td><span class="kind soft">soft</span></td>
-          <td class="num">+1500.0</td>
-          <td class="num">60</td>
+          <td class="num">+1475.0</td>
+          <td class="num">59</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK: Aalesunds FK Kvinner home 2026-05-02, Aalesunds FK home 2026-05-03</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-04-18, Aalesunds FK home 2026-04-19</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-09-26, Aalesunds FK home 2026-09-27</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-08-08, Aalesunds FK home 2026-08-09</li><li>Aalesunds FK: Aalesunds FK home 2026-07-09, Aalesunds FK Kvinner home 2026-07-10</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-06-06, Aalesunds FK home 2026-06-07</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-09-12, Aalesunds FK home 2026-09-13</li><li>FK Bodø/Glimt: FK Bodø/Glimt home 2026-10-07, FK Bodø/Glimt Kvinner home 2026-10-08</li>            </ul>
-<span class="more">…and 52 more</span>          </td>
+<li>Aalesunds FK: Aalesunds FK Kvinner home 2026-04-18, Aalesunds FK home 2026-04-19</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-05-02, Aalesunds FK home 2026-05-03</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-03-28, Aalesunds FK home 2026-03-29</li><li>Aalesunds FK: Aalesunds FK home 2026-07-09, Aalesunds FK Kvinner home 2026-07-10</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-08-08, Aalesunds FK home 2026-08-09</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-09-12, Aalesunds FK home 2026-09-13</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-06-06, Aalesunds FK home 2026-06-07</li><li>Aalesunds FK: Aalesunds FK Kvinner home 2026-09-26, Aalesunds FK home 2026-09-27</li>            </ul>
+<span class="more">…and 51 more</span>          </td>
         </tr>
         <tr >
           <td>
@@ -46851,7 +46915,7 @@
           <td class="num">49</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Hamarkameratene kick off at 20:00 at Color Line Stadion on 2026-03-15, 6.0h from home</li><li>Tromsø IL kick off at 20:00 at Åråsen Stadion on 2026-03-15, 19.7h from home</li><li>Molde FK kick off at 20:00 at Sør Arena on 2026-03-15, 9.3h from home</li><li>FK Bodø/Glimt kick off at 20:00 at SR-Bank Arena on 2026-03-15, 17.8h from home</li><li>Lillestrøm SK kick off at 20:00 at Aspmyra Stadion on 2026-03-22, 14.6h from home</li><li>IK Start kick off at 20:00 at Briskeby Arena on 2026-03-22, 6.4h from home</li><li>Molde FK kick off at 20:00 at Jotun Arena on 2026-03-22, 8.0h from home</li><li>FK Bodø/Glimt kick off at 20:00 at Kristiansund Stadion on 2026-04-19, 10.0h from home</li>            </ul>
+<li>Lillestrøm SK kick off at 20:00 at Aspmyra Stadion on 2026-03-22, 14.6h from home</li><li>IK Start kick off at 20:00 at Briskeby Arena on 2026-03-22, 6.4h from home</li><li>Molde FK kick off at 20:00 at Jotun Arena on 2026-03-22, 8.0h from home</li><li>Hamarkameratene kick off at 20:00 at Color Line Stadion on 2026-03-29, 6.0h from home</li><li>Tromsø IL kick off at 20:00 at Åråsen Stadion on 2026-03-29, 19.7h from home</li><li>Molde FK kick off at 20:00 at Sør Arena on 2026-03-29, 9.3h from home</li><li>FK Bodø/Glimt kick off at 20:00 at SR-Bank Arena on 2026-03-29, 17.8h from home</li><li>FK Bodø/Glimt kick off at 20:00 at Kristiansund Stadion on 2026-04-19, 10.0h from home</li>            </ul>
 <span class="more">…and 41 more</span>          </td>
         </tr>
         <tr >
@@ -46865,12 +46929,12 @@
             </span>
           </td>
           <td><span class="kind soft">soft</span></td>
-          <td class="num">+231.7</td>
-          <td class="num">33</td>
+          <td class="num">+240.1</td>
+          <td class="num">35</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK: Aalesunds FK Kvinner away at Aker Stadion 2026-03-21, Aalesunds FK away at Lerkendal Stadion 2026-03-22 (4.0h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Røa Kunstgress 2026-06-20, Aalesunds FK away at Brann Stadion 2026-06-21 (5.7h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-05-30, Aalesunds FK away at Sør Arena 2026-05-31 (4.8h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Åråsen Stadion 2026-04-25, Aalesunds FK away at Åråsen Stadion 2026-04-26 (0.0h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Haugesund Stadion 2026-07-25, Aalesunds FK away at Fredrikstad Stadion 2026-07-26 (6.1h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Aspmyra Stadion 2026-05-15, Aalesunds FK away at Aspmyra Stadion 2026-05-16 (0.0h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Lerkendal Stadion 2026-06-13, FK Bodø/Glimt away at Aker Stadion 2026-06-14 (4.0h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at AKA Arena 2026-04-18, FK Bodø/Glimt away at Kristiansund Stadion 2026-04-19 (6.6h apart)</li>            </ul>
-<span class="more">…and 25 more</span>          </td>
+<li>Aalesunds FK: Aalesunds FK Kvinner away at Aspmyra Stadion 2026-05-15, Aalesunds FK away at Aspmyra Stadion 2026-05-16 (0.0h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Åråsen Stadion 2026-04-25, Aalesunds FK away at Åråsen Stadion 2026-04-26 (0.0h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Haugesund Stadion 2026-07-25, Aalesunds FK away at Fredrikstad Stadion 2026-07-26 (6.1h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Nadderud Stadion 2026-05-30, Aalesunds FK away at Sør Arena 2026-05-31 (4.8h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Aker Stadion 2026-03-21, Aalesunds FK away at Lerkendal Stadion 2026-03-22 (4.0h apart)</li><li>Aalesunds FK: Aalesunds FK Kvinner away at Røa Kunstgress 2026-06-20, Aalesunds FK away at Brann Stadion 2026-06-21 (5.7h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at AKA Arena 2026-04-18, FK Bodø/Glimt away at Kristiansund Stadion 2026-04-19 (6.6h apart)</li><li>FK Bodø/Glimt: FK Bodø/Glimt Kvinner away at Åråsen Stadion 2026-09-12, FK Bodø/Glimt away at Sarpsborg Stadion 2026-09-13 (2.0h apart)</li>            </ul>
+<span class="more">…and 27 more</span>          </td>
         </tr>
         <tr >
           <td>
@@ -46887,7 +46951,7 @@
           <td class="num">17</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Hamarkameratene plays 3 consecutive home matches from 2026-03-22</li><li>Hamarkameratene plays 3 consecutive away matches from 2026-10-25</li><li>Sandefjord Fotball plays 3 consecutive away matches from 2026-06-07</li><li>Vålerenga Fotball plays 4 consecutive home matches from 2026-04-26</li><li>SK Brann plays 3 consecutive away matches from 2026-05-16</li><li>Lillestrøm SK plays 3 consecutive away matches from 2026-07-26</li><li>Sarpsborg 08 plays 3 consecutive home matches from 2026-06-07</li><li>Rosenborg BK plays 4 consecutive away matches from 2026-03-29</li>            </ul>
+<li>SK Brann plays 3 consecutive away matches from 2026-05-16</li><li>Viking FK plays 3 consecutive home matches from 2026-11-22</li><li>Hamarkameratene plays 3 consecutive away matches from 2026-10-25</li><li>Sarpsborg 08 plays 3 consecutive home matches from 2026-06-07</li><li>Lillestrøm SK plays 3 consecutive away matches from 2026-07-26</li><li>Rosenborg BK plays 4 consecutive away matches from 2026-03-29</li><li>Rosenborg BK plays 4 consecutive home matches from 2026-07-19</li><li>Rosenborg BK plays 3 consecutive home matches from 2026-08-28</li>            </ul>
 <span class="more">…and 9 more</span>          </td>
         </tr>
         <tr >
@@ -46905,7 +46969,7 @@
           <td class="num">35</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Aalesunds FK gets 4 days' rest before 2026-07-09 (comfortable is 5)</li><li>Aalesunds FK gets 4 days' rest before 2026-08-29 (comfortable is 5)</li><li>Aalesunds FK gets 3 days' rest before 2026-10-21 (comfortable is 5)</li><li>Aalesunds FK gets 4 days' rest before 2026-10-25 (comfortable is 5)</li><li>Hamarkameratene gets 4 days' rest before 2026-07-09 (comfortable is 5)</li><li>Hamarkameratene gets 4 days' rest before 2026-07-26 (comfortable is 5)</li><li>Hamarkameratene gets 4 days' rest before 2026-08-29 (comfortable is 5)</li><li>Fredrikstad FK gets 3 days' rest before 2026-07-14 (comfortable is 5)</li>            </ul>
+<li>Tromsø IL gets 3 days' rest before 2026-07-22 (comfortable is 5)</li><li>Tromsø IL gets 4 days' rest before 2026-08-29 (comfortable is 5)</li><li>SK Brann gets 3 days' rest before 2026-10-21 (comfortable is 5)</li><li>SK Brann gets 4 days' rest before 2026-10-25 (comfortable is 5)</li><li>Viking FK gets 3 days' rest before 2026-06-24 (comfortable is 5)</li><li>Hamarkameratene gets 4 days' rest before 2026-07-09 (comfortable is 5)</li><li>Hamarkameratene gets 4 days' rest before 2026-07-26 (comfortable is 5)</li><li>Hamarkameratene gets 4 days' rest before 2026-08-29 (comfortable is 5)</li>            </ul>
 <span class="more">…and 27 more</span>          </td>
         </tr>
         <tr >
@@ -46923,7 +46987,7 @@
           <td class="num">6</td>
           <td>
             <ul class="examples" style="margin:0;padding-left:16px">
-<li>Hamarkameratene plays 9 home and 6 away in the first half</li><li>Hamarkameratene plays 6 home and 9 away in the second half</li><li>Vålerenga Fotball plays 9 home and 6 away in the first half</li><li>Vålerenga Fotball plays 6 home and 9 away in the second half</li><li>Viking FK plays 6 home and 9 away in the first half</li><li>Viking FK plays 9 home and 6 away in the second half</li>            </ul>
+<li>Viking FK plays 6 home and 9 away in the first half</li><li>Viking FK plays 9 home and 6 away in the second half</li><li>Hamarkameratene plays 9 home and 6 away in the first half</li><li>Hamarkameratene plays 6 home and 9 away in the second half</li><li>Vålerenga Fotball plays 9 home and 6 away in the first half</li><li>Vålerenga Fotball plays 6 home and 9 away in the second half</li>            </ul>
           </td>
         </tr>
         <tr >
@@ -46998,34 +47062,34 @@
       <div class="desc">A club's two teams at home on back-to-back days.</div>
       <div class="fairness-bars">
         <div class="fairness-bar">
-          <span class="flabel" title="Vålerenga Fotball">Vålerenga Fotball</span>
-          <span class="ftrack"><span class="ffill" style="width:100.0%"></span></span>
-          <span class="fcount">12</span>
-        </div>
-        <div class="fairness-bar">
           <span class="flabel" title="Rosenborg BK">Rosenborg BK</span>
-          <span class="ftrack"><span class="ffill" style="width:91.66666666666667%"></span></span>
+          <span class="ftrack"><span class="ffill" style="width:100.0%"></span></span>
           <span class="fcount">11</span>
         </div>
         <div class="fairness-bar">
-          <span class="flabel" title="FK Bodø/Glimt">FK Bodø/Glimt</span>
-          <span class="ftrack"><span class="ffill" style="width:83.33333333333333%"></span></span>
-          <span class="fcount">10</span>
+          <span class="flabel" title="Vålerenga Fotball">Vålerenga Fotball</span>
+          <span class="ftrack"><span class="ffill" style="width:100.0%"></span></span>
+          <span class="fcount">11</span>
         </div>
         <div class="fairness-bar">
           <span class="flabel" title="SK Brann">SK Brann</span>
-          <span class="ftrack"><span class="ffill" style="width:83.33333333333333%"></span></span>
+          <span class="ftrack"><span class="ffill" style="width:90.9090909090909%"></span></span>
           <span class="fcount">10</span>
         </div>
         <div class="fairness-bar">
           <span class="flabel" title="Molde FK">Molde FK</span>
-          <span class="ftrack"><span class="ffill" style="width:83.33333333333333%"></span></span>
+          <span class="ftrack"><span class="ffill" style="width:90.9090909090909%"></span></span>
           <span class="fcount">10</span>
         </div>
         <div class="fairness-bar">
+          <span class="flabel" title="FK Bodø/Glimt">FK Bodø/Glimt</span>
+          <span class="ftrack"><span class="ffill" style="width:81.81818181818181%"></span></span>
+          <span class="fcount">9</span>
+        </div>
+        <div class="fairness-bar">
           <span class="flabel" title="Aalesunds FK">Aalesunds FK</span>
-          <span class="ftrack"><span class="ffill" style="width:58.333333333333336%"></span></span>
-          <span class="fcount">7</span>
+          <span class="ftrack"><span class="ffill" style="width:72.72727272727273%"></span></span>
+          <span class="fcount">8</span>
         </div>
       </div>
     </div>
@@ -47046,6 +47110,11 @@
           <span class="fcount">6</span>
         </div>
         <div class="fairness-bar">
+          <span class="flabel" title="SK Brann">SK Brann</span>
+          <span class="ftrack"><span class="ffill" style="width:85.71428571428571%"></span></span>
+          <span class="fcount">6</span>
+        </div>
+        <div class="fairness-bar">
           <span class="flabel" title="Rosenborg BK">Rosenborg BK</span>
           <span class="ftrack"><span class="ffill" style="width:85.71428571428571%"></span></span>
           <span class="fcount">6</span>
@@ -47056,14 +47125,9 @@
           <span class="fcount">6</span>
         </div>
         <div class="fairness-bar">
-          <span class="flabel" title="SK Brann">SK Brann</span>
-          <span class="ftrack"><span class="ffill" style="width:71.42857142857143%"></span></span>
-          <span class="fcount">5</span>
-        </div>
-        <div class="fairness-bar">
           <span class="flabel" title="Molde FK">Molde FK</span>
-          <span class="ftrack"><span class="ffill" style="width:42.857142857142854%"></span></span>
-          <span class="fcount">3</span>
+          <span class="ftrack"><span class="ffill" style="width:57.142857142857146%"></span></span>
+          <span class="fcount">4</span>
         </div>
       </div>
     </div>
@@ -47079,11 +47143,6 @@
           <span class="fcount">3</span>
         </div>
         <div class="fairness-bar">
-          <span class="flabel" title="Hamarkameratene">Hamarkameratene</span>
-          <span class="ftrack"><span class="ffill" style="width:66.66666666666667%"></span></span>
-          <span class="fcount">2</span>
-        </div>
-        <div class="fairness-bar">
           <span class="flabel" title="Aalesunds FK Kvinner">Aalesunds FK Kvinner</span>
           <span class="ftrack"><span class="ffill" style="width:33.333333333333336%"></span></span>
           <span class="fcount">1</span>
@@ -47094,7 +47153,17 @@
           <span class="fcount">1</span>
         </div>
         <div class="fairness-bar">
+          <span class="flabel" title="Hamarkameratene">Hamarkameratene</span>
+          <span class="ftrack"><span class="ffill" style="width:33.333333333333336%"></span></span>
+          <span class="fcount">1</span>
+        </div>
+        <div class="fairness-bar">
           <span class="flabel" title="FK Haugesund">FK Haugesund</span>
+          <span class="ftrack"><span class="ffill" style="width:33.333333333333336%"></span></span>
+          <span class="fcount">1</span>
+        </div>
+        <div class="fairness-bar">
+          <span class="flabel" title="Kristiansund BK">Kristiansund BK</span>
           <span class="ftrack"><span class="ffill" style="width:33.333333333333336%"></span></span>
           <span class="fcount">1</span>
         </div>
@@ -47175,11 +47244,6 @@
         </div>
         <div class="fairness-bar">
           <span class="flabel" title="KFUM Oslo">KFUM Oslo</span>
-          <span class="ftrack"><span class="ffill" style="width:0.0%"></span></span>
-          <span class="fcount">0</span>
-        </div>
-        <div class="fairness-bar">
-          <span class="flabel" title="Kristiansund BK">Kristiansund BK</span>
           <span class="ftrack"><span class="ffill" style="width:0.0%"></span></span>
           <span class="fcount">0</span>
         </div>
@@ -48011,26 +48075,25 @@
       <div class="round">
         <div class="rlabel">
           <b>Round 1</b>
-          29 Mar · leg 1
+          15 Mar · leg 1
         </div>
         <div class="fixtures">
-<span class="fx paired"
+<span class="fx "
       data-clubs="bodo_glimt tromso"
       data-competition="eliteserien_2026"
       title="Aspmyra Stadion">
-  <span class="d">Sun 29/03 20:00</span>
+  <span class="d">Sun 15/03 20:00</span>
   <span class="swatch" style="background:#f5c518" aria-hidden="true"></span>
   <span class="h" title="FK Bodø/Glimt">BGL</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#8b0000" aria-hidden="true"></span>
   <span title="Tromsø IL">TIL</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
 <span class="fx "
       data-clubs="brann viking"
       data-competition="eliteserien_2026"
       title="Brann Stadion">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 15/03 14:00</span>
   <span class="swatch" style="background:#cc1122" aria-hidden="true"></span>
   <span class="h" title="SK Brann">BRA</span>
   <span class="vs">v</span>
@@ -48041,7 +48104,7 @@
       data-clubs="hamkam sarpsborg08"
       data-competition="eliteserien_2026"
       title="Briskeby Arena">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 15/03 14:00</span>
   <span class="swatch" style="background:#0077b6" aria-hidden="true"></span>
   <span class="h" title="Hamarkameratene">HAM</span>
   <span class="vs">v</span>
@@ -48052,7 +48115,7 @@
       data-clubs="lillestrom rosenborg"
       data-competition="eliteserien_2026"
       title="Åråsen Stadion">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 15/03 14:00</span>
   <span class="swatch" style="background:#ffe135" aria-hidden="true"></span>
   <span class="h" title="Lillestrøm SK">LSK</span>
   <span class="vs">v</span>
@@ -48063,7 +48126,7 @@
       data-clubs="molde aalesund"
       data-competition="eliteserien_2026"
       title="Aker Stadion">
-  <span class="d">Sun 29/03 18:00</span>
+  <span class="d">Sun 15/03 18:00</span>
   <span class="swatch" style="background:#1f5fa8" aria-hidden="true"></span>
   <span class="h" title="Molde FK">MOL</span>
   <span class="vs">v</span>
@@ -48074,7 +48137,7 @@
       data-clubs="sandefjord kfum_oslo"
       data-competition="eliteserien_2026"
       title="Jotun Arena">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 15/03 14:00</span>
   <span class="swatch" style="background:#2e6f95" aria-hidden="true"></span>
   <span class="h" title="Sandefjord Fotball">SAN</span>
   <span class="vs">v</span>
@@ -48085,49 +48148,49 @@
       data-clubs="start fredrikstad"
       data-competition="eliteserien_2026"
       title="Sør Arena">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 15/03 14:00</span>
   <span class="swatch" style="background:#a32638" aria-hidden="true"></span>
   <span class="h" title="IK Start">STA</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#e4572e" aria-hidden="true"></span>
   <span title="Fredrikstad FK">FFK</span>
 </span>
-<span class="fx paired"
+<span class="fx "
       data-clubs="valerenga kristiansund"
       data-competition="eliteserien_2026"
       title="Intility Arena">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 15/03 14:00</span>
   <span class="swatch" style="background:#14315d" aria-hidden="true"></span>
   <span class="h" title="Vålerenga Fotball">VIF</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#4a90d9" aria-hidden="true"></span>
   <span title="Kristiansund BK">KBK</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
         </div>
       </div>
       <div class="round">
         <div class="rlabel">
           <b>Round 2</b>
-          15 Mar · leg 1
+          29 Mar · leg 1
         </div>
         <div class="fixtures">
-<span class="fx "
+<span class="fx paired"
       data-clubs="aalesund hamkam"
       data-competition="eliteserien_2026"
       title="Color Line Stadion">
-  <span class="d">Sun 15/03 20:00</span>
+  <span class="d">Sun 29/03 20:00</span>
   <span class="swatch" style="background:#d9a404" aria-hidden="true"></span>
   <span class="h" title="Aalesunds FK">AaFK</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#0077b6" aria-hidden="true"></span>
   <span title="Hamarkameratene">HAM</span>
+  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
 <span class="fx "
       data-clubs="fredrikstad sandefjord"
       data-competition="eliteserien_2026"
       title="Fredrikstad Stadion">
-  <span class="d">Sun 15/03 18:00</span>
+  <span class="d">Sun 29/03 18:00</span>
   <span class="swatch" style="background:#e4572e" aria-hidden="true"></span>
   <span class="h" title="Fredrikstad FK">FFK</span>
   <span class="vs">v</span>
@@ -48138,7 +48201,7 @@
       data-clubs="kfum_oslo valerenga"
       data-competition="eliteserien_2026"
       title="KFUM Arena">
-  <span class="d">Sun 15/03 18:00</span>
+  <span class="d">Sun 29/03 18:00</span>
   <span class="swatch" style="background:#b22222" aria-hidden="true"></span>
   <span class="h" title="KFUM Oslo">KFU</span>
   <span class="vs">v</span>
@@ -48149,7 +48212,7 @@
       data-clubs="kristiansund brann"
       data-competition="eliteserien_2026"
       title="Kristiansund Stadion">
-  <span class="d">Sun 15/03 18:00</span>
+  <span class="d">Sun 29/03 18:00</span>
   <span class="swatch" style="background:#4a90d9" aria-hidden="true"></span>
   <span class="h" title="Kristiansund BK">KBK</span>
   <span class="vs">v</span>
@@ -48160,7 +48223,7 @@
       data-clubs="lillestrom tromso"
       data-competition="eliteserien_2026"
       title="Åråsen Stadion">
-  <span class="d">Sun 15/03 20:00</span>
+  <span class="d">Sun 29/03 20:00</span>
   <span class="swatch" style="background:#ffe135" aria-hidden="true"></span>
   <span class="h" title="Lillestrøm SK">LSK</span>
   <span class="vs">v</span>
@@ -48171,7 +48234,7 @@
       data-clubs="sarpsborg08 rosenborg"
       data-competition="eliteserien_2026"
       title="Sarpsborg Stadion">
-  <span class="d">Sun 15/03 18:00</span>
+  <span class="d">Sun 29/03 18:00</span>
   <span class="swatch" style="background:#e67e22" aria-hidden="true"></span>
   <span class="h" title="Sarpsborg 08">SAR</span>
   <span class="vs">v</span>
@@ -48182,7 +48245,7 @@
       data-clubs="start molde"
       data-competition="eliteserien_2026"
       title="Sør Arena">
-  <span class="d">Sun 15/03 20:00</span>
+  <span class="d">Sun 29/03 20:00</span>
   <span class="swatch" style="background:#a32638" aria-hidden="true"></span>
   <span class="h" title="IK Start">STA</span>
   <span class="vs">v</span>
@@ -48193,7 +48256,7 @@
       data-clubs="viking bodo_glimt"
       data-competition="eliteserien_2026"
       title="SR-Bank Arena">
-  <span class="d">Sun 15/03 20:00</span>
+  <span class="d">Sun 29/03 20:00</span>
   <span class="swatch" style="background:#003366" aria-hidden="true"></span>
   <span class="h" title="Viking FK">VIK</span>
   <span class="vs">v</span>
@@ -51038,7 +51101,7 @@
           28 Mar · leg 1
         </div>
         <div class="fixtures">
-<span class="fx "
+<span class="fx paired"
       data-clubs="aalesund lyn"
       data-competition="toppserien_2026"
       title="Color Line Stadion">
@@ -51048,8 +51111,9 @@
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#d63447" aria-hidden="true"></span>
   <span title="Lyn Fotball">LYN</span>
+  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
-<span class="fx paired"
+<span class="fx "
       data-clubs="bodo_glimt rosenborg"
       data-competition="toppserien_2026"
       title="Aspmyra Stadion">
@@ -51059,7 +51123,6 @@
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#000000" aria-hidden="true"></span>
   <span title="Rosenborg BK Kvinner">RBK K</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
 <span class="fx "
       data-clubs="haugesund molde"
@@ -51094,7 +51157,7 @@
   <span class="swatch-diamond" style="background:#0072ce" aria-hidden="true"></span>
   <span title="Stabæk Fotball">STB</span>
 </span>
-<span class="fx paired"
+<span class="fx "
       data-clubs="valerenga brann"
       data-competition="toppserien_2026"
       title="Intility Arena">
@@ -51104,7 +51167,6 @@
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#cc1122" aria-hidden="true"></span>
   <span title="SK Brann Kvinner">BRA K</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
         </div>
       </div>
@@ -54618,100 +54680,100 @@
       </div>
       <div class="fixtures">
 <span class="fx "
-      data-clubs="aalesund hamkam"
+      data-clubs="bodo_glimt tromso"
       data-competition="eliteserien_2026"
-      title="Color Line Stadion">
+      title="Aspmyra Stadion">
   <span class="d">Sun 15/03 20:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#d9a404" aria-hidden="true"></span>
-  <span class="h" title="Aalesunds FK">AaFK</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#0077b6" aria-hidden="true"></span>
-  <span title="Hamarkameratene">HAM</span>
-</span>
-<span class="fx "
-      data-clubs="fredrikstad sandefjord"
-      data-competition="eliteserien_2026"
-      title="Fredrikstad Stadion">
-  <span class="d">Sun 15/03 18:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#e4572e" aria-hidden="true"></span>
-  <span class="h" title="Fredrikstad FK">FFK</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#2e6f95" aria-hidden="true"></span>
-  <span title="Sandefjord Fotball">SAN</span>
-</span>
-<span class="fx "
-      data-clubs="start molde"
-      data-competition="eliteserien_2026"
-      title="Sør Arena">
-  <span class="d">Sun 15/03 20:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#a32638" aria-hidden="true"></span>
-  <span class="h" title="IK Start">STA</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#1f5fa8" aria-hidden="true"></span>
-  <span title="Molde FK">MOL</span>
-</span>
-<span class="fx "
-      data-clubs="kfum_oslo valerenga"
-      data-competition="eliteserien_2026"
-      title="KFUM Arena">
-  <span class="d">Sun 15/03 18:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#b22222" aria-hidden="true"></span>
-  <span class="h" title="KFUM Oslo">KFU</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#14315d" aria-hidden="true"></span>
-  <span title="Vålerenga Fotball">VIF</span>
-</span>
-<span class="fx "
-      data-clubs="kristiansund brann"
-      data-competition="eliteserien_2026"
-      title="Kristiansund Stadion">
-  <span class="d">Sun 15/03 18:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#4a90d9" aria-hidden="true"></span>
-  <span class="h" title="Kristiansund BK">KBK</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#cc1122" aria-hidden="true"></span>
-  <span title="SK Brann">BRA</span>
-</span>
-<span class="fx "
-      data-clubs="lillestrom tromso"
-      data-competition="eliteserien_2026"
-      title="Åråsen Stadion">
-  <span class="d">Sun 15/03 20:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#ffe135" aria-hidden="true"></span>
-  <span class="h" title="Lillestrøm SK">LSK</span>
+  <span class="swatch" style="background:#f5c518" aria-hidden="true"></span>
+  <span class="h" title="FK Bodø/Glimt">BGL</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#8b0000" aria-hidden="true"></span>
   <span title="Tromsø IL">TIL</span>
 </span>
 <span class="fx "
-      data-clubs="sarpsborg08 rosenborg"
+      data-clubs="hamkam sarpsborg08"
       data-competition="eliteserien_2026"
-      title="Sarpsborg Stadion">
-  <span class="d">Sun 15/03 18:00</span>
+      title="Briskeby Arena">
+  <span class="d">Sun 15/03 14:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#e67e22" aria-hidden="true"></span>
-  <span class="h" title="Sarpsborg 08">SAR</span>
+  <span class="swatch" style="background:#0077b6" aria-hidden="true"></span>
+  <span class="h" title="Hamarkameratene">HAM</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#e67e22" aria-hidden="true"></span>
+  <span title="Sarpsborg 08">SAR</span>
+</span>
+<span class="fx "
+      data-clubs="start fredrikstad"
+      data-competition="eliteserien_2026"
+      title="Sør Arena">
+  <span class="d">Sun 15/03 14:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#a32638" aria-hidden="true"></span>
+  <span class="h" title="IK Start">STA</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#e4572e" aria-hidden="true"></span>
+  <span title="Fredrikstad FK">FFK</span>
+</span>
+<span class="fx "
+      data-clubs="lillestrom rosenborg"
+      data-competition="eliteserien_2026"
+      title="Åråsen Stadion">
+  <span class="d">Sun 15/03 14:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#ffe135" aria-hidden="true"></span>
+  <span class="h" title="Lillestrøm SK">LSK</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#000000" aria-hidden="true"></span>
   <span title="Rosenborg BK">RBK</span>
 </span>
 <span class="fx "
-      data-clubs="viking bodo_glimt"
+      data-clubs="molde aalesund"
       data-competition="eliteserien_2026"
-      title="SR-Bank Arena">
-  <span class="d">Sun 15/03 20:00</span>
+      title="Aker Stadion">
+  <span class="d">Sun 15/03 18:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#003366" aria-hidden="true"></span>
-  <span class="h" title="Viking FK">VIK</span>
+  <span class="swatch" style="background:#1f5fa8" aria-hidden="true"></span>
+  <span class="h" title="Molde FK">MOL</span>
   <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#f5c518" aria-hidden="true"></span>
-  <span title="FK Bodø/Glimt">BGL</span>
+  <span class="swatch-diamond" style="background:#d9a404" aria-hidden="true"></span>
+  <span title="Aalesunds FK">AaFK</span>
+</span>
+<span class="fx "
+      data-clubs="brann viking"
+      data-competition="eliteserien_2026"
+      title="Brann Stadion">
+  <span class="d">Sun 15/03 14:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#cc1122" aria-hidden="true"></span>
+  <span class="h" title="SK Brann">BRA</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#003366" aria-hidden="true"></span>
+  <span title="Viking FK">VIK</span>
+</span>
+<span class="fx "
+      data-clubs="sandefjord kfum_oslo"
+      data-competition="eliteserien_2026"
+      title="Jotun Arena">
+  <span class="d">Sun 15/03 14:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#2e6f95" aria-hidden="true"></span>
+  <span class="h" title="Sandefjord Fotball">SAN</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#b22222" aria-hidden="true"></span>
+  <span title="KFUM Oslo">KFU</span>
+</span>
+<span class="fx "
+      data-clubs="valerenga kristiansund"
+      data-competition="eliteserien_2026"
+      title="Intility Arena">
+  <span class="d">Sun 15/03 14:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#14315d" aria-hidden="true"></span>
+  <span class="h" title="Vålerenga Fotball">VIF</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#4a90d9" aria-hidden="true"></span>
+  <span title="Kristiansund BK">KBK</span>
 </span>
       </div>
     </div>
@@ -54903,7 +54965,7 @@
         28 Mar – 29 Mar
       </div>
       <div class="fixtures">
-<span class="fx "
+<span class="fx paired"
       data-clubs="aalesund lyn"
       data-competition="toppserien_2026"
       title="Color Line Stadion">
@@ -54914,8 +54976,9 @@
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#d63447" aria-hidden="true"></span>
   <span title="Lyn Fotball">LYN</span>
+  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
-<span class="fx paired"
+<span class="fx "
       data-clubs="bodo_glimt rosenborg"
       data-competition="toppserien_2026"
       title="Aspmyra Stadion">
@@ -54926,7 +54989,6 @@
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#000000" aria-hidden="true"></span>
   <span title="Rosenborg BK Kvinner">RBK K</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
 <span class="fx "
       data-clubs="haugesund molde"
@@ -54964,7 +55026,7 @@
   <span class="swatch-diamond" style="background:#0072ce" aria-hidden="true"></span>
   <span title="Stabæk Fotball">STB</span>
 </span>
-<span class="fx paired"
+<span class="fx "
       data-clubs="valerenga brann"
       data-competition="toppserien_2026"
       title="Intility Arena">
@@ -54975,105 +55037,103 @@
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#cc1122" aria-hidden="true"></span>
   <span title="SK Brann Kvinner">BRA K</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
 <span class="fx paired"
-      data-clubs="bodo_glimt tromso"
+      data-clubs="aalesund hamkam"
       data-competition="eliteserien_2026"
-      title="Aspmyra Stadion">
+      title="Color Line Stadion">
   <span class="d">Sun 29/03 20:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#f5c518" aria-hidden="true"></span>
-  <span class="h" title="FK Bodø/Glimt">BGL</span>
+  <span class="swatch" style="background:#d9a404" aria-hidden="true"></span>
+  <span class="h" title="Aalesunds FK">AaFK</span>
   <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#8b0000" aria-hidden="true"></span>
-  <span title="Tromsø IL">TIL</span>
+  <span class="swatch-diamond" style="background:#0077b6" aria-hidden="true"></span>
+  <span title="Hamarkameratene">HAM</span>
   <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
 </span>
 <span class="fx "
-      data-clubs="hamkam sarpsborg08"
+      data-clubs="fredrikstad sandefjord"
       data-competition="eliteserien_2026"
-      title="Briskeby Arena">
-  <span class="d">Sun 29/03 14:00</span>
+      title="Fredrikstad Stadion">
+  <span class="d">Sun 29/03 18:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#0077b6" aria-hidden="true"></span>
-  <span class="h" title="Hamarkameratene">HAM</span>
+  <span class="swatch" style="background:#e4572e" aria-hidden="true"></span>
+  <span class="h" title="Fredrikstad FK">FFK</span>
   <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#e67e22" aria-hidden="true"></span>
-  <span title="Sarpsborg 08">SAR</span>
+  <span class="swatch-diamond" style="background:#2e6f95" aria-hidden="true"></span>
+  <span title="Sandefjord Fotball">SAN</span>
 </span>
 <span class="fx "
-      data-clubs="start fredrikstad"
+      data-clubs="start molde"
       data-competition="eliteserien_2026"
       title="Sør Arena">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 29/03 20:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
   <span class="swatch" style="background:#a32638" aria-hidden="true"></span>
   <span class="h" title="IK Start">STA</span>
   <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#e4572e" aria-hidden="true"></span>
-  <span title="Fredrikstad FK">FFK</span>
+  <span class="swatch-diamond" style="background:#1f5fa8" aria-hidden="true"></span>
+  <span title="Molde FK">MOL</span>
 </span>
 <span class="fx "
-      data-clubs="lillestrom rosenborg"
+      data-clubs="kfum_oslo valerenga"
+      data-competition="eliteserien_2026"
+      title="KFUM Arena">
+  <span class="d">Sun 29/03 18:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#b22222" aria-hidden="true"></span>
+  <span class="h" title="KFUM Oslo">KFU</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#14315d" aria-hidden="true"></span>
+  <span title="Vålerenga Fotball">VIF</span>
+</span>
+<span class="fx "
+      data-clubs="kristiansund brann"
+      data-competition="eliteserien_2026"
+      title="Kristiansund Stadion">
+  <span class="d">Sun 29/03 18:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#4a90d9" aria-hidden="true"></span>
+  <span class="h" title="Kristiansund BK">KBK</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#cc1122" aria-hidden="true"></span>
+  <span title="SK Brann">BRA</span>
+</span>
+<span class="fx "
+      data-clubs="lillestrom tromso"
       data-competition="eliteserien_2026"
       title="Åråsen Stadion">
-  <span class="d">Sun 29/03 14:00</span>
+  <span class="d">Sun 29/03 20:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
   <span class="swatch" style="background:#ffe135" aria-hidden="true"></span>
   <span class="h" title="Lillestrøm SK">LSK</span>
+  <span class="vs">v</span>
+  <span class="swatch-diamond" style="background:#8b0000" aria-hidden="true"></span>
+  <span title="Tromsø IL">TIL</span>
+</span>
+<span class="fx "
+      data-clubs="sarpsborg08 rosenborg"
+      data-competition="eliteserien_2026"
+      title="Sarpsborg Stadion">
+  <span class="d">Sun 29/03 18:00</span>
+  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
+  <span class="swatch" style="background:#e67e22" aria-hidden="true"></span>
+  <span class="h" title="Sarpsborg 08">SAR</span>
   <span class="vs">v</span>
   <span class="swatch-diamond" style="background:#000000" aria-hidden="true"></span>
   <span title="Rosenborg BK">RBK</span>
 </span>
 <span class="fx "
-      data-clubs="molde aalesund"
+      data-clubs="viking bodo_glimt"
       data-competition="eliteserien_2026"
-      title="Aker Stadion">
-  <span class="d">Sun 29/03 18:00</span>
+      title="SR-Bank Arena">
+  <span class="d">Sun 29/03 20:00</span>
   <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#1f5fa8" aria-hidden="true"></span>
-  <span class="h" title="Molde FK">MOL</span>
+  <span class="swatch" style="background:#003366" aria-hidden="true"></span>
+  <span class="h" title="Viking FK">VIK</span>
   <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#d9a404" aria-hidden="true"></span>
-  <span title="Aalesunds FK">AaFK</span>
-</span>
-<span class="fx "
-      data-clubs="brann viking"
-      data-competition="eliteserien_2026"
-      title="Brann Stadion">
-  <span class="d">Sun 29/03 14:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#cc1122" aria-hidden="true"></span>
-  <span class="h" title="SK Brann">BRA</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#003366" aria-hidden="true"></span>
-  <span title="Viking FK">VIK</span>
-</span>
-<span class="fx "
-      data-clubs="sandefjord kfum_oslo"
-      data-competition="eliteserien_2026"
-      title="Jotun Arena">
-  <span class="d">Sun 29/03 14:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#2e6f95" aria-hidden="true"></span>
-  <span class="h" title="Sandefjord Fotball">SAN</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#b22222" aria-hidden="true"></span>
-  <span title="KFUM Oslo">KFU</span>
-</span>
-<span class="fx paired"
-      data-clubs="valerenga kristiansund"
-      data-competition="eliteserien_2026"
-      title="Intility Arena">
-  <span class="d">Sun 29/03 14:00</span>
-  <span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span>
-  <span class="swatch" style="background:#14315d" aria-hidden="true"></span>
-  <span class="h" title="Vålerenga Fotball">VIF</span>
-  <span class="vs">v</span>
-  <span class="swatch-diamond" style="background:#4a90d9" aria-hidden="true"></span>
-  <span title="Kristiansund BK">KBK</span>
-  <span class="pair-badge" role="img" aria-label="back-to-back home day with the club's other team"></span>
+  <span class="swatch-diamond" style="background:#f5c518" aria-hidden="true"></span>
+  <span title="FK Bodø/Glimt">BGL</span>
 </span>
       </div>
     </div>
@@ -61543,36 +61603,36 @@
         <tr><th>Date</th><th>Competition</th><th>Home</th><th></th><th>Away</th><th>Venue</th></tr>
       </thead>
       <tbody>
-      <tr class="fx-row" data-clubs="aalesund hamkam" data-competition="eliteserien_2026">
+      <tr class="fx-row" data-clubs="bodo_glimt tromso" data-competition="eliteserien_2026">
         <td>Sun 15 Mar 2026 20:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
-          <span class="swatch" style="background:#d9a404;margin-right:5px" aria-hidden="true"></span>
-          <span title="Aalesunds FK">AaFK</span>
+          <span class="swatch" style="background:#f5c518;margin-right:5px" aria-hidden="true"></span>
+          <span title="FK Bodø/Glimt">BGL</span>
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#0077b6;margin-right:5px" aria-hidden="true"></span>
+          <span class="swatch-diamond" style="background:#8b0000;margin-right:5px" aria-hidden="true"></span>
+          <span title="Tromsø IL">TIL</span>
+        </td>
+        <td>Aspmyra Stadion</td>
+      </tr>
+      <tr class="fx-row" data-clubs="hamkam sarpsborg08" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 14:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#0077b6;margin-right:5px" aria-hidden="true"></span>
           <span title="Hamarkameratene">HAM</span>
         </td>
-        <td>Color Line Stadion</td>
-      </tr>
-      <tr class="fx-row" data-clubs="fredrikstad sandefjord" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 18:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#e4572e;margin-right:5px" aria-hidden="true"></span>
-          <span title="Fredrikstad FK">FFK</span>
-        </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#2e6f95;margin-right:5px" aria-hidden="true"></span>
-          <span title="Sandefjord Fotball">SAN</span>
+          <span class="swatch-diamond" style="background:#e67e22;margin-right:5px" aria-hidden="true"></span>
+          <span title="Sarpsborg 08">SAR</span>
         </td>
-        <td>Fredrikstad Stadion</td>
+        <td>Briskeby Arena</td>
       </tr>
-      <tr class="fx-row" data-clubs="start molde" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 20:00</td>
+      <tr class="fx-row" data-clubs="start fredrikstad" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 14:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
           <span class="swatch" style="background:#a32638;margin-right:5px" aria-hidden="true"></span>
@@ -61580,41 +61640,13 @@
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#1f5fa8;margin-right:5px" aria-hidden="true"></span>
-          <span title="Molde FK">MOL</span>
+          <span class="swatch-diamond" style="background:#e4572e;margin-right:5px" aria-hidden="true"></span>
+          <span title="Fredrikstad FK">FFK</span>
         </td>
         <td>Sør Arena</td>
       </tr>
-      <tr class="fx-row" data-clubs="kfum_oslo valerenga" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 18:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#b22222;margin-right:5px" aria-hidden="true"></span>
-          <span title="KFUM Oslo">KFU</span>
-        </td>
-        <td style="color:var(--muted)">v</td>
-        <td>
-          <span class="swatch-diamond" style="background:#14315d;margin-right:5px" aria-hidden="true"></span>
-          <span title="Vålerenga Fotball">VIF</span>
-        </td>
-        <td>KFUM Arena</td>
-      </tr>
-      <tr class="fx-row" data-clubs="kristiansund brann" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 18:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#4a90d9;margin-right:5px" aria-hidden="true"></span>
-          <span title="Kristiansund BK">KBK</span>
-        </td>
-        <td style="color:var(--muted)">v</td>
-        <td>
-          <span class="swatch-diamond" style="background:#cc1122;margin-right:5px" aria-hidden="true"></span>
-          <span title="SK Brann">BRA</span>
-        </td>
-        <td>Kristiansund Stadion</td>
-      </tr>
-      <tr class="fx-row" data-clubs="lillestrom tromso" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 20:00</td>
+      <tr class="fx-row" data-clubs="lillestrom rosenborg" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 14:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
           <span class="swatch" style="background:#ffe135;margin-right:5px" aria-hidden="true"></span>
@@ -61622,38 +61654,66 @@
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#8b0000;margin-right:5px" aria-hidden="true"></span>
-          <span title="Tromsø IL">TIL</span>
-        </td>
-        <td>Åråsen Stadion</td>
-      </tr>
-      <tr class="fx-row" data-clubs="sarpsborg08 rosenborg" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 18:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#e67e22;margin-right:5px" aria-hidden="true"></span>
-          <span title="Sarpsborg 08">SAR</span>
-        </td>
-        <td style="color:var(--muted)">v</td>
-        <td>
           <span class="swatch-diamond" style="background:#000000;margin-right:5px" aria-hidden="true"></span>
           <span title="Rosenborg BK">RBK</span>
         </td>
-        <td>Sarpsborg Stadion</td>
+        <td>Åråsen Stadion</td>
       </tr>
-      <tr class="fx-row" data-clubs="viking bodo_glimt" data-competition="eliteserien_2026">
-        <td>Sun 15 Mar 2026 20:00</td>
+      <tr class="fx-row" data-clubs="molde aalesund" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 18:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
-          <span class="swatch" style="background:#003366;margin-right:5px" aria-hidden="true"></span>
-          <span title="Viking FK">VIK</span>
+          <span class="swatch" style="background:#1f5fa8;margin-right:5px" aria-hidden="true"></span>
+          <span title="Molde FK">MOL</span>
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#f5c518;margin-right:5px" aria-hidden="true"></span>
-          <span title="FK Bodø/Glimt">BGL</span>
+          <span class="swatch-diamond" style="background:#d9a404;margin-right:5px" aria-hidden="true"></span>
+          <span title="Aalesunds FK">AaFK</span>
         </td>
-        <td>SR-Bank Arena</td>
+        <td>Aker Stadion</td>
+      </tr>
+      <tr class="fx-row" data-clubs="brann viking" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 14:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#cc1122;margin-right:5px" aria-hidden="true"></span>
+          <span title="SK Brann">BRA</span>
+        </td>
+        <td style="color:var(--muted)">v</td>
+        <td>
+          <span class="swatch-diamond" style="background:#003366;margin-right:5px" aria-hidden="true"></span>
+          <span title="Viking FK">VIK</span>
+        </td>
+        <td>Brann Stadion</td>
+      </tr>
+      <tr class="fx-row" data-clubs="sandefjord kfum_oslo" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 14:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#2e6f95;margin-right:5px" aria-hidden="true"></span>
+          <span title="Sandefjord Fotball">SAN</span>
+        </td>
+        <td style="color:var(--muted)">v</td>
+        <td>
+          <span class="swatch-diamond" style="background:#b22222;margin-right:5px" aria-hidden="true"></span>
+          <span title="KFUM Oslo">KFU</span>
+        </td>
+        <td>Jotun Arena</td>
+      </tr>
+      <tr class="fx-row" data-clubs="valerenga kristiansund" data-competition="eliteserien_2026">
+        <td>Sun 15 Mar 2026 14:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#14315d;margin-right:5px" aria-hidden="true"></span>
+          <span title="Vålerenga Fotball">VIF</span>
+        </td>
+        <td style="color:var(--muted)">v</td>
+        <td>
+          <span class="swatch-diamond" style="background:#4a90d9;margin-right:5px" aria-hidden="true"></span>
+          <span title="Kristiansund BK">KBK</span>
+        </td>
+        <td>Intility Arena</td>
       </tr>
       <tr class="fx-row" data-clubs="lsk_kvinner haugesund" data-competition="toppserien_2026">
         <td>Sat 21 Mar 2026 20:00</td>
@@ -61935,36 +61995,36 @@
         </td>
         <td>Intility Arena</td>
       </tr>
-      <tr class="fx-row" data-clubs="bodo_glimt tromso" data-competition="eliteserien_2026">
+      <tr class="fx-row" data-clubs="aalesund hamkam" data-competition="eliteserien_2026">
         <td>Sun 29 Mar 2026 20:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
-          <span class="swatch" style="background:#f5c518;margin-right:5px" aria-hidden="true"></span>
-          <span title="FK Bodø/Glimt">BGL</span>
+          <span class="swatch" style="background:#d9a404;margin-right:5px" aria-hidden="true"></span>
+          <span title="Aalesunds FK">AaFK</span>
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#8b0000;margin-right:5px" aria-hidden="true"></span>
-          <span title="Tromsø IL">TIL</span>
-        </td>
-        <td>Aspmyra Stadion</td>
-      </tr>
-      <tr class="fx-row" data-clubs="hamkam sarpsborg08" data-competition="eliteserien_2026">
-        <td>Sun 29 Mar 2026 14:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#0077b6;margin-right:5px" aria-hidden="true"></span>
+          <span class="swatch-diamond" style="background:#0077b6;margin-right:5px" aria-hidden="true"></span>
           <span title="Hamarkameratene">HAM</span>
         </td>
+        <td>Color Line Stadion</td>
+      </tr>
+      <tr class="fx-row" data-clubs="fredrikstad sandefjord" data-competition="eliteserien_2026">
+        <td>Sun 29 Mar 2026 18:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#e4572e;margin-right:5px" aria-hidden="true"></span>
+          <span title="Fredrikstad FK">FFK</span>
+        </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#e67e22;margin-right:5px" aria-hidden="true"></span>
-          <span title="Sarpsborg 08">SAR</span>
+          <span class="swatch-diamond" style="background:#2e6f95;margin-right:5px" aria-hidden="true"></span>
+          <span title="Sandefjord Fotball">SAN</span>
         </td>
-        <td>Briskeby Arena</td>
+        <td>Fredrikstad Stadion</td>
       </tr>
-      <tr class="fx-row" data-clubs="start fredrikstad" data-competition="eliteserien_2026">
-        <td>Sun 29 Mar 2026 14:00</td>
+      <tr class="fx-row" data-clubs="start molde" data-competition="eliteserien_2026">
+        <td>Sun 29 Mar 2026 20:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
           <span class="swatch" style="background:#a32638;margin-right:5px" aria-hidden="true"></span>
@@ -61972,13 +62032,41 @@
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#e4572e;margin-right:5px" aria-hidden="true"></span>
-          <span title="Fredrikstad FK">FFK</span>
+          <span class="swatch-diamond" style="background:#1f5fa8;margin-right:5px" aria-hidden="true"></span>
+          <span title="Molde FK">MOL</span>
         </td>
         <td>Sør Arena</td>
       </tr>
-      <tr class="fx-row" data-clubs="lillestrom rosenborg" data-competition="eliteserien_2026">
-        <td>Sun 29 Mar 2026 14:00</td>
+      <tr class="fx-row" data-clubs="kfum_oslo valerenga" data-competition="eliteserien_2026">
+        <td>Sun 29 Mar 2026 18:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#b22222;margin-right:5px" aria-hidden="true"></span>
+          <span title="KFUM Oslo">KFU</span>
+        </td>
+        <td style="color:var(--muted)">v</td>
+        <td>
+          <span class="swatch-diamond" style="background:#14315d;margin-right:5px" aria-hidden="true"></span>
+          <span title="Vålerenga Fotball">VIF</span>
+        </td>
+        <td>KFUM Arena</td>
+      </tr>
+      <tr class="fx-row" data-clubs="kristiansund brann" data-competition="eliteserien_2026">
+        <td>Sun 29 Mar 2026 18:00</td>
+        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
+        <td>
+          <span class="swatch" style="background:#4a90d9;margin-right:5px" aria-hidden="true"></span>
+          <span title="Kristiansund BK">KBK</span>
+        </td>
+        <td style="color:var(--muted)">v</td>
+        <td>
+          <span class="swatch-diamond" style="background:#cc1122;margin-right:5px" aria-hidden="true"></span>
+          <span title="SK Brann">BRA</span>
+        </td>
+        <td>Kristiansund Stadion</td>
+      </tr>
+      <tr class="fx-row" data-clubs="lillestrom tromso" data-competition="eliteserien_2026">
+        <td>Sun 29 Mar 2026 20:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
           <span class="swatch" style="background:#ffe135;margin-right:5px" aria-hidden="true"></span>
@@ -61986,66 +62074,38 @@
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#000000;margin-right:5px" aria-hidden="true"></span>
-          <span title="Rosenborg BK">RBK</span>
+          <span class="swatch-diamond" style="background:#8b0000;margin-right:5px" aria-hidden="true"></span>
+          <span title="Tromsø IL">TIL</span>
         </td>
         <td>Åråsen Stadion</td>
       </tr>
-      <tr class="fx-row" data-clubs="molde aalesund" data-competition="eliteserien_2026">
+      <tr class="fx-row" data-clubs="sarpsborg08 rosenborg" data-competition="eliteserien_2026">
         <td>Sun 29 Mar 2026 18:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
-          <span class="swatch" style="background:#1f5fa8;margin-right:5px" aria-hidden="true"></span>
-          <span title="Molde FK">MOL</span>
+          <span class="swatch" style="background:#e67e22;margin-right:5px" aria-hidden="true"></span>
+          <span title="Sarpsborg 08">SAR</span>
         </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#d9a404;margin-right:5px" aria-hidden="true"></span>
-          <span title="Aalesunds FK">AaFK</span>
+          <span class="swatch-diamond" style="background:#000000;margin-right:5px" aria-hidden="true"></span>
+          <span title="Rosenborg BK">RBK</span>
         </td>
-        <td>Aker Stadion</td>
+        <td>Sarpsborg Stadion</td>
       </tr>
-      <tr class="fx-row" data-clubs="brann viking" data-competition="eliteserien_2026">
-        <td>Sun 29 Mar 2026 14:00</td>
+      <tr class="fx-row" data-clubs="viking bodo_glimt" data-competition="eliteserien_2026">
+        <td>Sun 29 Mar 2026 20:00</td>
         <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
         <td>
-          <span class="swatch" style="background:#cc1122;margin-right:5px" aria-hidden="true"></span>
-          <span title="SK Brann">BRA</span>
-        </td>
-        <td style="color:var(--muted)">v</td>
-        <td>
-          <span class="swatch-diamond" style="background:#003366;margin-right:5px" aria-hidden="true"></span>
+          <span class="swatch" style="background:#003366;margin-right:5px" aria-hidden="true"></span>
           <span title="Viking FK">VIK</span>
         </td>
-        <td>Brann Stadion</td>
-      </tr>
-      <tr class="fx-row" data-clubs="sandefjord kfum_oslo" data-competition="eliteserien_2026">
-        <td>Sun 29 Mar 2026 14:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#2e6f95;margin-right:5px" aria-hidden="true"></span>
-          <span title="Sandefjord Fotball">SAN</span>
-        </td>
         <td style="color:var(--muted)">v</td>
         <td>
-          <span class="swatch-diamond" style="background:#b22222;margin-right:5px" aria-hidden="true"></span>
-          <span title="KFUM Oslo">KFU</span>
+          <span class="swatch-diamond" style="background:#f5c518;margin-right:5px" aria-hidden="true"></span>
+          <span title="FK Bodø/Glimt">BGL</span>
         </td>
-        <td>Jotun Arena</td>
-      </tr>
-      <tr class="fx-row" data-clubs="valerenga kristiansund" data-competition="eliteserien_2026">
-        <td>Sun 29 Mar 2026 14:00</td>
-        <td><span class="comp-tag" style="background:#fdf6ea;color:#b9770e">Eliteserien</span></td>
-        <td>
-          <span class="swatch" style="background:#14315d;margin-right:5px" aria-hidden="true"></span>
-          <span title="Vålerenga Fotball">VIF</span>
-        </td>
-        <td style="color:var(--muted)">v</td>
-        <td>
-          <span class="swatch-diamond" style="background:#4a90d9;margin-right:5px" aria-hidden="true"></span>
-          <span title="Kristiansund BK">KBK</span>
-        </td>
-        <td>Intility Arena</td>
+        <td>SR-Bank Arena</td>
       </tr>
       <tr class="fx-row" data-clubs="aalesund roa" data-competition="toppserien_2026">
         <td>Sat 04 Apr 2026 18:00</td>
