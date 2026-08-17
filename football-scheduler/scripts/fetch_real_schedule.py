@@ -77,6 +77,13 @@ _DIACRITIC_MAP = str.maketrans("æøåÆØÅ", "aoaAOA")
 # `data/clubs.yml` differ only by one of these tokens) still matches too.
 _CLUB_TOKENS = {"fk", "sk", "il", "bk", "ik", "kvinner", "damer", "fotball"}
 
+# A candidate shorter than this is never used as a *fuzzy* (substring) match
+# key, only for exact matching. Below this length, "is it a substring of the
+# API name" stops meaning "is it probably the same club" — a 3-letter short
+# code is short enough to turn up inside an unrelated club's name by
+# coincidence ("Åsane" contains "san", Sandefjord's short_name).
+_MIN_FUZZY_CANDIDATE_LEN = 5
+
 
 class ConversionError(Exception):
     """The input couldn't be turned into a schedule at all."""
@@ -123,14 +130,37 @@ def _candidates(name: str) -> set[str]:
     return candidates
 
 
+def _gender_variants(candidates: set[str], team) -> set[str]:
+    if team.gender != "women":
+        return candidates
+    expanded = set(candidates)
+    expanded |= {c + " kvinner" for c in candidates}
+    expanded |= {c + " damer" for c in candidates}
+    return expanded
+
+
 def _team_candidates(world: World, team_id: str) -> set[str]:
+    """Every normalized spelling worth trying for an *exact* match — full
+    club name and short code both, since an exact hit can't collide."""
     team = world.team(team_id)
     club = world.club(team.club_id)
     candidates = _candidates(club.name) | _candidates(club.short_name)
-    if team.gender == "women":
-        candidates |= {c + " kvinner" for c in set(candidates)}
-        candidates |= {c + " damer" for c in set(candidates)}
-    return candidates
+    return _gender_variants(candidates, team)
+
+
+def _fuzzy_team_candidates(world: World, team_id: str) -> set[str]:
+    """Candidates worth trying as a *substring* match key.
+
+    Deliberately narrower than `_team_candidates`: the short code is left
+    out entirely (see `_MIN_FUZZY_CANDIDATE_LEN`), and anything under the
+    length floor is dropped even if it came from the full club name — a
+    substring test on a short string finds unrelated clubs, not variant
+    spellings of the same one.
+    """
+    team = world.team(team_id)
+    club = world.club(team.club_id)
+    candidates = {c for c in _candidates(club.name) if len(c) >= _MIN_FUZZY_CANDIDATE_LEN}
+    return _gender_variants(candidates, team)
 
 
 def resolve_team(world: World, team_ids: list[str], api_name: str) -> tuple[str | None, bool]:
@@ -161,9 +191,7 @@ def resolve_team(world: World, team_ids: list[str], api_name: str) -> tuple[str 
 
     fuzzy_matches = set()
     for team_id in team_ids:
-        for candidate in _team_candidates(world, team_id):
-            if not candidate:
-                continue
+        for candidate in _fuzzy_team_candidates(world, team_id):
             if candidate in api_key or api_key in candidate:
                 fuzzy_matches.add(team_id)
                 break
@@ -215,6 +243,14 @@ PARSERS = {
 }
 
 
+def _side_label(api_name: str, team_id: str, fuzzy: bool) -> str:
+    """`'Åsane' -> sandefjord_m (fuzzy)` — so a reviewer scanning the printed
+    warnings sees which team id a name actually resolved to, not just the
+    API's own spelling of it. A wrong fuzzy match is invisible without this:
+    the API name alone reads as plausible either way."""
+    return f"{api_name!r} -> {team_id} ({'fuzzy' if fuzzy else 'exact'})"
+
+
 def convert(
     world: World,
     competition_id: str,
@@ -246,8 +282,9 @@ def convert(
 
         if result.any_fuzzy:
             note = (
-                f"{fixture.event_date}: {fixture.home_name!r} v {fixture.away_name!r} "
-                f"matched by substring, not exactly — "
+                f"{fixture.event_date}: "
+                f"{_side_label(fixture.home_name, home_id, home_fuzzy)} v "
+                f"{_side_label(fixture.away_name, away_id, away_fuzzy)} — "
                 f"{'accepted (--allow-fuzzy)' if allow_fuzzy else 'skipped'}"
             )
             problems.append(note)
@@ -277,11 +314,30 @@ def _write_csv(rows: list[dict], out_path: Path, append: bool) -> None:
     combined = existing + rows
     combined.sort(key=lambda r: (r["date"], r["competition"], r["home_team"]))
 
+    # Checked before anything is opened for writing: `csv.DictWriter.writerows`
+    # raises if a row carries a key outside `fieldnames` (an --append target
+    # with an extra column, say), and that check happens mid-write — by then
+    # the header is already on disk and the file's previous contents are gone.
+    # Catching it here, before `out_path` is touched, is what keeps a failed
+    # --append from destroying the file it was supposed to extend.
+    unexpected = {key for row in combined for key in row} - set(CSV_FIELDNAMES)
+    if unexpected:
+        raise ConversionError(
+            f"{out_path}: existing row(s) have column(s) {sorted(unexpected)} not in "
+            f"{CSV_FIELDNAMES} — resolve that before appending"
+        )
+
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with out_path.open("w", newline="", encoding="utf-8") as fh:
+    # Written to a sibling temp file and moved into place with os.replace
+    # (atomic on the same filesystem) rather than opened directly: a crash or
+    # Ctrl-C mid-write then leaves the original file intact instead of a
+    # truncated one.
+    tmp_path = out_path.with_name(f".{out_path.name}.tmp")
+    with tmp_path.open("w", newline="", encoding="utf-8") as fh:
         writer = csv.DictWriter(fh, fieldnames=CSV_FIELDNAMES)
         writer.writeheader()
         writer.writerows(combined)
+    tmp_path.replace(out_path)
 
 
 def main() -> int:
@@ -343,7 +399,11 @@ def main() -> int:
         print("FAIL: nothing matched — check --schema and the team-name output above.", file=sys.stderr)
         return 1
 
-    _write_csv(rows, Path(args.out), args.append)
+    try:
+        _write_csv(rows, Path(args.out), args.append)
+    except ConversionError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 1
     print(f"Wrote {args.out}")
 
     if problems:

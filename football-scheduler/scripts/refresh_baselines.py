@@ -93,7 +93,7 @@ def main() -> int:
             stale.extend(_stale_reports(evaluation, world, reports_dir))
         else:
             for path in write_reports(evaluation, world, reports_dir):
-                print(f"  wrote {path.relative_to(PROJECT_ROOT)}")
+                print(f"  wrote {_display_path(path)}")
 
     if args.check:
         if stale:
@@ -108,6 +108,19 @@ def main() -> int:
         print("\nAll baseline reports are up to date.")
 
     return 0
+
+
+def _display_path(path: Path) -> Path:
+    """`path`, shortened for display if it's under `PROJECT_ROOT` — purely
+    cosmetic, so a path outside the tree (an out-of-tree `--reports`, say)
+    falls back to the absolute form instead of raising: `Path.relative_to`
+    only accepts a path that's actually a subpath, and this runs after the
+    report has already been written, so a crash here would misreport a
+    successful run as a failure."""
+    try:
+        return path.relative_to(PROJECT_ROOT)
+    except ValueError:
+        return path
 
 
 def _stale_reports(evaluation, world, reports_dir: Path) -> list[str]:

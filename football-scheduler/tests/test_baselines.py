@@ -10,6 +10,7 @@ exactly the failure a baseline exists to prevent.
 
 from __future__ import annotations
 
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -17,6 +18,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import terminliste.baseline as baseline_module
 from terminliste.baseline import (
     BaselineError,
     discover_baselines,
@@ -24,6 +26,7 @@ from terminliste.baseline import (
     load_baseline,
 )
 from terminliste.model.loader import load_world
+from terminliste.rounds.cup_schedule import CupSchedulingError
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SOURCES_DIR = PROJECT_ROOT / "baselines" / "sources"
@@ -70,24 +73,131 @@ def test_reports_are_up_to_date():
     )
 
 
+def test_writes_to_an_out_of_tree_reports_dir_do_not_crash_on_the_display_path(tmp_path):
+    """`Path.relative_to` raises for a path outside `PROJECT_ROOT` — the
+    report itself must still get written successfully; only the cosmetic
+    "wrote ..." line needs to fall back to an absolute path instead."""
+    result = subprocess.run(
+        [
+            sys.executable, str(PROJECT_ROOT / "scripts" / "refresh_baselines.py"),
+            "--reports", str(tmp_path / "out"),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+    assert (tmp_path / "out" / "eliteserien_toppserien_2026.json").exists()
+    assert (tmp_path / "out" / "eliteserien_toppserien_2026.md").exists()
+
+
+_DECLARED_COUNT_RE = re.compile(r"^(\w+)\s*\((\d+)\)")
+
+
+def _declared_hard_violation_counts(expected: list[str]) -> dict[str, int]:
+    """Parse `"<constraint_id> (<count>): ..."` sidecar entries into a max
+    count per rule. An entry that doesn't start with that shape contributes
+    nothing — see the test below for why an unparsed entry must not count as
+    "any number of violations is fine"."""
+    counts: dict[str, int] = {}
+    for entry in expected:
+        match = _DECLARED_COUNT_RE.match(entry)
+        if match:
+            counts[match.group(1)] = int(match.group(2))
+    return counts
+
+
+def _undeclared_or_exceeded(
+    actual: dict[str, int], declared: dict[str, int]
+) -> tuple[list[str], dict[str, tuple[int, int]]]:
+    """Compare actual hard-violation counts against a sidecar's declared
+    ones. Returns (rule ids not declared at all, {rule id: (actual, declared)}
+    for any rule that fired more often than declared) — both empty means the
+    sidecar's honest about everything the baseline currently breaks."""
+    undeclared = sorted(set(actual) - set(declared))
+    exceeded = {
+        constraint_id: (actual[constraint_id], declared[constraint_id])
+        for constraint_id in actual
+        if constraint_id in declared and actual[constraint_id] > declared[constraint_id]
+    }
+    return undeclared, exceeded
+
+
 def test_every_hard_violation_is_declared_in_the_sidecar(world, sources):
-    """A baseline may only break hard rules its sidecar owns up to.
+    """A baseline may only break hard rules its sidecar owns up to, and only
+    up to the count it declares.
 
     This is what keeps `expected_hard_violations` honest. Left unchecked it
     would rot into a stale paragraph that explains away violations nobody
-    re-read; tied to the score, an undeclared violation is a test failure that
-    forces a decision — either the schedule data is wrong, or the sidecar owes
-    the reader an explanation.
+    re-read; tied to the score, an undeclared violation — or one that fires
+    *more* often than declared — is a test failure that forces a decision:
+    either the schedule data is wrong, or the sidecar owes the reader an
+    explanation.
+
+    The count matters as much as the rule id: a sidecar declaring
+    "fixed_requirement (6)" and a baseline that actually breaks it 7 times
+    would pass a rule-id-only check, but the 7th is a real finding about the
+    fixture data, not the same known gap the other 6 are.
     """
     for source in sources:
         evaluation = evaluate_baseline(source, world)
-        broken = {r.constraint_id for r in evaluation.score.hard_results() if r.count}
-        declared = " ".join(source.expected_hard_violations)
-        undeclared = sorted(c for c in broken if c not in declared)
+        actual = {r.constraint_id: r.count for r in evaluation.score.hard_results() if r.count}
+        declared = _declared_hard_violation_counts(source.expected_hard_violations)
+
+        undeclared, exceeded = _undeclared_or_exceeded(actual, declared)
         assert not undeclared, (
-            f"{source.id} breaks {undeclared}, which its sidecar does not mention. "
-            "Either the fixture data is wrong or expected_hard_violations needs updating."
+            f"{source.id} breaks {undeclared}, which its sidecar does not declare as "
+            '"<rule> (<count>): ...". Either the fixture data is wrong or '
+            "expected_hard_violations needs updating."
         )
+        assert not exceeded, (
+            f"{source.id} breaks these rules more times than its sidecar declares, as "
+            f"(actual, declared): {exceeded}. A new instance of an already-declared rule "
+            "is still a real finding about the fixture data — update "
+            "expected_hard_violations or investigate."
+        )
+
+
+def test_declared_count_parsing_reads_the_convention_sidecars_use():
+    entries = [
+        "full_round_on_date (16): every club missing a match on 2026-05-16.",
+        "fixed_requirement (6): the named 16 May home fixtures.",
+        "this entry has no parseable count and should be ignored",
+    ]
+    assert _declared_hard_violation_counts(entries) == {
+        "full_round_on_date": 16,
+        "fixed_requirement": 6,
+    }
+
+
+def test_undeclared_or_exceeded_catches_a_new_instance_of_a_declared_rule():
+    """The regression case from review: extending a baseline past the point
+    where `fixed_requirement` is expected to break 6 times, and it turns out
+    to break 7 — the 7th must not pass silently just because the rule id
+    itself was already declared."""
+    undeclared, exceeded = _undeclared_or_exceeded(
+        actual={"fixed_requirement": 7, "full_round_on_date": 16},
+        declared={"fixed_requirement": 6, "full_round_on_date": 16},
+    )
+    assert undeclared == []
+    assert exceeded == {"fixed_requirement": (7, 6)}
+
+
+def test_undeclared_or_exceeded_flags_a_wholly_new_rule():
+    undeclared, exceeded = _undeclared_or_exceeded(
+        actual={"min_rest_days": 1}, declared={"fixed_requirement": 6}
+    )
+    assert undeclared == ["min_rest_days"]
+    assert exceeded == {}
+
+
+def test_undeclared_or_exceeded_is_silent_when_actual_is_within_declared():
+    """Fewer violations than declared is not a failure — an improvement in
+    the fixture data (or the ruleset) shouldn't force a sidecar edit."""
+    undeclared, exceeded = _undeclared_or_exceeded(
+        actual={"fixed_requirement": 4}, declared={"fixed_requirement": 6}
+    )
+    assert undeclared == []
+    assert exceeded == {}
 
 
 def test_sidecar_is_required(tmp_path):
@@ -100,6 +210,23 @@ def test_missing_required_field_is_rejected(tmp_path):
     sidecar.write_text(yaml.safe_dump({"id": "bad", "name": "Bad"}), encoding="utf-8")
     with pytest.raises(BaselineError, match="missing required field"):
         load_baseline(sidecar)
+
+
+def test_cup_scheduling_failure_is_wrapped_as_baseline_error(world, sources, monkeypatch):
+    """`schedule_cups` raises its own `CupSchedulingError` — `cli.py score`
+    handles that directly, but `evaluate_baseline` presents a single error
+    type to its callers (`load_external_schedule` failures already go
+    through `BaselineError` the same way), and `refresh_baselines.py` only
+    catches `(BaselineError, DataError)`. An unwrapped `CupSchedulingError`
+    would escape as a raw traceback instead of the clean FAIL every other
+    bad-data path produces."""
+
+    def _boom(*args, **kwargs):
+        raise CupSchedulingError("no room for round 1")
+
+    monkeypatch.setattr(baseline_module, "schedule_cups", _boom)
+    with pytest.raises(BaselineError, match="cup scheduling failed"):
+        evaluate_baseline(sources[0], world)
 
 
 def test_missing_schedule_file_is_rejected(tmp_path):
@@ -119,4 +246,46 @@ def test_missing_schedule_file_is_rejected(tmp_path):
         encoding="utf-8",
     )
     with pytest.raises(BaselineError, match="does not exist"):
+        load_baseline(sidecar)
+
+
+def _base_sidecar_fields(**overrides) -> dict:
+    fields = {
+        "id": "bad",
+        "name": "Bad",
+        "season": "2026",
+        "schedule_file": "nope.csv",
+        "verified": False,
+        "retrieved": "2026-08-16",
+        "sources": ["somewhere"],
+    }
+    fields.update(overrides)
+    return fields
+
+
+@pytest.mark.parametrize("bad_verified", ["no", "false", 0, 1])
+def test_verified_must_be_a_real_bool_not_a_coerced_scalar(tmp_path, bad_verified):
+    """`bool("no")` is `True` — coercing here would flip a quoted "no"
+    straight through to "trusted", which is the one thing this field exists
+    to prevent. (An empty-string `verified` is covered separately by
+    `test_missing_required_field_is_rejected` — it's caught by the presence
+    check first, not this type check.)"""
+    sidecar = tmp_path / "bad.yml"
+    sidecar.write_text(
+        yaml.safe_dump(_base_sidecar_fields(verified=bad_verified)), encoding="utf-8"
+    )
+    with pytest.raises(BaselineError, match="verified"):
+        load_baseline(sidecar)
+
+
+@pytest.mark.parametrize("list_field", ["sources", "expected_hard_violations", "competitions"])
+def test_scalar_string_in_a_list_field_is_rejected(tmp_path, list_field):
+    """A sentence where a YAML list was expected must be rejected outright,
+    not iterated into one entry per character."""
+    sidecar = tmp_path / "bad.yml"
+    sidecar.write_text(
+        yaml.safe_dump(_base_sidecar_fields(**{list_field: "a plain sentence, not a list"})),
+        encoding="utf-8",
+    )
+    with pytest.raises(BaselineError, match=f"{list_field!r} must be a list"):
         load_baseline(sidecar)

@@ -5,9 +5,7 @@ gender: women
 format: league
 
 # Double round-robin, same as Eliteserien: every pairing meets twice, once
-# home and once away. Corrected 2026-08-17 — this was previously set to 3
-# (a triple round-robin) on a mistaken read of the format; a 12-team,
-# 22-round double league is what Toppserien actually is.
+# home and once away.
 rounds_per_pairing: 2
 
 # 12 teams -> 11 rounds per leg -> 22 rounds, 132 matches.
@@ -29,9 +27,9 @@ teams:
 # The real 2026 Toppserien window (verified 2026-08-16 via web search —
 # multiple sources agree on 20 March kickoff and 7 November final round,
 # excluding playoffs). Ends almost a month before Eliteserien/the season's
-# outer envelope; 22 rounds fit that window comfortably, but see
+# outer envelope; 22 rounds fit that window comfortably. See
 # `terminliste/model/loader.py::_validate_calendar_capacity` for the check
-# that would catch it if a future edit made the window too tight.
+# that enforces this.
 start: 2026-03-20
 end: 2026-11-07
 

@@ -81,6 +81,23 @@ def test_unmatched_name_is_reported_not_guessed(script, world):
     assert team_id is None
 
 
+@pytest.mark.parametrize(
+    "unrelated_name",
+    [
+        "Asane",  # normalizes to "asane", which contains "san" — Sandefjord's short_name
+        "Sandnes Ulf",  # also contains "san"
+    ],
+)
+def test_short_code_does_not_win_a_fuzzy_match(script, world, unrelated_name):
+    """A 3-letter short_name like Sandefjord's "SAN" must never be used as a
+    fuzzy substring key — it turns up inside unrelated club names by
+    coincidence, and a fuzzy match is supposed to mean "probably the same
+    club", not "shares three letters with it"."""
+    team_ids = world.competition("eliteserien_2026").teams
+    team_id, fuzzy = script.resolve_team(world, team_ids, unrelated_name)
+    assert team_id is None
+
+
 def test_near_miss_is_flagged_fuzzy_not_silently_accepted(script, world):
     """"Aalesund" (common English spelling) vs our "Aalesunds FK" is a real
     near-miss, not a contrived one — this is what motivated defaulting fuzzy
@@ -114,7 +131,8 @@ def test_convert_fuzzy_gate(script, world):
 
     skipped, problems = script.convert(world, "toppserien_2026", fixtures, allow_fuzzy=False)
     assert skipped == []
-    assert "not exactly" in problems[0]
+    assert "aalesund_w (fuzzy)" in problems[0]
+    assert "valerenga_w (exact)" in problems[0]
 
     accepted, _ = script.convert(world, "toppserien_2026", fixtures, allow_fuzzy=True)
     assert accepted == [
@@ -211,6 +229,37 @@ def test_cli_append_merges_into_existing_file(tmp_path):
     assert len(lines) == 3  # header + one row per competition
     assert any("eliteserien_2026" in line for line in lines)
     assert any("toppserien_2026" in line for line in lines)
+
+
+def test_cli_append_with_incompatible_columns_leaves_original_file_untouched(tmp_path):
+    """A file with an extra column (e.g. a hand-added `kickoff`) must fail
+    the --append cleanly rather than being truncated to a bare header —
+    `csv.DictWriter.writerows` raising mid-write, after the header was
+    already flushed to the real destination, is exactly the bug this guards."""
+    out_path = tmp_path / "existing.csv"
+    original = "competition,date,home_team,away_team,venue,kickoff\neliteserien_2026,2026-03-14,hamkam_m,viking_m,,16:00\n"
+    out_path.write_text(original, encoding="utf-8")
+
+    payload = {"events": [{"idEvent": "1", "dateEvent": "2026-03-20", "strHomeTeam": "Bodo/Glimt", "strAwayTeam": "Honefoss BK"}]}
+    in_path = tmp_path / "new.json"
+    in_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable, str(SCRIPT_PATH),
+            "--competition", "toppserien_2026",
+            "--from-json", str(in_path),
+            "--out", str(out_path),
+            "--append",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 1
+    assert "kickoff" in result.stderr
+    assert out_path.read_text(encoding="utf-8") == original
+    # No temp file left behind either.
+    assert not (tmp_path / ".existing.csv.tmp").exists()
 
 
 def test_cli_fails_clearly_on_unknown_competition(tmp_path):

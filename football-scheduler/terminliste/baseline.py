@@ -41,7 +41,7 @@ from .external_schedule import ExternalScheduleError, load_external_schedule
 from .model.loader import World
 from .model.schema import Match
 from .model.travel import HaversineTravelModel
-from .rounds.cup_schedule import schedule_cups
+from .rounds.cup_schedule import CupSchedulingError, schedule_cups
 from .scoring.base import EvalContext, Score, evaluate
 from .scoring.registry import build_constraints
 
@@ -119,6 +119,29 @@ def load_baseline(sidecar_path: Path) -> BaselineSource:
     if missing:
         raise BaselineError(f"{sidecar_path}: missing required field(s) {missing}")
 
+    # `verified` gates whether the sidecar's provenance is trusted at all —
+    # the one field this module exists to keep honest. `bool("no")` is `True`,
+    # so coercing rather than checking would flip a quoted "no" straight
+    # through to "trusted", which is the exact failure mode the field is
+    # supposed to prevent.
+    raw_verified = raw["verified"]
+    if not isinstance(raw_verified, bool):
+        raise BaselineError(
+            f"{sidecar_path}: 'verified' must be a YAML boolean (true/false), "
+            f"got {raw_verified!r}"
+        )
+
+    # A scalar string here (someone forgot the leading "- ") would otherwise
+    # pass the presence check above and then get iterated character by
+    # character below, silently turning one sentence into dozens of
+    # one-letter bullets.
+    for list_field in ("sources", "expected_hard_violations", "competitions"):
+        value = raw.get(list_field)
+        if value is not None and not isinstance(value, list):
+            raise BaselineError(
+                f"{sidecar_path}: {list_field!r} must be a list, got {type(value).__name__}"
+            )
+
     schedule_path = sidecar_path.parent / str(raw["schedule_file"])
     if not schedule_path.exists():
         raise BaselineError(
@@ -132,7 +155,7 @@ def load_baseline(sidecar_path: Path) -> BaselineSource:
         season_id=str(raw["season"]),
         schedule_path=schedule_path,
         sidecar_path=sidecar_path,
-        verified=bool(raw["verified"]),
+        verified=raw_verified,
         retrieved=str(raw["retrieved"]),
         coverage=str(raw.get("coverage", "unknown")),
         sources=[str(s) for s in raw["sources"]],
@@ -152,9 +175,12 @@ def evaluate_baseline(source: BaselineSource, world: World) -> BaselineEvaluatio
     """
     season = world.season(source.season_id)
     competitions = [world.competition(c) for c in season.competitions]
-    cup_schedules, cup_warnings = schedule_cups(
-        [world.competition(c) for c in season.cup_competitions], season
-    )
+    try:
+        cup_schedules, cup_warnings = schedule_cups(
+            [world.competition(c) for c in season.cup_competitions], season
+        )
+    except CupSchedulingError as exc:
+        raise BaselineError(f"{source.id}: cup scheduling failed — {exc}") from None
     constraints = build_constraints(world, season, competitions, cup_schedules)
 
     try:
