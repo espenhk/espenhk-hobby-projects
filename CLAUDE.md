@@ -202,6 +202,18 @@ Managed by Poetry. Run `poetry install` to create `.venv/` and install all depen
 
 ---
 
+## Code comments
+
+Comments should be brief and explain *why*, not restate *what* the code
+already makes clear through legible naming and structure. A single line is
+usually enough to orient a reader; multiline comments are the exception, not
+the rule. Comments should describe the code as it stands now, not the
+history of how it got there — don't reference a previous implementation, a
+past bug, or a since-changed approach. If it's not needed to understand or
+improve the current code, leave it out.
+
+---
+
 ## Git & PR conventions
 
 When a pull request's changes fix one or more GitHub issues, the PR
