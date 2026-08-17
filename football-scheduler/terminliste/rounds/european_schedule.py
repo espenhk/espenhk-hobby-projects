@@ -154,12 +154,22 @@ def _round_by_id(competition: Competition, round_id: str | None) -> EuropeanRoun
 def _next_round_for_team(
     team_id: str, competition: Competition, round_: EuropeanRound
 ) -> EuropeanRound | None:
+    """The next round after `round_` that `team_id` actually plays.
+
+    Scans forward rather than only checking the very next list entry: a
+    competition's `european_rounds` can interleave rounds from more than
+    one UEFA path (Champions Path vs. League Path/Main Path — see
+    `champions_league_2026.yml`'s header), so the round immediately after
+    `round_` in list order may belong to a path `team_id` isn't on. Only
+    checking `rounds[index + 1]` would truncate the walk there instead of
+    finding the team's actual next round further down the list.
+    """
     rounds = competition.european_rounds
     index = next(i for i, r in enumerate(rounds) if r.id == round_.id)
-    if index + 1 >= len(rounds):
-        return None
-    following = rounds[index + 1]
-    return following if team_id in following.entrants else None
+    for following in rounds[index + 1 :]:
+        if team_id in following.entrants:
+            return following
+    return None
 
 
 def resolve_european_commitments(
@@ -172,15 +182,25 @@ def resolve_european_commitments(
     resolve to. Only a team's *true* entry competition is walked from: a
     round that is itself the target of some other round's
     `drop_to_competition`/`drop_to_round` is reached by that cascade walk,
-    not treated as a second, independent home — starting from both would
-    silently overwrite the correct (longer) window list with the
-    incomplete one from the cascade's midpoint.
+    not treated as a second, independent home for the team(s) who cascade
+    into it — starting from both would silently overwrite the correct
+    (longer) window list with the incomplete one from the cascade's
+    midpoint.
+
+    The skip below is keyed on *(team, round)*, not just *round*: a round
+    can simultaneously be one team's real, direct entry point and another
+    team's cascade landing spot (e.g. a UEFA rule that routes a Europa
+    League loser into the exact round of the Conference League some other
+    club enters directly). Keying on the round alone would incorrectly
+    skip the direct entrant too, dropping it out of the result with no
+    error.
     """
     drop_targets = {
-        (round_.drop_to_competition, round_.drop_to_round)
+        (team_id, round_.drop_to_competition, round_.drop_to_round)
         for competition in competitions
         for round_ in competition.european_rounds
         if round_.drop_to_competition is not None
+        for team_id in round_.entrants
     }
     by_id = {c.id: c for c in competitions}
 
@@ -190,7 +210,7 @@ def resolve_european_commitments(
             entry = _entry_round(team_id, competition)
             if entry is None:
                 continue
-            if (competition.id, entry.id) in drop_targets:
+            if (team_id, competition.id, entry.id) in drop_targets:
                 continue
             windows_by_team[team_id] = resolve_team_cascade(team_id, competition, by_id)
     return windows_by_team

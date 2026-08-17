@@ -334,15 +334,24 @@ UEFA rule that lands on another *qualifying* round rather than a league
 phase this project doesn't track) — a natural next step is deciding whether
 that league-phase boundary is worth crossing (many more matchdays, spread
 across autumn, for a team that could end up in any of three competitions'
-league phases depending on results) or stays out of scope. Also worth
-doing: wiring `european_windows`/`resolved_cup_windows`-style candidate-date
-pruning into `solvers/greedy.py`'s cost function and `solvers/cpsat.py`'s
-candidate-set construction (mirroring `_cup_clear`/`cup_conflict`) — the
-local-search default already reaches a feasible schedule by scoring
-`european_commitment_conflict` through annealing the same way it does
-`blackout_dates`, but CP-SAT's fixed, narrow candidate windows may not
-always have room to route around a European commitment discovered only
-after the model is built, the same gap `_cup_clear` closed for cup dates.
+league phases depending on results) or stays out of scope.
+
+Both solvers already prune candidate dates that conflict with a resolved
+European window up front — `solvers/greedy.py`'s cost function
+(`_EUROPEAN_CONFLICT`) and `solvers/cpsat.py`'s candidate-set construction
+(`_european_clear`, composed with the existing `_cup_clear`) — mirroring
+how each already treats `cup_conflict`. Even so, the 2026 season's European
+windows are wide enough (Brann's resolved cascade blocks roughly 40 of the
+48 days between its entry and its last tracked round; Tromsø's is similar)
+that the default search budget needs real headroom to reliably land on a
+feasible schedule — `cli.py generate`'s default `--time-budget` is 300s for
+exactly this reason; 60s only reaches feasible on a minority of seeds once
+these windows are in play. A `EuropeanCommitmentWindow` currently blocks
+the *entire* span from one leg of a tie to the other, including the days
+between them — modelling a round as two narrower windows (one per leg)
+instead of one spanning both would hand back a meaningful chunk of that
+blocked calendar and is a reasonable next step if the 300s budget ever
+stops being enough headroom.
 
 Also worth doing, now that `refresh-reference-data` exists but has never run
 against the real API:

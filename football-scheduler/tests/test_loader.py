@@ -7,7 +7,7 @@ from datetime import date
 import pytest
 
 from terminliste.model.loader import DataError, validate_world
-from terminliste.model.schema import FixedRequirement
+from terminliste.model.schema import CupRound, FixedRequirement
 
 
 def test_shipped_data_loads_and_validates_clean(world):
@@ -286,6 +286,37 @@ def test_competition_end_before_start_is_rejected_by_the_schema():
             start=date(2026, 6, 1),
             end=date(2026, 1, 1),
         )
+
+
+def test_non_league_competition_claiming_movable_is_rejected_by_the_schema():
+    from terminliste.model.schema import Competition
+
+    with pytest.raises(ValueError, match="cannot be movable"):
+        Competition(
+            id="cup",
+            name="cup",
+            season=2026,
+            gender="men",
+            format="cup",
+            movable=True,
+            team_count=1,
+            teams=["t1"],
+            cup_rounds=[CupRound(id="r1", name="Round 1", forced_date=date(2026, 8, 1))],
+        )
+
+
+def test_season_competitions_rejects_a_non_movable_league():
+    import factories as f
+
+    v = f.venue("v1")
+    t1 = f.team("t1", "c1", "v1")
+    clubs = [f.club("c1", [t1])]
+    not_movable = f.competition("comp", ["t1"], movable=False)
+    bad_world = f.world(clubs, [v], [not_movable])
+    season = f.season(competitions=["comp"])
+    bad_world.seasons[season.id] = season
+    errors = validate_world(bad_world)
+    assert any("movable: false" in e for e in errors)
 
 
 def test_european_competitions_are_present_and_shaped_correctly(world):

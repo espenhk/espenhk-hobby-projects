@@ -284,6 +284,11 @@ def validate_world(world: World) -> list[str]:
                     f"season {season.id!r} lists {competition_id!r} under competitions, but it is "
                     f"a {competition.format} — cups belong under cup_competitions"
                 )
+            elif not competition.movable:
+                errors.append(
+                    f"season {season.id!r} lists {competition_id!r} under competitions (the "
+                    f"solver-generated, movable list), but it is marked movable: false"
+                )
             if competition.start is not None and competition.start < season.start:
                 errors.append(
                     f"competition {competition_id!r} starts {competition.start}, before "

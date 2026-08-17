@@ -72,6 +72,29 @@ def test_win_progression_stops_when_the_team_is_not_listed_in_the_next_round():
     assert viking_windows[0].window_start == date(2026, 8, 18)
 
 
+def test_win_progression_scans_past_a_round_the_team_is_not_entrant_of():
+    """A competition's `european_rounds` can interleave two UEFA paths —
+    e.g. a Champions-Path round sitting between two League-Path ones, as
+    champions_league_2026.yml's own header describes. A team's next round
+    is whichever round *it* next appears in, not necessarily the very next
+    list entry, which might belong to the other path entirely."""
+    comp = f.competition(
+        "cl",
+        ["glimt", "viking"],
+        format="european",
+        european_rounds=[
+            f.european_round("q3_league_path", entrants=["glimt"], forced_date=date(2026, 8, 4)),
+            # Champions-Path round, sitting between two League-Path ones —
+            # glimt (League Path) is not an entrant of this one.
+            f.european_round("q3_champions_path", entrants=["viking"], forced_date=date(2026, 8, 6)),
+            f.european_round("playoff", entrants=["glimt", "viking"], forced_date=date(2026, 8, 18)),
+        ],
+    )
+    windows = resolve_team_cascade("glimt", comp, {"cl": comp})
+    assert len(windows) == 2
+    assert windows[1].window_start == date(2026, 8, 18), "glimt's playoff window must not be dropped"
+
+
 def test_chain_ends_when_no_further_round_or_drop_to_applies():
     comp = f.competition(
         "cl",
@@ -286,3 +309,34 @@ def test_resolve_european_commitments_does_not_double_resolve_a_cascade_landing_
     result = resolve_european_commitments([el, uecl])
     assert len(result["tromso"]) == 2, "tromso's el-then-uecl cascade must survive intact"
     assert len(result["brann"]) == 2
+
+
+def test_a_direct_entrant_is_not_dropped_when_its_own_round_is_also_a_different_teams_drop_target():
+    """Regression: the skip in `resolve_european_commitments` used to be
+    keyed on (competition, round) alone. When some other team's cascade
+    happens to land on exactly the round a different team enters directly
+    — a real UEFA shape, not a contrived one — that keying incorrectly
+    skipped the direct entrant too, silently dropping it out of the result
+    with no error and no windows to block its league matches with."""
+    el = f.competition(
+        "el",
+        ["tromso"],
+        format="european",
+        european_rounds=[
+            f.european_round(
+                "q2", entrants=["tromso"], forced_date=date(2026, 7, 23),
+                # Drops into brann's own direct entry round in uecl below.
+                drop_to_competition="uecl", drop_to_round="q2",
+            )
+        ],
+    )
+    uecl = f.competition(
+        "uecl",
+        ["brann"],
+        format="european",
+        european_rounds=[f.european_round("q2", entrants=["brann"], forced_date=date(2026, 7, 21))],
+    )
+    result = resolve_european_commitments([el, uecl])
+    assert "brann" in result, "brann's direct uecl entry must survive being a tromso drop target too"
+    assert len(result["brann"]) == 1
+    assert len(result["tromso"]) == 2

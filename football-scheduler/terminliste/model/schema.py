@@ -296,6 +296,23 @@ class Competition(BaseModel):
             raise ValueError(f"{self.id}: end ({self.end}) is before start ({self.start})")
         return self
 
+    @model_validator(mode="after")
+    def _non_league_is_not_movable(self) -> "Competition":
+        """Makes the `movable` comment above self-policing rather than just
+        descriptive: a cup or European competition claiming `movable: true`
+        is a data error, not a legitimate choice — the solver never
+        generates or dates either one's fixtures, so the flag would be
+        lying about what actually happens. A `league` may still set
+        `movable: false` deliberately (e.g. to keep it out of
+        `season.competitions` while modelling it) — only the reverse is
+        forbidden here."""
+        if self.format != "league" and self.movable:
+            raise ValueError(
+                f"{self.id}: a {self.format} competition cannot be movable — the solver never "
+                f"generates or dates its fixtures, so set movable: false"
+            )
+        return self
+
     @property
     def rounds(self) -> int:
         """Total rounds.
