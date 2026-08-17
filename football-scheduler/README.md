@@ -82,6 +82,10 @@ reads: it prints a diff against `data/*.yml`, it never rewrites it. See
   re-scored on demand so there is always a real-world number to read a
   generated schedule against. See "Baselines" below and
   `baselines/README.md`.
+- **`scripts/fetch_real_schedule.py`** — converts a fixture-API response
+  (TheSportsDB or API-Football) into a baseline-ready CSV, matching the
+  API's team names against `data/clubs.yml`. See
+  `baselines/SOURCING_FIXTURES.md`.
 - **`terminliste/refdata/`** — an optional, explicit-opt-in fetch/cache
   layer for team and venue reference data. See "Reference-data refresh"
   below.
@@ -213,8 +217,11 @@ quietly.
 What's committed today is round 1 of both 2026 leagues, not the full season:
 every fixture source is blocked by this sandbox's egress policy, and search
 gave trustworthy pairings only for the opening rounds. `baselines/README.md`
-has the full account, the rules for reading a partial baseline's hard-violation
-count, and the procedure for extending it from a machine with network access.
+has the full account and the rules for reading a partial baseline's
+hard-violation count; `baselines/SOURCING_FIXTURES.md` and
+`scripts/fetch_real_schedule.py` are the recommended path (TheSportsDB, with
+an API-Football fallback) to fetching and converting the rest from a machine
+with real network access.
 
 ## Reference-data refresh
 
@@ -274,6 +281,9 @@ python -m pytest tests/ -v
 - `test_baselines.py` — the committed baselines load and score, every
   baseline has a report, the reports are not stale, and no baseline breaks a
   hard rule its sidecar hasn't declared.
+- `test_fetch_real_schedule.py` — team-name matching (diacritics, club-type
+  tokens, gender disambiguation, near-miss fuzzy matches) and both source
+  JSON schemas, entirely offline via `--from-json`.
 - `test_solver_contract.py` — parametrized over both backends (`cpsat`
   skipped if OR-Tools isn't installed): diverse top-N candidates, every
   fixture placed once, feasibility achievable, determinism, and a graceful

@@ -154,7 +154,8 @@ football-scheduler/
 │   └── baseline.py                # score the committed baselines, write their reports
 ├── scripts/
 │   ├── publish_web.py       # generate + publish the report to docs/football-scheduler/
-│   └── refresh_baselines.py  # re-score baselines/sources/ -> baselines/reports/
+│   ├── refresh_baselines.py  # re-score baselines/sources/ -> baselines/reports/
+│   └── fetch_real_schedule.py # convert a real fixture-API JSON into a baseline CSV
 ├── schedules/                # generated HTML + JSON output (gitignored)
 └── tests/
 ```
@@ -168,7 +169,11 @@ and `score` all run fully offline with no external dependencies beyond
 `scripts/refresh_baselines.py` re-scores the real fixture lists committed
 under `baselines/` and rewrites their reports; run it (and commit the diff)
 after any change that could move a schedule's score, and note that its
-`--check` mode is asserted by the test suite. Club/venue data in
+`--check` mode is asserted by the test suite. The committed 2026 baseline is
+currently round 1 only — `baselines/SOURCING_FIXTURES.md` has the recommended
+API and `scripts/fetch_real_schedule.py` usage for extending it to a full
+season from a machine with real network access (this sandbox's egress policy
+blocks every fixture source, so that path is written but unverified). Club/venue data in
 `data/` is marked `verified: false` — assembled from web search rather than a
 fetchable source, so check it before relying on it for anything real. See
 `football-scheduler/README.md` for the full architecture writeup, the

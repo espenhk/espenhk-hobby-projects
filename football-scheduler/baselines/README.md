@@ -80,7 +80,11 @@ can reach the data.
    them, and `external_schedule.py` rejects anything unknown by name rather
    than guessing. Put both leagues in one file: the dual-club rules that
    motivate this project only fire when Eliteserien and Toppserien are scored
-   together.
+   together. `SOURCING_FIXTURES.md` in this directory walks through a
+   recommended API (TheSportsDB, already used elsewhere in this project),
+   a fallback API, and `scripts/fetch_real_schedule.py`, which converts
+   either one's JSON into this CSV format and does the team-name matching
+   for you.
 2. **Write the sidecar.** Copy an existing `<id>.yml`. `id`, `name`,
    `season`, `schedule_file`, `verified`, `retrieved` and `sources` are
    required; `coverage`, `contains`, `expected_hard_violations` and `notes`
