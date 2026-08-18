@@ -444,11 +444,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_generate.add_argument(
         "--time-budget",
         type=float,
-        default=300.0,
+        default=180.0,
         help=(
-            "seconds (default 300 — the 2026 season's European qualifying "
-            "windows leave little slack for a shorter search to reliably "
-            "reach a feasible schedule; see README's 'Suggested next steps')"
+            "seconds (default 180 — the 2026 season's European qualifying "
+            "commitments need real search headroom over a Europe-free season "
+            "to reliably reach a feasible schedule; see README's 'Suggested "
+            "next steps')"
         ),
     )
     p_generate.add_argument("--out", default=str(SCHEDULES_ROOT))

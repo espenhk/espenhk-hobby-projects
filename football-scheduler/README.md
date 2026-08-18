@@ -414,15 +414,15 @@ each leg's own resolved date plus `min_rest_days`, not the whole span
 between a tie's two legs — an earlier version of this modelled a round as
 one range covering both legs, which ruled out a normal Thu-Sun-Thu week by
 construction; that's fixed. Even so, `cli.py generate`'s default
-`--time-budget` is 300s, not the 30-60s a season with no European
+`--time-budget` is 180s, not the 30-60s a season with no European
 commitments needs: measured across the same seeds the window-based model
 struggled on, the per-leg model reaches a feasible top option at 60s on
-4 of 6, needs up to 120s on a 5th and up to 180s on the 6th — real
-headroom over the no-Europe case, just far less than the old model's need
-for the full 300s on nearly every seed. 300s stays the default anyway:
-this is a scheduler that runs once a season, the cost of extra margin is a
-few idle minutes, and the risk of an occasional slow seed landing on
-someone's slower hardware isn't worth trimming the budget to chase.
+4 of 6, needs up to 120s on a 5th and up to 180s on the 6th — real headroom
+over the no-Europe case, just far less than the old model's need for a
+full 300s on nearly every seed. 180s is that measured ceiling, not extra
+margin on top of it — the scheduler runs once a season, so a slower seed
+or slower hardware pushing past it occasionally is an acceptable trade for
+not defaulting every run to a longer wait than usually needed.
 
 Also worth doing, now that `refresh-reference-data` exists but has never run
 against the real API:
