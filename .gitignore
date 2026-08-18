@@ -216,6 +216,7 @@ football-scheduler/schedules/*.html
 football-scheduler/schedules/*.json
 
 # football-scheduler: cached API responses from `cli.py refresh-reference-data`
+# and `cli.py refresh-travel-times`
 football-scheduler/data/.refdata_cache/
 
 # conversational-analytics: local "living dashboard" store, accumulates every
