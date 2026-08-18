@@ -52,7 +52,7 @@ teams:
   - bodo_glimt_m
   - viking_m
 
-min_rest_days: 3
+min_rest_days: 2
 
 european_rounds:
   - id: q3

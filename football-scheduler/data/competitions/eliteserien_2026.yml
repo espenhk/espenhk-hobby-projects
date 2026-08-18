@@ -48,7 +48,7 @@ end: 2026-12-06
 preferred_weekday: sunday
 
 # Hard rule parameters.
-min_rest_days: 3
+min_rest_days: 2
 
 # How far an individual match may float from its round's anchor date. A ±3 day
 # window turns a round into a Friday-to-Monday weekend, which is the freedom

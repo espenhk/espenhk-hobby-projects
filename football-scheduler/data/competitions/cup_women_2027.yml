@@ -39,7 +39,7 @@ teams:
   - stabak_w
   - valerenga_w
 
-min_rest_days: 3
+min_rest_days: 2
 match_window_days: 3
 
 cup_rounds:

@@ -289,7 +289,7 @@ def european_conflict(
     is the authoritative check a schedule is actually judged against.
     """
     return any(
-        abs((day - commitment.date).days) < commitment.min_rest_days
+        abs((day - commitment.date).days) - 1 < commitment.min_rest_days
         for commitment in commitments_by_team.get(team_id, ())
     )
 

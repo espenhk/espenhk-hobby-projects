@@ -242,3 +242,6 @@ closes #21
 This is what lets GitHub auto-close those issues when the PR merges — do
 this whether the PR was opened by a person or by an agent, and whether it
 fixes one issue or several.
+
+All PRs are merged using squash-merge to keep the main branch history clean
+and linear.

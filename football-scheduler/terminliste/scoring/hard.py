@@ -18,19 +18,22 @@ from .base import Constraint, ConstraintResult, EvalContext, Event, ScheduleInde
 
 @dataclass
 class MinRestDays:
-    """At least N days between any team's matches.
+    """At least N full days off between any team's matches.
 
-    A gap of exactly N is fine: Sunday to Wednesday is three days and legal
-    at the default setting. Only gaps strictly below the minimum count —
-    including a gap of zero, which is a team playing twice in one day. This
-    rule only governs gaps between a team's own matches *in the competitions
-    passed to it* (`competitions`, always the movable, solver-scheduled
-    ones); the equivalent gap against a European qualifying leg is
-    `EuropeanCommitmentConflict`'s job, using the same `min_rest_days`
+    N counts only the days strictly between the two matchdays, not either
+    matchday itself: Thursday to Sunday is two full rest days and legal at
+    the default setting. Only a rest count strictly below the minimum counts
+    as a violation — including a team playing twice in one day, which counts
+    as -1 rest days.
+
+    This rule only governs gaps between a team's own matches *in the
+    competitions passed to it* (`competitions`, always the movable,
+    solver-scheduled ones); the equivalent gap against a European qualifying
+    leg is `EuropeanCommitmentConflict`'s job, using the same `min_rest_days`
     value but read from the European competition, not this one — which is
     what makes a Thu-Sun-Thu week (a European leg, the league match, the
-    next European leg) work out to legal on both sides at the shared
-    default of 3, without either rule needing to know about the other.
+    next European leg) work out to legal on both sides, without either rule
+    needing to know about the other.
     """
 
     competitions: list[Competition]
@@ -59,21 +62,21 @@ class MinRestDays:
             if minimum is None:
                 continue
             for earlier, later in zip(matches, matches[1:]):
-                gap = (later.date - earlier.date).days
-                if gap >= minimum:
+                rest_days = (later.date - earlier.date).days - 1
+                if rest_days >= minimum:
                     continue
                 count += 1
                 # Deeper shortfalls hurt more, so the annealer prefers fixing a
                 # same-day double-booking before a one-day-short gap.
-                shortfall = minimum - gap
+                shortfall = minimum - rest_days
                 penalty -= self.weight * shortfall
                 if ctx.detail:
                     events.append(
                         Event(
                             delta=-self.weight * shortfall,
                             detail=(
-                                f"{ctx.world.team_label(team_id)} has {gap} day(s) between "
-                                f"{earlier.date} and {later.date} — needs {minimum}"
+                                f"{ctx.world.team_label(team_id)} has {rest_days} rest day(s) "
+                                f"between {earlier.date} and {later.date} — needs {minimum}"
                             ),
                             match_keys=(earlier.key, later.key),
                         )
@@ -415,11 +418,11 @@ class CupRoundConflict:
         for team_id, windows in self._windows_by_team.items():
             for match in index.by_team.get(team_id, ()):
                 for round_date, minimum, cup_name in windows:
-                    gap = abs((match.date - round_date).days)
-                    if gap >= minimum:
+                    rest_days = abs((match.date - round_date).days) - 1
+                    if rest_days >= minimum:
                         continue
                     count += 1
-                    shortfall = minimum - gap
+                    shortfall = minimum - rest_days
                     penalty -= self.weight * shortfall
                     if ctx.detail:
                         events.append(
@@ -427,8 +430,8 @@ class CupRoundConflict:
                                 delta=-self.weight * shortfall,
                                 detail=(
                                     f"{ctx.world.team_label(team_id)} plays {match.date} in "
-                                    f"{match.competition_id}, {gap} day(s) from {cup_name} on "
-                                    f"{round_date} — needs {minimum}"
+                                    f"{match.competition_id}, {rest_days} rest day(s) from "
+                                    f"{cup_name} on {round_date} — needs {minimum}"
                                 ),
                                 match_keys=(match.key,),
                             )
@@ -466,11 +469,11 @@ class EuropeanCommitmentConflict:
         for team_id, commitments in self.commitments_by_team.items():
             for match in index.by_team.get(team_id, ()):
                 for commitment in commitments:
-                    gap = abs((match.date - commitment.date).days)
-                    if gap >= commitment.min_rest_days:
+                    rest_days = abs((match.date - commitment.date).days) - 1
+                    if rest_days >= commitment.min_rest_days:
                         continue
                     count += 1
-                    shortfall = commitment.min_rest_days - gap
+                    shortfall = commitment.min_rest_days - rest_days
                     penalty -= self.weight * shortfall
                     if ctx.detail:
                         events.append(
@@ -478,7 +481,7 @@ class EuropeanCommitmentConflict:
                                 delta=-self.weight * shortfall,
                                 detail=(
                                     f"{ctx.world.team_label(team_id)} plays {match.date} in "
-                                    f"{match.competition_id}, {gap} day(s) from "
+                                    f"{match.competition_id}, {rest_days} rest day(s) from "
                                     f"{commitment.label} on {commitment.date} — needs "
                                     f"{commitment.min_rest_days}"
                                 ),
