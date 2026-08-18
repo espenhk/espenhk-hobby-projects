@@ -38,23 +38,36 @@ started:
    League. The domestic scheduler needs to treat the team as still
    potentially committed on those dates regardless of which branch is real,
    until a result narrows it down.
+4. **A round is two legs, each with its own date — not one span.** A cup
+   round is a single date or window. A European qualifying round is a
+   two-legged tie, and the two legs can be a week or more apart; blocking
+   the whole span between them (rather than each leg on its own) rules out
+   a perfectly normal European week — a leg, a domestic league match, the
+   next leg — that this project needs to be able to produce.
 
 ## Representation (issue #29, #30)
 
-`EuropeanRound` (`terminliste/model/schema.py`) is a sibling of `CupRound`,
-both sharing a `_ScheduledRound` base that carries the forced-date-XOR-window
-mechanics issue #30 asked for generalised: `forced_date` when a date is
-confirmed, `window_start`/`window_end` (+ `granularity`) when only the week,
-month or quarter is known, and a `forced_date` can always replace a window
-later without touching anything downstream — narrowing a vague date is a
-data edit, not a re-model. This was already true for cup rounds before this
-work; extracting the shared base just means a European round gets the same
-guarantee for free.
+`EuropeanRound` (`terminliste/model/schema.py`) reuses `CupRound`'s
+forced-date-XOR-window mechanics — issue #30's ask, generalised — but at
+the *leg* level rather than the round level, via a shared `_DateSpec` base
+(the bare date-or-window fields and their validator, with no `id`/`name` of
+their own) that both `CupRound` (through `_ScheduledRound`, which adds
+`id`/`name`/`note`) and `EuropeanLeg` build on. `forced_date` when a leg's
+date is confirmed, `window_start`/`window_end` (+ `granularity`) when only
+the week, month or quarter is known, and a `forced_date` can always replace
+a window later without touching anything downstream — narrowing a vague
+date is a data edit, not a re-model, the same guarantee cup rounds already
+had.
 
-`EuropeanRound` adds three things `CupRound` doesn't need:
+`EuropeanRound` itself carries:
 
-- `entrants: list[str]` — which of the competition's teams actually play
-  this specific round, addressing point 1 above.
+- `first_leg` / `second_leg: EuropeanLeg` — addressing point 4 above: a
+  round's two legs resolve to two independent dates, not one span.
+- `ties: list[EuropeanTie]` — which of the competition's teams actually
+  play this specific round (`team`), and, where UEFA has confirmed them,
+  the `opponent` (defaulting to `"TBD"`) and which leg is the team's home
+  leg (`home_leg`, `None` when not yet settled). Addresses point 1 above;
+  `EuropeanRound.entrants` is the plain team-id list derived from it.
 - `drop_to_competition` / `drop_to_round` — where an entrant lands if
   eliminated *here*, naming a round in a different `Competition`. Both are
   `None` when a loss here has no further qualifying round to track (see
@@ -83,9 +96,18 @@ something either solver backend proposes moving.
 
 ## Resolving the cascade (issue #29, #32)
 
-`terminliste/rounds/european_schedule.py` walks a team's cascade from its
-entry round rather than trying to predict a result. Two edges leave any
-given round for a given team:
+`terminliste/rounds/european_schedule.py` works in two passes. First,
+`resolve_all_legs` resolves every declared round's two legs to actual
+dates, independently of the cascade: a `forced_date` honoured exactly, a
+window resolved to its earliest non-blackout day — the same idea as
+`rounds/cup_schedule.py`'s own resolution, just with no round-to-round
+ordering to derive, since each `EuropeanRound`'s dates come from real,
+independently-sourced UEFA scheduling data rather than being inferred from
+where the previous round landed.
+
+Second, `resolve_team_cascade` walks a team's cascade from its entry round
+rather than trying to predict a result. Two edges leave any given round for
+a given team:
 
 - **Win-progression**: the next round in the same competition's
   `european_rounds` list, if the team is listed among that round's
@@ -95,29 +117,24 @@ given round for a given team:
   cascade into a different, lower competition's round.
 
 Both are followed unconditionally, because which one is real is exactly the
-unknown. Every round reachable at the same cascade *depth* (0 = entry
-round, 1 = the round after, and so on) is merged into a single
-`EuropeanCommitmentWindow` — one blocked date range per depth, spanning the
-earliest start and latest end across every branch still open at that depth.
-
-This is a deliberate simplification rather than full branch tracking, and
-it works because of a real scheduling fact: UEFA keeps a qualifying
-*stage* — Q1, Q2, Q3, play-offs — within the same week or two across all
-three competitions, specifically so a team dropping down keeps roughly to
-schedule instead of getting an extra rest week for losing. That means the
-set of *weeks* a team might be required to play at a given depth is knowable
-even before the identity of the actual branch is. A full decision tree
-(which round, on which specific date, under which exact result) would be
-more precise but wouldn't change what the domestic scheduler actually needs
-— a date range to avoid — so the simpler structure is what's built.
+unknown. Every round reached this way contributes both of its legs'
+already-resolved dates to the result — a flat list of
+`EuropeanCommitmentDate` (team, date, `min_rest_days`, a label naming the
+round and leg), not a single merged range. This was a deliberate range-based
+simplification in an earlier version of this design — one blocked span per
+cascade depth, on the reasoning that UEFA keeps a qualifying stage within
+the same week or two across all three competitions — but a span blocks the
+*entire* gap between a tie's two legs along with the legs themselves, which
+rules out a normal European week (a leg, a league match, the next leg) by
+construction. Resolving each leg to its own point date and blocking only
+that date (plus `min_rest_days`) is both more precise and the thing that
+actually makes such a week schedulable.
 
 `EuropeanCommitmentConflict` (`terminliste/scoring/hard.py`) is the
 constraint that acts on the result: it is `CupRoundConflict`'s counterpart,
 keeping a team's league matches at least `min_rest_days` clear of every
-window in its resolved cascade. It differs from `CupRoundConflict` in being
-range-based rather than point-based, since a European commitment is a
-window (vague date, or a resolved-but-still-two-legged tie) even once which
-competition it belongs to is certain.
+date in its resolved cascade — the same point-date-plus-rest arithmetic as
+`cup_conflict`, not a range check.
 
 **Issue #32's "harder case"** — a conditional fixture whose date, once
 triggered, is fixed and non-reschedulable, forcing other movable fixtures

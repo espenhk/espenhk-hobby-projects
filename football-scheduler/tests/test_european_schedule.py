@@ -1,4 +1,4 @@
-"""Resolving a team's UEFA qualifying cascade to blocked date windows."""
+"""Resolving a team's UEFA qualifying cascade to blocked leg dates."""
 
 from __future__ import annotations
 
@@ -9,15 +9,49 @@ import pytest
 import factories as f
 from terminliste.rounds.european_schedule import (
     EuropeanCascadeError,
+    resolve_all_legs,
     resolve_european_commitments,
+    resolve_leg_date,
     resolve_team_cascade,
 )
+
+
+def _legs(*competitions):
+    """Resolve every leg of the given competitions with no blackouts —
+    the shape `resolve_team_cascade` needs, built the way
+    `resolve_european_commitments` builds it internally."""
+    resolved, _ = resolve_all_legs(list(competitions), blackouts=set())
+    return resolved
+
+
+# -- resolve_leg_date ---------------------------------------------------------
+
+
+def test_forced_leg_resolves_to_its_own_date_even_if_blacked_out():
+    leg = f.european_leg(forced_date=date(2026, 8, 11))
+    resolved, blacked_out = resolve_leg_date(leg, blackouts={date(2026, 8, 11)})
+    assert resolved == date(2026, 8, 11)
+    assert blacked_out is True
+
+
+def test_windowed_leg_resolves_to_its_earliest_non_blackout_day():
+    leg = f.european_leg(window_start=date(2026, 8, 4), window_end=date(2026, 8, 5))
+    resolved, blacked_out = resolve_leg_date(leg, blackouts={date(2026, 8, 4)})
+    assert resolved == date(2026, 8, 5)
+    assert blacked_out is False
+
+
+def test_windowed_leg_falls_back_to_window_start_when_every_day_is_blacked_out():
+    leg = f.european_leg(window_start=date(2026, 8, 4), window_end=date(2026, 8, 5))
+    resolved, blacked_out = resolve_leg_date(leg, blackouts={date(2026, 8, 4), date(2026, 8, 5)})
+    assert resolved == date(2026, 8, 4)
+    assert blacked_out is True
 
 
 # -- resolve_team_cascade: a single competition, no cascade ------------------
 
 
-def test_single_round_entry_gives_one_window():
+def test_single_round_entry_gives_both_leg_dates():
     comp = f.competition(
         "cl",
         ["glimt"],
@@ -26,16 +60,13 @@ def test_single_round_entry_gives_one_window():
             f.european_round(
                 "playoff",
                 entrants=["glimt"],
-                window_start=date(2026, 8, 18),
-                window_end=date(2026, 8, 26),
+                first_leg=f.european_leg(forced_date=date(2026, 8, 18)),
+                second_leg=f.european_leg(forced_date=date(2026, 8, 25)),
             )
         ],
     )
-    windows = resolve_team_cascade("glimt", comp, {"cl": comp})
-    assert len(windows) == 1
-    assert windows[0].window_start == date(2026, 8, 18)
-    assert windows[0].window_end == date(2026, 8, 26)
-    assert windows[0].depth == 0
+    commitments = resolve_team_cascade("glimt", comp, {"cl": comp}, _legs(comp))
+    assert [c.date for c in commitments] == [date(2026, 8, 18), date(2026, 8, 25)]
 
 
 def test_win_progression_follows_the_next_round_when_the_team_is_listed():
@@ -48,9 +79,15 @@ def test_win_progression_follows_the_next_round_when_the_team_is_listed():
             f.european_round("playoff", entrants=["glimt"], forced_date=date(2026, 8, 18)),
         ],
     )
-    windows = resolve_team_cascade("glimt", comp, {"cl": comp})
-    assert [w.window_start for w in windows] == [date(2026, 8, 4), date(2026, 8, 18)]
-    assert [w.depth for w in windows] == [0, 1]
+    commitments = resolve_team_cascade("glimt", comp, {"cl": comp}, _legs(comp))
+    # Both legs of q3 (same forced_date for the test), then both legs of
+    # the play-off.
+    assert [c.date for c in commitments] == [
+        date(2026, 8, 4),
+        date(2026, 8, 4),
+        date(2026, 8, 18),
+        date(2026, 8, 18),
+    ]
 
 
 def test_win_progression_stops_when_the_team_is_not_listed_in_the_next_round():
@@ -67,9 +104,9 @@ def test_win_progression_stops_when_the_team_is_not_listed_in_the_next_round():
             ),
         ],
     )
-    viking_windows = resolve_team_cascade("viking", comp, {"cl": comp})
-    assert len(viking_windows) == 1
-    assert viking_windows[0].window_start == date(2026, 8, 18)
+    viking_commitments = resolve_team_cascade("viking", comp, {"cl": comp}, _legs(comp))
+    assert len(viking_commitments) == 2
+    assert all(c.date == date(2026, 8, 18) for c in viking_commitments)
 
 
 def test_win_progression_scans_past_a_round_the_team_is_not_entrant_of():
@@ -90,9 +127,9 @@ def test_win_progression_scans_past_a_round_the_team_is_not_entrant_of():
             f.european_round("playoff", entrants=["glimt", "viking"], forced_date=date(2026, 8, 18)),
         ],
     )
-    windows = resolve_team_cascade("glimt", comp, {"cl": comp})
-    assert len(windows) == 2
-    assert windows[1].window_start == date(2026, 8, 18), "glimt's playoff window must not be dropped"
+    commitments = resolve_team_cascade("glimt", comp, {"cl": comp}, _legs(comp))
+    assert len(commitments) == 4  # q3_league_path's two legs, then playoff's two
+    assert commitments[-1].date == date(2026, 8, 18), "glimt's play-off commitment must not be dropped"
 
 
 def test_chain_ends_when_no_further_round_or_drop_to_applies():
@@ -102,8 +139,8 @@ def test_chain_ends_when_no_further_round_or_drop_to_applies():
         format="european",
         european_rounds=[f.european_round("playoff", entrants=["glimt"], forced_date=date(2026, 8, 18))],
     )
-    windows = resolve_team_cascade("glimt", comp, {"cl": comp})
-    assert len(windows) == 1
+    commitments = resolve_team_cascade("glimt", comp, {"cl": comp}, _legs(comp))
+    assert len(commitments) == 2
 
 
 def test_entrant_missing_from_every_round_raises():
@@ -114,7 +151,7 @@ def test_entrant_missing_from_every_round_raises():
         european_rounds=[f.european_round("q3", entrants=["someone_else"], forced_date=date(2026, 8, 4))],
     )
     with pytest.raises(EuropeanCascadeError, match="not an entrant"):
-        resolve_team_cascade("glimt", comp, {"cl": comp})
+        resolve_team_cascade("glimt", comp, {"cl": comp}, _legs(comp))
 
 
 # -- resolve_team_cascade: cascading into another competition ----------------
@@ -129,8 +166,7 @@ def test_drop_to_cascades_into_the_named_round_of_another_competition():
             f.european_round(
                 "q3",
                 entrants=["tromso"],
-                window_start=date(2026, 8, 6),
-                window_end=date(2026, 8, 13),
+                forced_date=date(2026, 8, 6),
                 drop_to_competition="uecl",
                 drop_to_round="playoff",
             )
@@ -144,23 +180,26 @@ def test_drop_to_cascades_into_the_named_round_of_another_competition():
             f.european_round(
                 "playoff",
                 entrants=["brann", "tromso"],
-                window_start=date(2026, 8, 20),
-                window_end=date(2026, 8, 27),
+                forced_date=date(2026, 8, 20),
             )
         ],
     )
-    windows = resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl})
-    assert len(windows) == 2
-    assert windows[0].labels == ("el: q3",)
-    assert windows[1].window_start == date(2026, 8, 20)
-    assert windows[1].window_end == date(2026, 8, 27)
+    commitments = resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl}, _legs(el, uecl))
+    assert [c.date for c in commitments] == [
+        date(2026, 8, 6),
+        date(2026, 8, 6),
+        date(2026, 8, 20),
+        date(2026, 8, 20),
+    ]
+    assert commitments[0].label == "el: q3 (first leg)"
+    assert commitments[2].label == "uecl: playoff (first leg)"
 
 
-def test_win_and_drop_branches_at_the_same_depth_are_merged_into_one_window():
+def test_win_and_drop_branches_at_the_same_depth_both_produce_commitments():
     """A team that could either advance within its own competition or drop
     into another one's equivalent round has both branches open until a
-    result narrows it down — the resolver must block the union, not pick
-    one arbitrarily."""
+    result narrows it down — the resolver must block dates from both, not
+    pick one arbitrarily."""
     el = f.competition(
         "el",
         ["tromso"],
@@ -169,15 +208,12 @@ def test_win_and_drop_branches_at_the_same_depth_are_merged_into_one_window():
             f.european_round(
                 "q3",
                 entrants=["tromso"],
-                window_start=date(2026, 8, 6),
-                window_end=date(2026, 8, 9),
+                forced_date=date(2026, 8, 6),
                 drop_to_competition="uecl",
                 drop_to_round="playoff",
             ),
-            # Win branch: stays in the Europa League, a slightly later window.
-            f.european_round(
-                "playoff", entrants=["tromso"], window_start=date(2026, 8, 22), window_end=date(2026, 8, 24)
-            ),
+            # Win branch: stays in the Europa League.
+            f.european_round("playoff", entrants=["tromso"], forced_date=date(2026, 8, 22)),
         ],
     )
     uecl = f.competition(
@@ -185,22 +221,26 @@ def test_win_and_drop_branches_at_the_same_depth_are_merged_into_one_window():
         ["tromso"],
         format="european",
         european_rounds=[
-            # Drop branch: an earlier window than the win branch above.
-            f.european_round(
-                "playoff", entrants=["tromso"], window_start=date(2026, 8, 18), window_end=date(2026, 8, 20)
-            )
+            # Drop branch: a different date than the win branch above.
+            f.european_round("playoff", entrants=["tromso"], forced_date=date(2026, 8, 18))
         ],
     )
-    windows = resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl})
-    assert len(windows) == 2
-    depth1 = windows[1]
-    # Union across both branches: earliest start, latest end, both labels.
-    assert depth1.window_start == date(2026, 8, 18)
-    assert depth1.window_end == date(2026, 8, 24)
-    assert set(depth1.labels) == {"el: playoff", "uecl: playoff"}
+    commitments = resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl}, _legs(el, uecl))
+    # depth 0 (q3): 2 commitments. depth 1: both branches' play-off legs, 4
+    # commitments (2 from el's own playoff, 2 from uecl's).
+    assert len(commitments) == 6
+    depth1_dates = {c.date for c in commitments[2:]}
+    assert depth1_dates == {date(2026, 8, 22), date(2026, 8, 18)}
+    depth1_labels = {c.label for c in commitments[2:]}
+    assert depth1_labels == {
+        "el: playoff (first leg)",
+        "el: playoff (second leg)",
+        "uecl: playoff (first leg)",
+        "uecl: playoff (second leg)",
+    }
 
 
-def test_min_rest_days_at_each_depth_is_the_strictest_of_the_merged_branches():
+def test_min_rest_days_comes_from_each_commitments_own_competition():
     el = f.competition(
         "el",
         ["tromso"],
@@ -221,8 +261,10 @@ def test_min_rest_days_at_each_depth_is_the_strictest_of_the_merged_branches():
         min_rest_days=6,
         european_rounds=[f.european_round("playoff", entrants=["tromso"], forced_date=date(2026, 8, 18))],
     )
-    windows = resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl})
-    assert windows[1].min_rest_days == 6
+    commitments = resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl}, _legs(el, uecl))
+    by_label = {c.label: c for c in commitments}
+    assert by_label["el: playoff (first leg)"].min_rest_days == 3
+    assert by_label["uecl: playoff (first leg)"].min_rest_days == 6
 
 
 def test_dangling_drop_to_competition_raises():
@@ -238,7 +280,7 @@ def test_dangling_drop_to_competition_raises():
         ],
     )
     with pytest.raises(EuropeanCascadeError, match="unknown competition"):
-        resolve_team_cascade("tromso", comp, {"el": comp})
+        resolve_team_cascade("tromso", comp, {"el": comp}, _legs(comp))
 
 
 def test_dangling_drop_to_round_raises():
@@ -258,7 +300,7 @@ def test_dangling_drop_to_round_raises():
         european_rounds=[f.european_round("q2", entrants=["brann"], forced_date=date(2026, 7, 21))],
     )
     with pytest.raises(EuropeanCascadeError, match="does not exist there"):
-        resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl})
+        resolve_team_cascade("tromso", el, {"el": el, "uecl": uecl}, _legs(el, uecl))
 
 
 # -- resolve_european_commitments: season-level orchestration ----------------
@@ -274,18 +316,20 @@ def test_resolve_european_commitments_resolves_every_direct_entrant():
             f.european_round("playoff", entrants=["glimt", "viking"], forced_date=date(2026, 8, 18)),
         ],
     )
-    result = resolve_european_commitments([cl])
+    season = f.season(european_competitions=["cl"])
+    result, warnings = resolve_european_commitments([cl], season)
     assert set(result) == {"glimt", "viking"}
-    assert len(result["glimt"]) == 2
-    assert len(result["viking"]) == 1
+    assert len(result["glimt"]) == 4
+    assert len(result["viking"]) == 2
+    assert warnings == []
 
 
 def test_resolve_european_commitments_does_not_double_resolve_a_cascade_landing_spot():
     """`tromso` is a real entrant of `el` and only a cascade landing spot in
     `uecl` — iterating `uecl.teams` must not treat `uecl`'s playoff round as
     a second, independent home for `tromso`, which would silently overwrite
-    the correct (two-window) result from `el` with the incomplete
-    one-window result starting at the drop target."""
+    the correct (longer) result from `el` with the incomplete one from the
+    drop target."""
     el = f.competition(
         "el",
         ["tromso"],
@@ -306,9 +350,10 @@ def test_resolve_european_commitments_does_not_double_resolve_a_cascade_landing_
             f.european_round("playoff", entrants=["brann", "tromso"], forced_date=date(2026, 8, 20)),
         ],
     )
-    result = resolve_european_commitments([el, uecl])
-    assert len(result["tromso"]) == 2, "tromso's el-then-uecl cascade must survive intact"
-    assert len(result["brann"]) == 2
+    season = f.season(european_competitions=["el", "uecl"])
+    result, _ = resolve_european_commitments([el, uecl], season)
+    assert len(result["tromso"]) == 4, "tromso's el-then-uecl cascade must survive intact"
+    assert len(result["brann"]) == 4
 
 
 def test_a_direct_entrant_is_not_dropped_when_its_own_round_is_also_a_different_teams_drop_target():
@@ -317,7 +362,7 @@ def test_a_direct_entrant_is_not_dropped_when_its_own_round_is_also_a_different_
     happens to land on exactly the round a different team enters directly
     — a real UEFA shape, not a contrived one — that keying incorrectly
     skipped the direct entrant too, silently dropping it out of the result
-    with no error and no windows to block its league matches with."""
+    with no error and no commitments to block its league matches with."""
     el = f.competition(
         "el",
         ["tromso"],
@@ -336,7 +381,40 @@ def test_a_direct_entrant_is_not_dropped_when_its_own_round_is_also_a_different_
         format="european",
         european_rounds=[f.european_round("q2", entrants=["brann"], forced_date=date(2026, 7, 21))],
     )
-    result = resolve_european_commitments([el, uecl])
+    season = f.season(european_competitions=["el", "uecl"])
+    result, _ = resolve_european_commitments([el, uecl], season)
     assert "brann" in result, "brann's direct uecl entry must survive being a tromso drop target too"
-    assert len(result["brann"]) == 1
-    assert len(result["tromso"]) == 2
+    assert len(result["brann"]) == 2
+    assert len(result["tromso"]) == 4
+
+
+def test_resolve_european_commitments_avoids_a_blacked_out_leg_and_warns():
+    from terminliste.model.schema import DatedNote
+
+    comp = f.competition(
+        "cl",
+        ["glimt"],
+        format="european",
+        european_rounds=[
+            f.european_round(
+                "q3",
+                entrants=["glimt"],
+                first_leg=f.european_leg(window_start=date(2026, 8, 4), window_end=date(2026, 8, 5)),
+                second_leg=f.european_leg(forced_date=date(2026, 8, 11)),
+            )
+        ],
+    )
+    season = f.season(
+        european_competitions=["cl"],
+        global_blackouts=[
+            DatedNote(date=date(2026, 8, 4)),
+            DatedNote(date=date(2026, 8, 11)),
+        ],
+    )
+    result, warnings = resolve_european_commitments([comp], season)
+    dates = [c.date for c in result["glimt"]]
+    assert dates == [date(2026, 8, 5), date(2026, 8, 11)], (
+        "the window resolves around the blackout; the forced date does not move"
+    )
+    assert len(warnings) == 1
+    assert "second leg" in warnings[0]

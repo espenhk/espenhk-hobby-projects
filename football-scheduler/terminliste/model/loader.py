@@ -397,12 +397,19 @@ def _validate_european_rounds(competition: Competition) -> list[str]:
                 f"competition {competition.id!r} has duplicate european round id {round_.id!r}"
             )
         seen_ids.add(round_.id)
-        for team_id in round_.entrants:
-            if team_id not in competition.teams:
+        seen_teams: set[str] = set()
+        for tie in round_.ties:
+            if tie.team not in competition.teams:
                 errors.append(
                     f"competition {competition.id!r} round {round_.id!r} lists entrant "
-                    f"{team_id!r}, which is not in the competition's teams"
+                    f"{tie.team!r}, which is not in the competition's teams"
                 )
+            if tie.team in seen_teams:
+                errors.append(
+                    f"competition {competition.id!r} round {round_.id!r} lists {tie.team!r} "
+                    f"twice"
+                )
+            seen_teams.add(tie.team)
         if previous_round is not None and round_.latest < previous_round.earliest:
             errors.append(
                 f"competition {competition.id!r} european round {round_.id!r} "

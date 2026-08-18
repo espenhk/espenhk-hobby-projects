@@ -344,14 +344,18 @@ def test_european_commitments_resolve_cleanly_from_the_shipped_data(world):
 
     season = world.season("2026")
     competitions = [world.competition(c) for c in season.european_competitions]
-    windows_by_team = resolve_european_commitments(competitions)
-    assert windows_by_team["bodo_glimt_m"], "Bodø/Glimt's Champions League run should resolve"
-    assert windows_by_team["viking_m"]
+    commitments_by_team, warnings = resolve_european_commitments(competitions, season)
+    assert commitments_by_team["bodo_glimt_m"], "Bodø/Glimt's Champions League run should resolve"
+    assert commitments_by_team["viking_m"]
     # Tromsø's cascade crosses from europa_league_2026 into
-    # conference_league_2026 at Q3 -> playoff — three depths in total (Q2,
-    # Q3, playoff), not just the two Europa League carries on its own.
-    assert len(windows_by_team["tromso_m"]) == 3
-    assert len(windows_by_team["brann_m"]) == 3
+    # conference_league_2026 at Q3 -> playoff: Q2 and Q3 (2 legs each), then
+    # *both* branches still open at the play-off depth — Europa League's own
+    # play-off (win) and Conference League's (drop) — 4 more leg dates, for
+    # 8 in total. Brann's own run (Q2 -> Q3 -> play-off, no cascade) is a
+    # plain 3 rounds x 2 legs = 6.
+    assert len(commitments_by_team["tromso_m"]) == 8
+    assert len(commitments_by_team["brann_m"]) == 6
+    assert warnings == []
 
 
 def test_european_competition_with_no_rounds_is_caught():

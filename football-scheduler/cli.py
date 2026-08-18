@@ -36,6 +36,7 @@ from terminliste.report.render import render_report, write_json  # noqa: E402
 from terminliste.rounds.cup_schedule import CupSchedulingError, schedule_cups  # noqa: E402
 from terminliste.rounds.european_schedule import (  # noqa: E402
     EuropeanCascadeError,
+    resolve_all_legs,
     resolve_european_commitments,
 )
 from terminliste.scoring.base import EvalContext, Score, evaluate  # noqa: E402
@@ -108,17 +109,18 @@ def cmd_validate(args: argparse.Namespace) -> int:
         if season.european_competitions:
             european_competitions = [world.competition(c) for c in season.european_competitions]
             try:
-                windows_by_team = resolve_european_commitments(european_competitions)
+                commitments_by_team, european_warnings = resolve_european_commitments(
+                    european_competitions, season
+                )
             except EuropeanCascadeError as exc:
                 print(f"FAIL: {exc}", file=sys.stderr)
                 return 1
-            for team_id, windows in sorted(windows_by_team.items()):
+            for team_id, commitments in sorted(commitments_by_team.items()):
                 print(f"     {world.team_label(team_id)} European commitments:")
-                for window in windows:
-                    print(
-                        f"       {' / '.join(window.labels)}: "
-                        f"{window.window_start} – {window.window_end}"
-                    )
+                for commitment in commitments:
+                    print(f"       {commitment.label}: {commitment.date}")
+            for warning in european_warnings:
+                print(f"     ⚠ {warning}")
     return 0
 
 
@@ -127,8 +129,10 @@ def cmd_generate(args: argparse.Namespace) -> int:
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
     cup_schedules, cup_warnings = _schedule_cups_or_exit(world, season)
-    european_windows = _resolve_european_or_exit(world, season)
-    constraints = build_constraints(world, season, competitions, cup_schedules, european_windows)
+    european_commitments, european_warnings = _resolve_european_or_exit(world, season)
+    constraints = build_constraints(
+        world, season, competitions, cup_schedules, european_commitments
+    )
     travel = HaversineTravelModel(world)
     ctx = EvalContext(world=world, season=season, travel=travel)
 
@@ -142,7 +146,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
         season=season,
         competitions=competitions,
         cup_schedules=cup_schedules,
-        european_windows=european_windows,
+        european_commitments=european_commitments,
         constraints=constraints,
         ctx=ctx,
         seed=args.seed,
@@ -152,7 +156,7 @@ def cmd_generate(args: argparse.Namespace) -> int:
     )
 
     print(f"Solving with {scheduler.name} (budget {args.time_budget:.0f}s, seed {args.seed})...")
-    for warning in cup_warnings:
+    for warning in [*cup_warnings, *european_warnings]:
         print(f"  ⚠ {warning}")
     try:
         result = scheduler.solve(request)
@@ -175,14 +179,17 @@ def cmd_generate(args: argparse.Namespace) -> int:
     html_path = out_dir / f"{season.id}.html"
     json_path = out_dir / f"{season.id}.json"
 
+    european_competitions, resolved_legs = _european_report_data(world, season)
     render_report(
         world,
         season,
         result,
         html_path,
         title=f"{season.year} season schedule",
-        warnings=cup_warnings,
+        warnings=[*cup_warnings, *european_warnings],
         cup_schedules=cup_schedules,
+        european_competitions=european_competitions,
+        resolved_legs=resolved_legs,
     )
     write_json(result, json_path)
 
@@ -196,8 +203,10 @@ def cmd_score(args: argparse.Namespace) -> int:
     season = _season_or_exit(world, args.season)
     competitions = [world.competition(c) for c in season.competitions]
     cup_schedules, cup_warnings = _schedule_cups_or_exit(world, season)
-    european_windows = _resolve_european_or_exit(world, season)
-    constraints = build_constraints(world, season, competitions, cup_schedules, european_windows)
+    european_commitments, european_warnings = _resolve_european_or_exit(world, season)
+    constraints = build_constraints(
+        world, season, competitions, cup_schedules, european_commitments
+    )
     travel = HaversineTravelModel(world)
 
     try:
@@ -210,7 +219,7 @@ def cmd_score(args: argparse.Namespace) -> int:
         print("FAIL: schedule file contained no matches.", file=sys.stderr)
         return 1
 
-    warnings = [*warnings, *cup_warnings]
+    warnings = [*warnings, *cup_warnings, *european_warnings]
     ctx = EvalContext(world=world, season=season, travel=travel, detail=True)
     score = evaluate(matches, constraints, ctx)
 
@@ -228,6 +237,7 @@ def cmd_score(args: argparse.Namespace) -> int:
         solver="external",
     )
     out_path = Path(args.out) if args.out else SCHEDULES_ROOT / f"{Path(args.schedule).stem}_scored.html"
+    european_competitions, resolved_legs = _european_report_data(world, season)
     render_report(
         world,
         season,
@@ -237,6 +247,8 @@ def cmd_score(args: argparse.Namespace) -> int:
         full_diagnostics=True,
         warnings=warnings,
         cup_schedules=cup_schedules,
+        european_competitions=european_competitions,
+        resolved_legs=resolved_legs,
     )
     print(f"\nWrote {out_path}")
 
@@ -400,10 +412,21 @@ def _resolve_european_or_exit(world, season):
     clear reason why not."""
     european_competitions = [world.competition(c) for c in season.european_competitions]
     try:
-        return resolve_european_commitments(european_competitions)
+        return resolve_european_commitments(european_competitions, season)
     except EuropeanCascadeError as exc:
         print(f"FAIL: {exc}", file=sys.stderr)
         sys.exit(1)
+
+
+def _european_report_data(world, season):
+    """The season's European competitions plus their rounds resolved to real
+    leg dates — what `render_report` needs to show them, as opposed to
+    `_resolve_european_or_exit`'s flattened, cascade-walked commitment list,
+    which is shaped for conflict-checking rather than display."""
+    european_competitions = [world.competition(c) for c in season.european_competitions]
+    blackouts = {b.date for b in season.global_blackouts}
+    resolved_legs, _ = resolve_all_legs(european_competitions, blackouts)
+    return european_competitions, resolved_legs
 
 
 def build_parser() -> argparse.ArgumentParser:

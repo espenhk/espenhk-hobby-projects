@@ -12,7 +12,7 @@ from datetime import date
 
 import factories as f
 from terminliste.scoring.base import EvalContext, evaluate
-from terminliste.rounds.european_schedule import EuropeanCommitmentWindow
+from terminliste.rounds.european_schedule import EuropeanCommitmentDate
 from terminliste.scoring.hard import (
     BlackoutDates,
     ClubHomeClash,
@@ -390,55 +390,56 @@ def _european_world():
     clubs = [f.club("c1", [t1]), f.club("c2", [t2])]
     world = f.world(clubs, [v1], [])
     season = f.season(competitions=[], european_competitions=["euro"])
-    window = EuropeanCommitmentWindow(
+    commitment = EuropeanCommitmentDate(
         team_id="t1",
-        depth=0,
-        window_start=date(2026, 8, 4),
-        window_end=date(2026, 8, 11),
+        date=date(2026, 8, 4),
         min_rest_days=3,
-        labels=("cl: q3",),
+        label="cl: q3 (first leg)",
     )
-    return world, season, window
+    return world, season, commitment
 
 
-def test_european_commitment_conflict_is_a_violation_for_any_date_inside_the_window():
-    world, season, window = _european_world()
-    constraint = EuropeanCommitmentConflict(windows_by_team={"t1": [window]})
+def test_european_commitment_conflict_fires_on_the_commitment_date_itself():
+    world, season, commitment = _european_world()
+    constraint = EuropeanCommitmentConflict(commitments_by_team={"t1": [commitment]})
 
-    inside = [f.match("league", "t1", "t2", date(2026, 8, 7), "v1")]
-    result = evaluate(inside, [constraint], _ctx(world, season))
+    on_date = [f.match("league", "t1", "t2", date(2026, 8, 4), "v1")]
+    result = evaluate(on_date, [constraint], _ctx(world, season))
     assert result.hard_violations == 1
 
 
-def test_european_commitment_conflict_fires_within_min_rest_days_of_either_edge_but_not_beyond():
-    world, season, window = _european_world()
-    constraint = EuropeanCommitmentConflict(windows_by_team={"t1": [window]})
+def test_european_commitment_conflict_fires_within_min_rest_days_but_not_beyond():
+    world, season, commitment = _european_world()
+    constraint = EuropeanCommitmentConflict(commitments_by_team={"t1": [commitment]})
 
-    # 2 days before window_start (4 Aug): a violation, short of the 3-day minimum.
+    # 2 days before (4 Aug): a violation, short of the 3-day minimum.
     too_close_before = [f.match("league", "t1", "t2", date(2026, 8, 2), "v1")]
     assert evaluate(too_close_before, [constraint], _ctx(world, season)).hard_violations == 1
 
-    # Exactly 3 days before window_start: clear.
+    # Exactly 3 days before: clear — this is the Thu-Sun-Thu case (a European
+    # leg on Tuesday 4 Aug, a league match the following Friday 7 Aug is 3
+    # days clear).
     far_enough_before = [f.match("league", "t1", "t2", date(2026, 8, 1), "v1")]
     assert evaluate(far_enough_before, [constraint], _ctx(world, season)).hard_violations == 0
 
-    # 2 days after window_end (11 Aug): a violation.
-    too_close_after = [f.match("league", "t1", "t2", date(2026, 8, 13), "v1")]
+    # 2 days after: a violation.
+    too_close_after = [f.match("league", "t1", "t2", date(2026, 8, 6), "v1")]
     assert evaluate(too_close_after, [constraint], _ctx(world, season)).hard_violations == 1
 
-    # Exactly 3 days after window_end: clear.
-    far_enough_after = [f.match("league", "t1", "t2", date(2026, 8, 14), "v1")]
+    # Exactly 3 days after: clear.
+    far_enough_after = [f.match("league", "t1", "t2", date(2026, 8, 7), "v1")]
     assert evaluate(far_enough_after, [constraint], _ctx(world, season)).hard_violations == 0
 
 
-def test_european_commitment_conflict_is_silent_for_a_team_with_no_windows():
-    world, season, window = _european_world()
-    constraint = EuropeanCommitmentConflict(windows_by_team={"t1": [window]})
+def test_european_commitment_conflict_is_silent_for_a_team_with_no_commitments():
+    world, season, commitment = _european_world()
+    constraint = EuropeanCommitmentConflict(commitments_by_team={"t1": [commitment]})
 
-    matches = [f.match("league", "t2", "t1", date(2026, 8, 7), "v1")]
+    matches = [f.match("league", "t2", "t1", date(2026, 8, 5), "v1")]
     result = evaluate(matches, [constraint], _ctx(world, season))
-    # t1's window fires (it plays the match); t2 has no windows of its own,
-    # so it contributes nothing beyond that.
+    # t1's commitment fires (it plays the match, 1 day from its 4 Aug
+    # commitment); t2 has no commitments of its own, so it contributes
+    # nothing beyond that.
     assert result.hard_violations == 1
 
 

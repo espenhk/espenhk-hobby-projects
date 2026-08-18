@@ -15,7 +15,7 @@ from typing import Callable, Protocol
 from ..model.loader import World
 from ..model.schema import Competition, Match, Season
 from ..rounds.cup_schedule import CupSchedule
-from ..rounds.european_schedule import EuropeanCommitmentWindow
+from ..rounds.european_schedule import EuropeanCommitmentDate
 from ..scoring.base import Constraint, EvalContext, Score
 
 # Two candidates must differ on at least this share of their match dates to
@@ -147,9 +147,9 @@ class SolveRequest:
     # resolved to a date per team (see `rounds/cup_schedule.py`) — not
     # scheduled themselves but used to steer league placement away from them.
     cup_schedules: list[CupSchedule] = field(default_factory=list)
-    # Same idea for resolved UEFA qualifying commitments — see
+    # Same idea for resolved UEFA qualifying leg dates — see
     # `rounds/european_schedule.py`.
-    european_windows: dict[str, list[EuropeanCommitmentWindow]] = field(default_factory=dict)
+    european_commitments: dict[str, list[EuropeanCommitmentDate]] = field(default_factory=dict)
     # Called periodically (throttled by iteration count, never by wall-clock
     # polling) with a running `SearchStats` snapshot, so a caller — the CLI —
     # can print live progress during a long solve. `None` means don't bother.

@@ -89,42 +89,39 @@ class Club(BaseModel):
 RoundGranularity = Literal["week", "month", "quarter"]
 
 
-class _ScheduledRound(BaseModel):
-    """Shared shape for "a round whose date is either confirmed or a window".
+class _DateSpec(BaseModel):
+    """Shared forced-date-XOR-window mechanics — issue #30's "vague/imprecise
+    game dates" mechanism.
 
-    Real-world rounds — a cup round, a European qualifying round — are
-    announced at wildly different notice: a near-term one may already have a
-    confirmed date (`forced_date`), while a distant one is only known to the
-    week, month or quarter (`window_start`/`window_end`, with `granularity`
-    recording which). Exactly one of the two must be set — never both, never
-    neither. This is issue #30's "vague/imprecise game dates" mechanism:
-    narrowing a window down to a `forced_date` once the real date is
-    announced is a data edit, not a re-model — see `CupRound` and
-    `EuropeanRound`, its two concrete users.
+    A near-term date may already be confirmed (`forced_date`); a distant one
+    is only known to the week, month or quarter (`window_start`/
+    `window_end`, with `granularity` recording which). Exactly one of the
+    two must be set — never both, never neither — and narrowing a window
+    down to a `forced_date` once the real date is announced is a data edit,
+    not a re-model. Deliberately carries no identity of its own (no `id`,
+    `name`) — `_ScheduledRound` adds that for a whole round; `EuropeanLeg`
+    uses this bare, since a leg's identity is "first" or "second" within its
+    `EuropeanRound`, not something it needs to name itself.
     """
 
-    id: str
-    name: str
     forced_date: date | None = None
     window_start: date | None = None
     window_end: date | None = None
     granularity: RoundGranularity | None = None
-    note: str = ""
 
     @model_validator(mode="after")
-    def _forced_xor_window(self) -> "_ScheduledRound":
+    def _forced_xor_window(self) -> "_DateSpec":
         has_forced = self.forced_date is not None
         has_window = self.window_start is not None or self.window_end is not None
         if has_forced and has_window:
-            raise ValueError(f"round {self.id!r}: set forced_date OR a window, not both")
+            raise ValueError("set forced_date OR a window, not both")
         if not has_forced and not has_window:
-            raise ValueError(f"round {self.id!r}: needs either forced_date or a window")
+            raise ValueError("needs either forced_date or a window")
         if has_window and (self.window_start is None or self.window_end is None):
-            raise ValueError(f"round {self.id!r}: a window needs both window_start and window_end")
+            raise ValueError("a window needs both window_start and window_end")
         if has_window and self.window_end < self.window_start:
             raise ValueError(
-                f"round {self.id!r}: window_end ({self.window_end}) is before "
-                f"window_start ({self.window_start})"
+                f"window_end ({self.window_end}) is before window_start ({self.window_start})"
             )
         return self
 
@@ -134,13 +131,27 @@ class _ScheduledRound(BaseModel):
 
     @property
     def earliest(self) -> date:
-        """The earliest date this round could conceivably land on."""
+        """The earliest date this could conceivably land on."""
         return self.forced_date if self.forced_date is not None else self.window_start
 
     @property
     def latest(self) -> date:
-        """The latest date this round could conceivably land on."""
+        """The latest date this could conceivably land on."""
         return self.forced_date if self.forced_date is not None else self.window_end
+
+
+class _ScheduledRound(_DateSpec):
+    """`_DateSpec` plus the identity a whole round needs: `id`, `name`, and
+    an optional human `note`. `CupRound`'s shape — a cup round has one date
+    (or window) for the whole round, unlike `EuropeanRound`, which needs two
+    (`EuropeanLeg`, one per leg of a two-legged tie). `_DateSpec`'s own
+    forced-XOR-window validator is inherited as-is; it doesn't know about
+    `id`, but its message is still clear enough without one, and pydantic
+    reports which model failed regardless."""
+
+    id: str
+    name: str
+    note: str = ""
 
 
 class CupRound(_ScheduledRound):
@@ -153,7 +164,43 @@ class CupRound(_ScheduledRound):
     """
 
 
-class EuropeanRound(_ScheduledRound):
+class EuropeanLeg(_DateSpec):
+    """One leg's date (or window) within a two-legged `EuropeanRound`.
+
+    UEFA schedules a qualifying round's first legs on one pairing window
+    (e.g. "4/5 August") and its second legs on another ("11 August") — two
+    genuinely separate dates, not one span covering both, which is what
+    `EuropeanRound` used to model before this was split out. Resolving a
+    `EuropeanLeg` to a single date is `terminliste/rounds/european_schedule.py`'s
+    job (mirroring `rounds/cup_schedule.py`'s own forced/window resolution);
+    the domestic scheduler then only needs to stay clear of that one date
+    plus `min_rest_days`, not an entire span between the two legs — freeing
+    up the days in between for a league match, e.g. a Thu-Sun-Thu week.
+    """
+
+
+EuropeanHomeLeg = Literal["first", "second"]
+
+
+class EuropeanTie(BaseModel):
+    """One entrant's specific two-legged tie within a `EuropeanRound`.
+
+    More than one of a competition's teams can enter the same round (Norway
+    had two Champions League play-off entrants in 2026-27, each against a
+    different opponent), so opponent and home/away are per-tie, not
+    per-round. `opponent` defaults to `"TBD"` for a tie whose own opponent
+    is still conditional on another, unrelated fixture elsewhere in the
+    draw — same spirit as issue #32's conditional fixtures, just describing
+    who's on the other side of the tie rather than which round is played at
+    all. `home_leg` is `None` when even that isn't settled yet.
+    """
+
+    team: str
+    opponent: str = "TBD"
+    home_leg: EuropeanHomeLeg | None = None
+
+
+class EuropeanRound(BaseModel):
     """One qualifying round of a UEFA competition (Champions/Europa/Conference
     League), for the Norwegian team(s) entered in it.
 
@@ -162,8 +209,8 @@ class EuropeanRound(_ScheduledRound):
     listed on the competition necessarily enters every round — Norway's
     Champions League runner-up enters at the third qualifying round while
     the champion enters directly at the play-off round, for instance — so
-    `entrants` names exactly which of `Competition.teams` play this
-    particular round.
+    `ties` names exactly which of `Competition.teams` play this particular
+    round (`entrants` is the plain team-id list derived from it).
 
     `drop_to_competition`/`drop_to_round` model the cascade: if an entrant
     loses this round, that pair names the round (in a different, lower
@@ -179,16 +226,21 @@ class EuropeanRound(_ScheduledRound):
 
     Because the outcome of a round is unknown ahead of time,
     `terminliste/rounds/european_schedule.py` does not pick a branch: it
-    walks every reachable round from a team's entry point and blocks the
-    union of their windows, so the domestic scheduler stays clear of a
+    walks every reachable round from a team's entry point and blocks every
+    leg date reachable at once, so the domestic scheduler stays clear of a
     European commitment regardless of which branch of the cascade actually
     happens. Once a real result is known, resolving the conditional is a
-    data edit — delete the round(s) on the branch not taken (or narrow the
-    surviving one's window to a `forced_date`) and regenerate; see the
+    data edit — delete the round(s) on the branch not taken (or narrow a
+    surviving leg's window to a `forced_date`) and regenerate; see the
     module docstring for the mechanics.
     """
 
-    entrants: list[str] = Field(default_factory=list)
+    id: str
+    name: str
+    first_leg: EuropeanLeg
+    second_leg: EuropeanLeg
+    ties: list[EuropeanTie] = Field(default_factory=list)
+    note: str = ""
     drop_to_competition: str | None = None
     drop_to_round: str | None = None
 
@@ -202,6 +254,20 @@ class EuropeanRound(_ScheduledRound):
                 f"set together, or not at all"
             )
         return self
+
+    @property
+    def entrants(self) -> list[str]:
+        return [tie.team for tie in self.ties]
+
+    @property
+    def earliest(self) -> date:
+        """The earliest date this round (either leg) could conceivably land on."""
+        return min(self.first_leg.earliest, self.second_leg.earliest)
+
+    @property
+    def latest(self) -> date:
+        """The latest date this round (either leg) could conceivably land on."""
+        return max(self.first_leg.latest, self.second_leg.latest)
 
 
 class Competition(BaseModel):
@@ -240,7 +306,7 @@ class Competition(BaseModel):
     end: date | None = None
 
     preferred_weekday: Weekday = "sunday"
-    min_rest_days: int = 2
+    min_rest_days: int = 3
     match_window_days: int = 3
     comfortable_rest_days: int = 5
     weights: dict[str, float] = Field(default_factory=dict)

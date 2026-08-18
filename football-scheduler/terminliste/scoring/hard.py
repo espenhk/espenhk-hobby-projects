@@ -12,7 +12,7 @@ from datetime import date, timedelta
 
 from ..model.schema import Competition, FixedRequirement, FullRoundRequirement
 from ..rounds.cup_schedule import CupSchedule, resolved_cup_windows
-from ..rounds.european_schedule import EuropeanCommitmentWindow
+from ..rounds.european_schedule import EuropeanCommitmentDate
 from .base import Constraint, ConstraintResult, EvalContext, Event, ScheduleIndex
 
 
@@ -20,10 +20,17 @@ from .base import Constraint, ConstraintResult, EvalContext, Event, ScheduleInde
 class MinRestDays:
     """At least N days between any team's matches.
 
-    A gap of exactly N is fine: Thursday to Saturday is two days and legal at
-    the default setting — the gap a Thu-Sun-Thu week (two European legs either
-    side of one league match) leans on. Only gaps strictly below the minimum
-    count — including a gap of zero, which is a team playing twice in one day.
+    A gap of exactly N is fine: Sunday to Wednesday is three days and legal
+    at the default setting. Only gaps strictly below the minimum count —
+    including a gap of zero, which is a team playing twice in one day. This
+    rule only governs gaps between a team's own matches *in the competitions
+    passed to it* (`competitions`, always the movable, solver-scheduled
+    ones); the equivalent gap against a European qualifying leg is
+    `EuropeanCommitmentConflict`'s job, using the same `min_rest_days`
+    value but read from the European competition, not this one — which is
+    what makes a Thu-Sun-Thu week (a European leg, the league match, the
+    next European leg) work out to legal on both sides at the shared
+    default of 3, without either rule needing to know about the other.
     """
 
     competitions: list[Competition]
@@ -432,19 +439,21 @@ class CupRoundConflict:
 
 @dataclass
 class EuropeanCommitmentConflict:
-    """No league match too close to a team's European qualifying commitment.
+    """No league match too close to a team's resolved European qualifying
+    leg date.
 
-    Unlike `CupRoundConflict`, each commitment here is a *range*
-    (`window_start`..`window_end`), not a single resolved date — issue #29's
-    cascade means a team might be in any of several branches until a real
-    result narrows it down (see `rounds/european_schedule.py`), and a vague
-    round's own window (issue #30) is a range even with a single, certain
-    branch. A candidate date inside the window is a conflict outright
-    (shortfall = the full rest requirement); one outside it only conflicts
-    if it lands within `min_rest_days` of the nearer edge.
+    `CupRoundConflict`'s counterpart: point-date-plus-rest, same shape and
+    same arithmetic, just reading from `resolve_european_commitments`
+    (`rounds/european_schedule.py`) instead of `resolved_cup_windows`. Each
+    of a team's commitments is one specific leg date — every leg of every
+    round reachable from the team's entry point, across however many
+    cascade branches (issue #29) are still open — not a range spanning a
+    whole tie, which is what let a normal Thu-Sun-Thu European week (a leg,
+    a league match, the next leg) look like a conflict when this used to
+    block the entire span between two legs instead of each leg on its own.
     """
 
-    windows_by_team: dict[str, list[EuropeanCommitmentWindow]]
+    commitments_by_team: dict[str, list[EuropeanCommitmentDate]]
     id: str = "european_commitment_conflict"
     kind: str = "hard"
     weight: float = 1.0
@@ -454,19 +463,14 @@ class EuropeanCommitmentConflict:
         penalty = 0.0
         events: list[Event] = []
 
-        for team_id, windows in self.windows_by_team.items():
+        for team_id, commitments in self.commitments_by_team.items():
             for match in index.by_team.get(team_id, ()):
-                for window in windows:
-                    if match.date < window.window_start:
-                        gap = (window.window_start - match.date).days
-                    elif match.date > window.window_end:
-                        gap = (match.date - window.window_end).days
-                    else:
-                        gap = 0
-                    if gap >= window.min_rest_days:
+                for commitment in commitments:
+                    gap = abs((match.date - commitment.date).days)
+                    if gap >= commitment.min_rest_days:
                         continue
                     count += 1
-                    shortfall = window.min_rest_days - gap
+                    shortfall = commitment.min_rest_days - gap
                     penalty -= self.weight * shortfall
                     if ctx.detail:
                         events.append(
@@ -475,9 +479,8 @@ class EuropeanCommitmentConflict:
                                 detail=(
                                     f"{ctx.world.team_label(team_id)} plays {match.date} in "
                                     f"{match.competition_id}, {gap} day(s) from "
-                                    f"{' / '.join(window.labels)} "
-                                    f"({window.window_start}..{window.window_end}) — needs "
-                                    f"{window.min_rest_days}"
+                                    f"{commitment.label} on {commitment.date} — needs "
+                                    f"{commitment.min_rest_days}"
                                 ),
                                 match_keys=(match.key,),
                             )

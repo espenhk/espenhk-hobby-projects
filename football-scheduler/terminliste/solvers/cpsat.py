@@ -161,7 +161,7 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
     model = cp_model.CpModel()
     by_competition = calendars_by_competition(calendar, request.competitions)
     cup_windows = resolved_cup_windows(request.cup_schedules)
-    european_windows = request.european_windows
+    european_commitments = request.european_commitments
 
     # -- decision variables: one boolean per (fixture, candidate date) --------
     fixtures: list[tuple[object, object, str]] = []  # (fixture, competition, venue)
@@ -213,7 +213,7 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
                         cup_windows,
                     ),
                     fixture,
-                    european_windows,
+                    european_commitments,
                 )
                 if not window:
                     window = _european_clear(
@@ -225,7 +225,7 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
                             cup_windows,
                         ),
                         fixture,
-                        european_windows,
+                        european_commitments,
                     )
                 extra = required_dates.get(_fixture_id(fixture))
                 if extra is not None:
@@ -527,13 +527,13 @@ def _cup_clear(window: list[date], fixture, cup_windows: dict[str, list[tuple[da
     ]
 
 
-def _european_clear(window: list[date], fixture, european_windows) -> list[date]:
+def _european_clear(window: list[date], fixture, european_commitments) -> list[date]:
     """`_cup_clear`'s counterpart for resolved European qualifying windows."""
     return [
         day
         for day in window
-        if not european_conflict(european_windows, fixture.home_team, day)
-        and not european_conflict(european_windows, fixture.away_team, day)
+        if not european_conflict(european_commitments, fixture.home_team, day)
+        and not european_conflict(european_commitments, fixture.away_team, day)
     ]
 
 
