@@ -497,6 +497,11 @@ def _validate_fixed_requirements(world: World, season: Season) -> list[str]:
                 f"requirement {requirement.id!r} demands a match on {requirement.date}, which is "
                 f"also a global blackout — these cannot both hold"
             )
+        if any(r.start <= requirement.date <= r.end for r in season.excluded_date_ranges):
+            errors.append(
+                f"requirement {requirement.id!r} demands a match on {requirement.date}, which "
+                f"falls inside an excluded date range — these cannot both hold"
+            )
     return errors
 
 
@@ -532,6 +537,12 @@ def _validate_full_round_requirements(world: World, season: Season) -> list[str]
             errors.append(
                 f"full-round requirement {requirement.id!r} demands a round on "
                 f"{requirement.date}, which is also a global blackout — these cannot both hold"
+            )
+        if any(r.start <= requirement.date <= r.end for r in season.excluded_date_ranges):
+            errors.append(
+                f"full-round requirement {requirement.id!r} demands a round on "
+                f"{requirement.date}, which falls inside an excluded date range — these cannot "
+                f"both hold"
             )
     return errors
 

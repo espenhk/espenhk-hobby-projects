@@ -13,7 +13,7 @@ without disturbing the league path.
 from __future__ import annotations
 
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -438,6 +438,31 @@ class VenueBlackout(BaseModel):
     reason: str = ""
 
 
+class ExcludedDateRange(BaseModel):
+    """A closed span of dates off-limits for scheduling, with a reason label
+    for the overview — holiday periods, FIFA international breaks (issue
+    #33). A labelled, multi-day generalisation of `global_blackouts`'s
+    single dates: `Season.blacked_out_dates` expands it day by day and folds
+    it into the same date->reason mapping every blackout consumer reads.
+    """
+
+    start: date
+    end: date
+    reason: str = ""
+
+    @model_validator(mode="after")
+    def _end_not_before_start(self) -> "ExcludedDateRange":
+        if self.end < self.start:
+            raise ValueError(
+                f"excluded date range end ({self.end}) is before start ({self.start})"
+            )
+        return self
+
+    @property
+    def dates(self) -> list[date]:
+        return [self.start + timedelta(days=i) for i in range((self.end - self.start).days + 1)]
+
+
 class FullRoundRequirement(BaseModel):
     """Every team in a competition must have a match on this date.
 
@@ -529,9 +554,26 @@ class Season(BaseModel):
     global_blackouts: list[DatedNote] = Field(default_factory=list)
     discouraged_dates: list[DatedNote] = Field(default_factory=list)
     venue_blackouts: list[VenueBlackout] = Field(default_factory=list)
+    excluded_date_ranges: list[ExcludedDateRange] = Field(default_factory=list)
     fixed_requirements: list[FixedRequirement] = Field(default_factory=list)
     full_round_requirements: list[FullRoundRequirement] = Field(default_factory=list)
     rivalry_fixtures: list[RivalryFixture] = Field(default_factory=list)
+
+    def blacked_out_dates(self) -> dict[date, str]:
+        """Every individual date this season blacks out, mapped to a reason —
+        `global_blackouts`'s single dates plus every day inside
+        `excluded_date_ranges`, expanded. The one place every blackout
+        consumer (the candidate calendar, `BlackoutDates` scoring, cup/
+        European round resolution) reads from, so a multi-day exclusion
+        behaves exactly like a run of single-day ones everywhere blackouts
+        matter."""
+        result: dict[date, str] = {}
+        for excluded in self.excluded_date_ranges:
+            for day in excluded.dates:
+                result[day] = excluded.reason
+        for blackout in self.global_blackouts:
+            result[blackout.date] = blackout.reason
+        return result
 
 
 class TravelOverride(BaseModel):

@@ -109,6 +109,40 @@ def test_hard_requirement_on_a_blackout_date_is_caught():
     assert any("blackout" in e for e in errors)
 
 
+def test_hard_requirement_inside_an_excluded_date_range_is_caught():
+    from terminliste.model.loader import _validate_fixed_requirements
+    import factories as f
+    from terminliste.model.schema import ExcludedDateRange
+
+    v = f.venue("v1")
+    t1 = f.team("t1", "c1", "v1")
+    t2 = f.team("t2", "c2", "v1")
+    clubs = [f.club("c1", [t1]), f.club("c2", [t2])]
+    comp = f.competition("comp", ["t1", "t2"])
+    bad_world = f.world(clubs, [v], [comp])
+
+    clash_date = date(2026, 5, 20)
+    requirement = FixedRequirement(
+        id="req", date=clash_date, home_team="t1", competition="comp", hard=True
+    )
+    season = f.season(
+        competitions=["comp"],
+        excluded_date_ranges=[
+            ExcludedDateRange(start=date(2026, 5, 15), end=date(2026, 5, 25), reason="break")
+        ],
+        fixed_requirements=[requirement],
+    )
+    errors = _validate_fixed_requirements(bad_world, season)
+    assert any("excluded date range" in e for e in errors)
+
+
+def test_excluded_date_range_end_before_start_is_rejected_by_the_schema():
+    from terminliste.model.schema import ExcludedDateRange
+
+    with pytest.raises(Exception):
+        ExcludedDateRange(start=date(2026, 5, 25), end=date(2026, 5, 15))
+
+
 def test_season_shorter_than_required_rounds_is_caught():
     from terminliste.model.loader import _validate_calendar_capacity
     import factories as f

@@ -111,7 +111,7 @@ Competition  id, season, gender, format (league|cup|european), movable, teams[],
                                                  # forced_date/window), ties[],
                                                  # drop_to_competition/_round
 Season    id, year, window, competitions[], cup_competitions[], european_competitions[],
-          global_blackouts[], venue_blackouts[], fixed_requirements[]
+          global_blackouts[], venue_blackouts[], excluded_date_ranges[], fixed_requirements[]
 Fixture   an unscheduled pairing (home, away, leg, round)         # league only
 Match     a Fixture placed on a date at a venue                    # league only
 CupSchedule  a cup's rounds resolved to dates (see below)
@@ -133,7 +133,16 @@ finishes almost a month before Eliteserien), so `toppserien_2026.yml` sets
 its own, narrower window rather than letting the solver believe it has a
 month it doesn't. `Season.start`/`.end` become the outer envelope across
 every competition sharing that calendar — global blackouts, discouraged
-dates and venue blackouts still apply season-wide.
+dates, venue blackouts and excluded date ranges still apply season-wide.
+
+`excluded_date_ranges` (issue #33) is a labelled, multi-day generalisation
+of `global_blackouts`: a `start`/`end` span — a holiday period, a FIFA
+international break — with a `reason` for the overview, rather than one
+entry per date. `Season.blacked_out_dates()` expands every range day by day
+and folds the result into the same date-\>reason mapping `global_blackouts`
+feeds, so an excluded range is honoured everywhere a single-day blackout
+already is: the candidate calendar (`build_calendar`), the `BlackoutDates`
+hard constraint, and cup/European round resolution.
 
 `Team.level` is wider than today's use needs on purpose — a reserve side is a
 data edit (`level: second`), not a rewrite.

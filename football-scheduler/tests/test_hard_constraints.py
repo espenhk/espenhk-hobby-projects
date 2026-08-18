@@ -116,6 +116,33 @@ def test_blackout_dates_fires_only_on_the_blacked_out_date():
     assert result.hard_violations == 0
 
 
+def test_blackout_dates_fires_anywhere_inside_an_excluded_date_range():
+    from terminliste.model.schema import ExcludedDateRange
+
+    v = f.venue("v1")
+    t1 = f.team("t1", "c1", "v1")
+    t2 = f.team("t2", "c2", "v1")
+    clubs = [f.club("c1", [t1]), f.club("c2", [t2])]
+    comp = f.competition("comp", ["t1", "t2"])
+    world = f.world(clubs, [v], [comp])
+    season = f.season(
+        competitions=["comp"],
+        excluded_date_ranges=[
+            ExcludedDateRange(
+                start=date(2026, 6, 1), end=date(2026, 6, 14), reason="international break"
+            )
+        ],
+    )
+
+    mid_range = [f.match("comp", "t1", "t2", date(2026, 6, 7), "v1")]
+    result = evaluate(mid_range, [BlackoutDates()], _ctx(world, season))
+    assert result.hard_violations == 1
+
+    outside_range = [f.match("comp", "t1", "t2", date(2026, 6, 15), "v1")]
+    result = evaluate(outside_range, [BlackoutDates()], _ctx(world, season))
+    assert result.hard_violations == 0
+
+
 # -- venue_double_booking -------------------------------------------------
 
 
