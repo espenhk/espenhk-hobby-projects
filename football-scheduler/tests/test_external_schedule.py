@@ -174,8 +174,8 @@ def test_a_broken_real_schedule_scores_hard_violations(world, season):
         # when a dual club's teams play at two *different* venues).
         _entry_match(world, "eliteserien_2026", "brann_m", "viking_m", "2026-04-08"),
         _entry_match(world, "toppserien_2026", "brann_w", "stabak_w", "2026-04-08"),
-        # Viking play again one day later: min_rest_days (needs 2).
-        _entry_match(world, "eliteserien_2026", "kristiansund_m", "viking_m", "2026-04-09"),
+        # Viking play again two days later: min_rest_days (needs 3).
+        _entry_match(world, "eliteserien_2026", "kristiansund_m", "viking_m", "2026-04-10"),
     ]
     from terminliste.model.travel import HaversineTravelModel
 
