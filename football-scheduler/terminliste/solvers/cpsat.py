@@ -282,13 +282,14 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
             model.Add(sum(vars_) <= 1).OnlyEnforceIf(venue_literal)
 
     # H1 minimum rest, and by implication one match per team per day: within
-    # any window of `min_rest_days` consecutive days a team plays at most once.
+    # any window of `min_gap_days` (`min_rest_days` full rest days plus both
+    # matchdays) consecutive days a team plays at most once.
     rest_literal = assume("min_rest_days")
     minimum_by_team: dict[str, int] = {}
     for plan in planned:
         for team_id in plan.competition.teams:
             minimum_by_team[team_id] = max(
-                minimum_by_team.get(team_id, 0), plan.competition.min_rest_days
+                minimum_by_team.get(team_id, 0), plan.competition.min_gap_days
             )
 
     dates_by_team: dict[str, list[date]] = defaultdict(list)
