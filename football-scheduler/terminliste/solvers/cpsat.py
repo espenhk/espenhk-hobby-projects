@@ -397,16 +397,21 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
                         model.Add(sum(vars_b) >= 1).OnlyEnforceIf(pair)
                         objective_terms.append((sign * _scaled(weight), pair))
 
-    # S6 rest comfort. The scorer charges `weight * (comfortable - gap)` for a
-    # gap between the legal minimum and the comfortable target — a graduated
-    # penalty, not a threshold. Transcribing it faithfully matters: rewarding
-    # only fully-clear windows made CP-SAT trade away rest wholesale to buy
-    # back-to-back home days, and score worse on the real scorer while
-    # believing it had improved.
+    # S6 rest comfort. The scorer charges `weight * (comfortable - rest_days)`
+    # for a rest count between the legal minimum and the comfortable target —
+    # a graduated penalty, not a threshold. Transcribing it faithfully
+    # matters: rewarding only fully-clear windows made CP-SAT trade away rest
+    # wholesale to buy back-to-back home days, and score worse on the real
+    # scorer while believing it had improved.
     #
-    # Summing a bonus over every window length from minimum+1 to comfortable
-    # gives `weight * (gap - minimum)`, which differs from the scorer's penalty
-    # by a constant — the same objective, in the direction CP-SAT maximises.
+    # `minimum` and `comfortable` here are calendar-day window lengths
+    # (`min_gap_days`/`comfortable_gap_days`), not the full-rest-day counts
+    # the scorer works in — a window of L consecutive days with at most one
+    # match is the calendar-day analogue of L-1 full rest days. Summing a
+    # bonus over every window length from minimum+1 to comfortable gives
+    # `weight * (rest_days - min_rest_days)`, which differs from the scorer's
+    # penalty by a constant — the same objective, in the direction CP-SAT
+    # maximises.
     for team_id, days in dates_by_team.items():
         comfortable = _comfort_for(planned, team_id)
         minimum = minimum_by_team.get(team_id, 1)
@@ -534,7 +539,7 @@ def _dual_weight(planned, team_ids: list[str], key: str, default: float) -> floa
 def _comfort_for(planned, team_id: str) -> int:
     for plan in planned:
         if team_id in plan.competition.teams:
-            return plan.competition.comfortable_rest_days
+            return plan.competition.comfortable_gap_days
     return 0
 
 

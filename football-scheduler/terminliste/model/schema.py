@@ -218,6 +218,12 @@ class Competition(BaseModel):
         rest days, plus the two matchdays themselves that bookend them."""
         return self.min_rest_days + 1
 
+    @property
+    def comfortable_gap_days(self) -> int:
+        """Calendar-day equivalent of `comfortable_rest_days`, on the same
+        matchday-inclusive footing as `min_gap_days`."""
+        return self.comfortable_rest_days + 1
+
     @field_validator("rounds_per_pairing")
     @classmethod
     def _at_least_one_round(cls, v: int) -> int:
