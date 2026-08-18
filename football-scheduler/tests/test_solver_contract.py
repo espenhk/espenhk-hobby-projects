@@ -162,7 +162,7 @@ def test_search_stats_account_for_every_scenario_investigated(solver_name):
     (for the ones that didn't come out viable) which rule was the culprit."""
     world, season, competitions = _small_world()
     constraints = build_constraints(world, season, competitions)
-    ctx = EvalContext(world=world, season=season, travel=HaversineTravelModel(world))
+    ctx = EvalContext(world=world, season=season, travel=ApiTravelModel(world))
     request = SolveRequest(
         world=world, season=season, competitions=competitions, constraints=constraints,
         ctx=ctx, seed=6, top_n=1, time_budget_s=10.0,
@@ -185,7 +185,7 @@ def test_local_search_progress_callback_reports_a_live_running_total():
     on the running totals only ever growing within a restart."""
     world, season, competitions = _small_world()
     constraints = build_constraints(world, season, competitions)
-    ctx = EvalContext(world=world, season=season, travel=HaversineTravelModel(world))
+    ctx = EvalContext(world=world, season=season, travel=ApiTravelModel(world))
     updates = []
     request = SolveRequest(
         world=world, season=season, competitions=competitions, constraints=constraints,
@@ -239,7 +239,7 @@ def test_final_round_and_full_round_pins_are_honoured(solver_name):
         full_round_requirements=[requirement],
     )
     constraints = build_constraints(world, season, competitions)
-    ctx = EvalContext(world=world, season=season, travel=HaversineTravelModel(world))
+    ctx = EvalContext(world=world, season=season, travel=ApiTravelModel(world))
     request = SolveRequest(
         world=world, season=season, competitions=competitions, constraints=constraints,
         ctx=ctx, seed=4, top_n=1, time_budget_s=15.0,
