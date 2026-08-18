@@ -3,13 +3,27 @@ HTML page's new controls (issues #21-25, #39)."""
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import date
 
+import html
+import json
+
 import factories as f
-from terminliste.report.render import _fairness_rows, _match_entries, render_report
+import pytest
+from terminliste.report.render import (
+    _club_headlines,
+    _cup_entries,
+    _entity_counts,
+    _fairness_rows,
+    _json_attr,
+    _match_entries,
+    _search_stats_view,
+    render_report,
+)
 from terminliste.scoring.base import ConstraintResult, EvalContext, Event, evaluate
 from terminliste.scoring.soft import ConsecutiveHomeDays
-from terminliste.solvers.base import Candidate, SolverResult
+from terminliste.solvers.base import Candidate, SearchStats, SolverResult
 
 
 class _FixedTravel:
@@ -158,6 +172,119 @@ def test_fairness_rows_pick_up_a_brand_new_club_coupling_rule_automatically():
     assert counts["Club B"] == 0
 
 
+# -- per-team/per-club occurrence counts --------------------------------
+
+
+def test_entity_counts_picks_the_larger_event_bucket_like_fairness_rows_does():
+    """`_entity_counts` must resolve a rule with both event shapes the same
+    way `_fairness_row_for` does — the larger bucket wins — so the "Biggest
+    upsides"/"Biggest problems" occurrence list never disagrees with the
+    fairness table about which entities a rule's events belong to."""
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    result = ConstraintResult(
+        constraint_id="mixed_shape_rule",
+        kind="soft",
+        total=4.0,
+        count=3,
+        events=[
+            Event(delta=1.0, detail="club a paired", team_ids=("a_m", "a_w")),
+            Event(delta=1.0, detail="a_m favoured", team_ids=("a_m",)),
+            Event(delta=1.0, detail="b_m favoured", team_ids=("b_m",)),
+            Event(delta=1.0, detail="opp_m favoured", team_ids=("opp_m",)),
+        ],
+    )
+
+    entries = {e["label"]: e["count"] for e in _entity_counts(world, result)}
+
+    # 1 club-coupling event vs. 3 single-team events: team_events wins.
+    assert entries == {
+        world.team_label("a_m"): 1,
+        world.team_label("b_m"): 1,
+        world.team_label("opp_m"): 1,
+    }
+
+
+def test_entity_counts_returns_nothing_for_a_rule_with_no_team_ids():
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    result = ConstraintResult(
+        constraint_id="preferred_weekday",
+        kind="soft",
+        total=2.0,
+        count=1,
+        events=[Event(delta=2.0, detail="elite: 1/1 matches on Sunday")],
+    )
+    assert _entity_counts(world, result) == []
+
+
+# -- per-club headline stats ----------------------------------------------
+
+
+def test_club_headlines_restate_matches_weekday_pct_and_pairing_counts_per_club():
+    """The numbers shown when the calendar's club filter narrows to one club
+    — a smaller, club-scoped echo of the season-wide `_headlines`."""
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [
+        # Club A: two back-to-back home pairs, half its matches on Sunday.
+        f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va"),  # Sat
+        f.match("topp", "a_w", "opp_w", date(2026, 6, 7), "va"),  # Sun
+        f.match("elite", "a_m", "opp_m", date(2026, 7, 4), "va", round_index=1),  # Sat
+        f.match("topp", "a_w", "opp_w", date(2026, 7, 5), "va", round_index=1),  # Sun
+        # Club B: no pairing, no Sunday matches.
+        f.match("elite", "b_m", "opp_m", date(2026, 6, 6), "vb"),  # Sat
+        f.match("topp", "b_w", "opp_w", date(2026, 6, 20), "vb", round_index=1),  # Sat
+    ]
+    candidate = _candidate(world, season, matches, [ConsecutiveHomeDays(competitions=[comp_m, comp_w])])
+    dual_club_ids = {"club_a", "club_b"}
+
+    headlines = _club_headlines(world, candidate, dual_club_ids)
+
+    assert headlines["club_a"] == [
+        {"value": "4", "label": "matches"},
+        {"value": "50%", "label": "on the preferred weekday"},
+        {"value": "2", "label": "back-to-back home days"},
+        {"value": "0", "label": "paired away days within travel range"},
+    ]
+    assert headlines["club_b"] == [
+        {"value": "2", "label": "matches"},
+        {"value": "0%", "label": "on the preferred weekday"},
+        {"value": "0", "label": "back-to-back home days"},
+        {"value": "0", "label": "paired away days within travel range"},
+    ]
+
+
+def test_club_headlines_omit_pairing_rows_for_a_non_dual_club():
+    """A single-team club (not in `dual_club_ids`) only gets the two numbers
+    that make sense for it — pairing stats are dual-club-only concepts."""
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va")]
+    candidate = _candidate(world, season, matches, [ConsecutiveHomeDays(competitions=[comp_m, comp_w])])
+
+    headlines = _club_headlines(world, candidate, dual_club_ids={"club_a"})
+
+    assert headlines["opp1"] == [
+        {"value": "1", "label": "matches"},
+        {"value": "0%", "label": "on the preferred weekday"},
+    ]
+
+
+# -- HTML-attribute-safe JSON ----------------------------------------------
+
+
+def test_json_attr_escapes_quotes_so_the_json_survives_an_html_attribute():
+    """`season.html.j2` embeds this as `data-club="{{ option.club_headlines_json }}"`
+    — a literal `"` from plain `json.dumps` would terminate the attribute
+    early and corrupt the markup. `_json_attr` must escape it, and a browser
+    unescaping the attribute back (`html.unescape`, standing in for the
+    DOM's `.dataset` decoding) must recover the original JSON exactly."""
+    payload = {"club <b>&</b> co": [{"value": "1", "label": 'on "Sunday"'}]}
+
+    attr_value = _json_attr(payload)
+
+    assert '"' not in attr_value
+    assert "<" not in attr_value
+    assert json.loads(html.unescape(attr_value)) == payload
+
+
 # -- combined view -------------------------------------------------------
 
 
@@ -201,3 +328,132 @@ def test_combined_calendar_interleaves_both_competitions_in_the_same_week():
     # Both competitions' short names show up, and both matches share one
     # combined week group (there is exactly one "Week" heading between them).
     assert html.count("Week ") >= 1
+
+
+def test_cup_entries_flatten_one_row_per_entered_team_per_round():
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    club_colors = {c.id: c.color for c in world.clubs.values()}
+    competition_colors = {"cup1": {"fg": "#111111", "bg": "#eeeeee"}}
+    schedule = f.cup_schedule(
+        "cup1",
+        [
+            f.cup_placement(
+                "r1",
+                {"a_m": date(2026, 3, 1), "b_m": date(2026, 3, 2)},
+                round_name="Round 1",
+                venue_type="away",
+            )
+        ],
+        competition_name="NM Cup",
+    )
+
+    entries = _cup_entries(world, [schedule], club_colors, competition_colors)
+
+    assert len(entries) == 2
+    entry = next(e for e in entries if e["team_full"] == world.team_label("a_m"))
+    assert entry["is_cup"] is True
+    assert entry["competition_id"] == "cup1"
+    assert entry["competition_name"] == "NM Cup"
+    assert entry["round_name"] == "Round 1"
+    assert entry["club_id"] == "club_a"
+    assert entry["venue_type"] == "away"
+    assert entry["date"] == date(2026, 3, 1)
+    assert entry["comp_fg"] == "#111111"
+
+
+def test_combined_views_include_cup_rounds_alongside_league_matches():
+    """A cup round used to only appear under "By competition" — issue: it must
+    also show up in the combined calendar and combined list views, the same
+    place a reader checks for "what's happening this week" across everything."""
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va")]
+    candidate = _candidate(world, season, matches, [])
+    schedule = f.cup_schedule(
+        "cup1",
+        [f.cup_placement("r1", {"a_m": date(2026, 6, 6)}, round_name="Round 1", venue_type="away")],
+        competition_name="NM Cup",
+    )
+    result = SolverResult(candidates=[candidate], solver="test")
+
+    from pathlib import Path
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = render_report(world, season, result, Path(tmp) / "out.html", cup_schedules=[schedule])
+        html = out.read_text(encoding="utf-8")
+
+    calendar_section = html.split('class="cal-wrap view-pane" data-view="combined-calendar"')[1].split(
+        'class="cal-wrap view-pane" data-view="combined-list"'
+    )[0]
+    list_section = html.split('class="cal-wrap view-pane" data-view="combined-list"')[1]
+
+    assert "NM Cup" in calendar_section
+    assert "v TBD" in calendar_section
+    assert "NM Cup" in list_section
+    assert "TBD (Round 1)" in list_section
+
+
+# -- search stats (issue #34) -------------------------------------------------
+
+
+def test_search_stats_view_is_none_when_nothing_was_tracked():
+    """`score`'s imported-schedule path never runs a search — its `SolverResult`
+    carries a default, empty `SearchStats`, and the report should just omit
+    the section rather than show an all-zero one."""
+    assert _search_stats_view(SearchStats()) is None
+
+
+def test_search_stats_view_summarises_investigated_and_breakdown():
+    stats = SearchStats(
+        investigated=100,
+        feasible=40,
+        hard_violation_scenarios=60,
+        hard_violation_counts=Counter({"min_rest_days": 50, "venue_double_booking": 10}),
+    )
+    view = _search_stats_view(stats)
+
+    assert view["investigated"] == 100
+    assert view["feasible"] == 40
+    assert view["feasible_pct"] == 40.0
+    assert view["hard_violation_scenarios"] == 60
+    assert view["hard_violation_pct"] == 60.0
+    assert view["difficulty"] == "moderate"
+    assert view["breakdown"][0]["id"] == "min_rest_days"
+    assert view["breakdown"][0]["count"] == 50
+    assert view["breakdown"][0]["pct"] == pytest.approx(83.333, rel=1e-3)
+
+
+def test_render_report_shows_search_difficulty_section_when_stats_present():
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va")]
+    candidate = _candidate(world, season, matches, [])
+    stats = SearchStats(investigated=10, feasible=1, hard_violation_scenarios=9,
+                         hard_violation_counts=Counter({"min_rest_days": 9}))
+    result = SolverResult(candidates=[candidate], solver="test", iterations=10, search_stats=stats)
+
+    from pathlib import Path
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = render_report(world, season, result, Path(tmp) / "out.html")
+        rendered = out.read_text(encoding="utf-8")
+
+    assert "How hard was this to schedule?" in rendered
+    assert "difficulty-hard" in rendered
+    assert "min rest days" in rendered
+
+
+def test_render_report_omits_search_difficulty_section_when_no_stats():
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [f.match("elite", "a_m", "opp_m", date(2026, 6, 6), "va")]
+    candidate = _candidate(world, season, matches, [])
+    result = SolverResult(candidates=[candidate], solver="test")
+
+    from pathlib import Path
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = render_report(world, season, result, Path(tmp) / "out.html")
+        rendered = out.read_text(encoding="utf-8")
+
+    assert "How hard was this to schedule?" not in rendered

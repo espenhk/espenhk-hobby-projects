@@ -10,6 +10,7 @@ losing, then the calendar itself.
 
 from __future__ import annotations
 
+import html
 import json
 from collections import defaultdict
 from datetime import date, timedelta
@@ -18,13 +19,44 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from ..model.loader import World
-from ..model.schema import Match, Season
+from ..model.schema import WEEKDAYS, Match, Season
 from ..rounds.cup_schedule import NEUTRAL_CUP_VENUE, CupRoundPlacement, CupSchedule
 from ..scoring.base import ConstraintResult, Event, Score
 from ..scoring.registry import describe
-from ..solvers.base import Candidate, SolverResult
+from ..solvers.base import Candidate, SearchStats, SolverResult
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
+
+# One (text, background) pair per competition, cycled in sorted-id order so
+# the assignment is stable within a render — used to colour-code the league
+# tag in the combined calendar/list views (issue #61) so a reader can tell
+# Eliteserien, Toppserien and each cup apart at a glance. Kept out of the
+# data files: it's a report-presentation detail, not something a competition
+# needs to declare about itself.
+_COMPETITION_PALETTE = [
+    {"fg": "#2471a3", "bg": "#eaf2f8"},  # blue
+    {"fg": "#8e44ad", "bg": "#f5eef8"},  # purple
+    {"fg": "#b9770e", "bg": "#fdf6ea"},  # amber
+    {"fg": "#117864", "bg": "#e8f6f3"},  # teal
+    {"fg": "#a04000", "bg": "#fdf2e9"},  # rust
+]
+_DEFAULT_COMP_COLOR = {"fg": "var(--muted)", "bg": "var(--line)"}
+
+
+def _json_attr(value: object) -> str:
+    """JSON, pre-escaped for embedding in a double-quoted HTML attribute.
+
+    `season.html.j2`'s name doesn't end in `.html` (Jinja's `select_autoescape`
+    matches on the template name's own extension, and this one's is `.j2`), so
+    the environment's autoescaping never actually applies to it — every other
+    value this template prints is plain trusted data (club/team/rule names
+    from our own YAML), so that's gone unnoticed, but `json.dumps` output is
+    full of literal double quotes that would otherwise terminate the
+    attribute early. Escaping by hand here, rather than fixing autoescaping
+    project-wide, keeps the fix scoped to the one thing that actually needs
+    it.
+    """
+    return html.escape(json.dumps(value), quote=True)
 
 
 def render_report(
@@ -62,10 +94,20 @@ def render_report(
     # feature below, which is a separate concern from colour.
     club_colors = {club.id: club.color for club in world.clubs.values()}
     dual_club_ids = {c.id for c in world.dual_clubs()}
+    competition_colors = _competition_colors(world)
     cup_schedules = cup_schedules or []
 
     options = [
-        _build_option(world, season, candidate, club_colors, dual_club_ids, cup_schedules, full_diagnostics)
+        _build_option(
+            world,
+            season,
+            candidate,
+            club_colors,
+            dual_club_ids,
+            cup_schedules,
+            competition_colors,
+            full_diagnostics,
+        )
         for candidate in result.candidates
     ]
 
@@ -74,6 +116,7 @@ def render_report(
         season=season,
         result=result,
         options=options,
+        search_stats=_search_stats_view(result.search_stats),
         club_colors=club_colors,
         all_clubs=sorted(world.clubs.values(), key=lambda c: c.name),
         dual_clubs=sorted(world.dual_clubs(), key=lambda c: c.name),
@@ -91,11 +134,16 @@ def _build_option(
     club_colors: dict[str, str],
     dual_club_ids: set[str],
     cup_schedules: list[CupSchedule],
+    competition_colors: dict[str, dict],
     full_diagnostics: bool = False,
 ) -> dict:
     score = candidate.score
     limit = 200 if full_diagnostics else 4
-    entries = _match_entries(world, candidate, club_colors, dual_club_ids)
+    entries = _match_entries(world, candidate, club_colors, dual_club_ids, competition_colors)
+    cup_entries = _cup_entries(world, cup_schedules, club_colors, competition_colors)
+    combined_entries = entries + cup_entries
+    headlines = _headlines(world, candidate)
+    club_headlines = _club_headlines(world, candidate, dual_club_ids)
     return {
         "label": candidate.label,
         "seed": candidate.seed,
@@ -104,19 +152,63 @@ def _build_option(
         "hard_violations": score.hard_violations,
         "soft_total": score.soft_total,
         "points": score.points,
-        "headlines": _headlines(world, candidate),
+        "headlines": headlines,
+        # JSON twins of the same two headline shapes, embedded as data
+        # attributes so the club filter can swap between them client-side
+        # without a page reload (issue #61) — see the `.headlines` element in
+        # the template and its `applyClubFilter` script.
+        "headlines_json": _json_attr(headlines),
+        "club_headlines_json": _json_attr(club_headlines),
         "hard_violation_detail": (
-            [_result_row(r, full=True) for r in score.hard_results() if r.count]
+            [_result_row(r, world, full=True) for r in score.hard_results() if r.count]
             if full_diagnostics
             else []
         ),
-        "problems": [_result_row(r, full=full_diagnostics) for r in score.biggest_problems(limit=limit)],
-        "upsides": [_result_row(r, full=full_diagnostics) for r in score.biggest_upsides(limit=limit)],
-        "breakdown": [_result_row(r, full=True) for r in _ordered_results(score)],
+        "problems": [_result_row(r, world, full=full_diagnostics) for r in score.biggest_problems(limit=limit)],
+        "upsides": [_result_row(r, world, full=full_diagnostics) for r in score.biggest_upsides(limit=limit)],
+        "breakdown": [_result_row(r, world, full=True) for r in _ordered_results(score)],
         "fairness": _fairness_rows(world, candidate),
         "by_competition": _competition_views(world, entries) + _cup_views(world, cup_schedules, club_colors),
-        "combined_calendar": _combined_calendar_view(entries),
-        "combined_list": entries,
+        "combined_calendar": _combined_calendar_view(combined_entries),
+        "combined_list": _combined_list_view(combined_entries),
+    }
+
+
+_DIFFICULTY_COPY = {
+    "easy": "Easy — most scenarios tried were already viable.",
+    "moderate": "Took real search — a large share of scenarios hit a hard rule.",
+    "hard": "A hard search — the vast majority of scenarios tried broke a hard rule.",
+    "unknown": "",
+}
+
+
+def _search_stats_view(stats: SearchStats) -> dict | None:
+    """How hard the search had to work (issue #34), shaped for the template.
+
+    `None` when nothing was tracked — the `score` command's imported-schedule
+    path builds a `SolverResult` without ever running a search, so there is
+    nothing to report here.
+    """
+    if not stats.investigated:
+        return None
+    breakdown = [
+        {
+            "id": constraint_id,
+            "description": describe(constraint_id),
+            "count": count,
+            "pct": 100.0 * count / stats.hard_violation_scenarios if stats.hard_violation_scenarios else 0.0,
+        }
+        for constraint_id, count in stats.hard_violation_counts.most_common()
+    ]
+    return {
+        "investigated": stats.investigated,
+        "feasible": stats.feasible,
+        "feasible_pct": 100.0 * stats.feasible_rate,
+        "hard_violation_scenarios": stats.hard_violation_scenarios,
+        "hard_violation_pct": 100.0 * stats.hard_violation_scenarios / stats.investigated,
+        "difficulty": stats.difficulty,
+        "difficulty_label": _DIFFICULTY_COPY.get(stats.difficulty, ""),
+        "breakdown": breakdown,
     }
 
 
@@ -127,7 +219,7 @@ def _ordered_results(score: Score) -> list[ConstraintResult]:
     return hard + soft
 
 
-def _result_row(result: ConstraintResult, full: bool = False) -> dict:
+def _result_row(result: ConstraintResult, world: World, full: bool = False) -> dict:
     return {
         "id": result.constraint_id,
         "kind": result.kind,
@@ -138,6 +230,77 @@ def _result_row(result: ConstraintResult, full: bool = False) -> dict:
         # means anything, not so many that the page becomes a log file.
         "examples": [e.detail for e in result.events[: (8 if full else 3)] if e.detail],
         "more": max(0, len([e for e in result.events if e.detail]) - (8 if full else 3)),
+        # Per-team/per-club occurrence counts — what the collapsed "Biggest
+        # upsides"/"Biggest problems" entries show instead of the raw example
+        # list once expanded (issue #61).
+        "occurrences": _entity_counts(world, result),
+    }
+
+
+def _classify_events(world: World, events: list[Event]) -> tuple[list[Event], list[Event]]:
+    """Split a rule's team-scoped events into club-coupling events (two teams
+    of the same club, e.g. the back-to-back-day pairing rules) and ordinary
+    single-team events. Shared by the fairness rows and the per-team
+    occurrence summary below, both of which need the same split."""
+    club_events: list[Event] = []
+    team_events: list[Event] = []
+    for event in events:
+        if not event.team_ids:
+            continue
+        clubs = {world.team(t).club_id for t in event.team_ids}
+        if len(event.team_ids) > 1 and len(clubs) == 1:
+            club_events.append(event)
+        else:
+            team_events.append(event)
+    return club_events, team_events
+
+
+def _count_by_club(world: World, club_events: list[Event]) -> dict[str, int]:
+    """Tally a list of already-classified club-coupling events by club id.
+    Shared by every place that needs this (fairness rows, per-club headlines,
+    the per-team occurrence summary) so the attribution logic — which event's
+    `team_ids[0]` names the club it belongs to — lives in exactly one place.
+    """
+    counts: dict[str, int] = defaultdict(int)
+    for event in club_events:
+        counts[world.team(event.team_ids[0]).club_id] += 1
+    return counts
+
+
+def _entity_counts(world: World, result: ConstraintResult) -> list[dict]:
+    """How many of this rule's events touch each team (or each dual club, for
+    the two club-coupling rules), worst/most-frequent first. Returns `[]` for
+    a rule whose events carry no `team_ids` at all (e.g. `preferred_weekday`,
+    scored per competition rather than per team).
+
+    Picks whichever of the two event shapes is actually larger, the same way
+    `_fairness_row_for` does — a rule could in principle mix both shapes, and
+    picking consistently keeps the two report sections from disagreeing about
+    which bucket "the" occurrences for that rule come from.
+    """
+    club_events, team_events = _classify_events(world, result.events)
+    if not club_events and not team_events:
+        return []
+    counts: dict[str, int] = defaultdict(int)
+    if len(club_events) >= len(team_events):
+        for club_id, n in _count_by_club(world, club_events).items():
+            counts[world.club(club_id).name] = n
+    else:
+        for event in team_events:
+            for team_id in event.team_ids:
+                counts[world.team_label(team_id)] += 1
+    return [
+        {"label": label, "count": n}
+        for label, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+
+
+def _competition_colors(world: World) -> dict[str, dict]:
+    """One (text, background) colour pair per competition id, stable within a
+    render — see `_COMPETITION_PALETTE` above."""
+    return {
+        competition_id: _COMPETITION_PALETTE[i % len(_COMPETITION_PALETTE)]
+        for i, competition_id in enumerate(sorted(world.competitions))
     }
 
 
@@ -171,11 +334,62 @@ def _headlines(world: World, candidate: Candidate) -> list[dict]:
     return headlines
 
 
+def _club_event_counts(world: World, result: ConstraintResult | None) -> dict[str, int]:
+    if result is None:
+        return {}
+    club_events, _ = _classify_events(world, result.events)
+    return _count_by_club(world, club_events)
+
+
+def _club_headlines(world: World, candidate: Candidate, dual_club_ids: set[str]) -> dict[str, list[dict]]:
+    """The same three headline numbers as `_headlines`, narrowed to one club's
+    own matches — what the calendar's club filter shows in place of the
+    season-wide totals once a club is selected (issue #61). Keyed by club id
+    so the template's script can look a selection up directly; consumed as
+    JSON (see `club_headlines_json` in `_build_option`), never rendered
+    server-side, since which club is picked happens entirely client-side.
+    """
+    score = candidate.score
+    club_matches: dict[str, list[Match]] = defaultdict(list)
+    for match in candidate.matches:
+        home_club = world.team(match.home_team).club_id
+        away_club = world.team(match.away_team).club_id
+        club_matches[home_club].append(match)
+        if away_club != home_club:
+            club_matches[away_club].append(match)
+
+    home_pairs = _club_event_counts(world, score.result("consecutive_home_days"))
+    away_pairs = _club_event_counts(world, score.result("consecutive_away_days"))
+
+    headlines: dict[str, list[dict]] = {}
+    for club_id, matches in club_matches.items():
+        on_day = sum(
+            1
+            for m in matches
+            if m.date.weekday() == WEEKDAYS.index(world.competition(m.competition_id).preferred_weekday)
+        )
+        rows = [
+            {"value": str(len(matches)), "label": "matches"},
+            {
+                "value": f"{100.0 * on_day / len(matches):.0f}%" if matches else "—",
+                "label": "on the preferred weekday",
+            },
+        ]
+        if club_id in dual_club_ids:
+            rows.append({"value": str(home_pairs.get(club_id, 0)), "label": "back-to-back home days"})
+            rows.append(
+                {"value": str(away_pairs.get(club_id, 0)), "label": "paired away days within travel range"}
+            )
+        headlines[club_id] = rows
+    return headlines
+
+
 def _match_entries(
     world: World,
     candidate: Candidate,
     club_colors: dict[str, str],
     dual_club_ids: set[str],
+    competition_colors: dict[str, dict] | None = None,
 ) -> list[dict]:
     """One flat, chronologically sorted list of every match this option plays,
     with everything both the per-competition view and the combined view need.
@@ -185,6 +399,7 @@ def _match_entries(
     club's colour differently.
     """
     matches = candidate.matches
+    competition_colors = competition_colors or {}
 
     # Dates on which a dual club has a home match, so the calendar can flag the
     # back-to-back pairs that justify scheduling the leagues together.
@@ -202,10 +417,12 @@ def _match_entries(
             home_by_club[home_club], match.date
         )
         competition = world.competition(match.competition_id)
+        comp_color = competition_colors.get(match.competition_id, _DEFAULT_COMP_COLOR)
         entries.append(
             {
                 "date": match.date,
                 "weekday": match.date.strftime("%a"),
+                "kickoff_time": match.kickoff_time,
                 "home": world.team_label(match.home_team),
                 "home_short": world.team_short_label(match.home_team),
                 "away": world.team_label(match.away_team),
@@ -218,6 +435,8 @@ def _match_entries(
                 "round_index": match.round_index,
                 "competition_id": match.competition_id,
                 "competition_name": competition.name,
+                "comp_fg": comp_color["fg"],
+                "comp_bg": comp_color["bg"],
                 "home_club": home_club,
                 "away_club": away_club,
             }
@@ -258,11 +477,16 @@ def _competition_views(world: World, entries: list[dict]) -> list[dict]:
 
 
 def _combined_calendar_view(entries: list[dict]) -> list[dict]:
-    """Every league's matches merged into one calendar, grouped by ISO week.
+    """Every league's matches, plus every cup's per-team round dates, merged
+    into one calendar, grouped by ISO week.
 
     Round numbers don't line up across competitions (Eliteserien and
     Toppserien run different round counts), so week-of-year is the grouping
-    that actually interleaves them the way issue #24 asks for.
+    that actually interleaves them the way issue #24 asks for. `entries` mixes
+    league match entries (`_match_entries`) and cup entries (`_cup_entries`);
+    the sort key falls back to a cup entry's own team name where a league
+    entry would have `home`, so both shapes interleave by date without a
+    KeyError.
     """
     weeks: dict[tuple[int, int], list[dict]] = defaultdict(list)
     for entry in entries:
@@ -272,7 +496,8 @@ def _combined_calendar_view(entries: list[dict]) -> list[dict]:
     views: list[dict] = []
     for (iso_year, iso_week), week_entries in sorted(weeks.items()):
         week_entries = sorted(
-            week_entries, key=lambda e: (e["date"], e["competition_name"], e["home"])
+            week_entries,
+            key=lambda e: (e["date"], e["competition_name"], e.get("home", e.get("team", ""))),
         )
         views.append(
             {
@@ -282,6 +507,15 @@ def _combined_calendar_view(entries: list[dict]) -> list[dict]:
             }
         )
     return views
+
+
+def _combined_list_view(entries: list[dict]) -> list[dict]:
+    """The same merged league + cup entries as `_combined_calendar_view`, as
+    one flat chronological list rather than grouped by week."""
+    return sorted(
+        entries,
+        key=lambda e: (e["date"], e["competition_id"], e.get("home", e.get("team", ""))),
+    )
 
 
 def _cup_views(
@@ -349,6 +583,45 @@ def _cup_fixtures(world: World, placement: CupRoundPlacement, club_colors: dict[
     return sorted(fixtures, key=lambda fx: (fx["date"], fx["team"]))
 
 
+def _cup_entries(
+    world: World,
+    cup_schedules: list[CupSchedule],
+    club_colors: dict[str, str],
+    competition_colors: dict[str, dict],
+) -> list[dict]:
+    """Cup rounds flattened to one row per entered team per round — the same
+    granularity `_cup_fixtures` produces for the by-competition view — so the
+    combined calendar/list can merge them with league entries instead of
+    omitting cups entirely. Tagged `is_cup` so the template picks the TBD-
+    opponent card/row instead of a fixture's home-vs-away one.
+    """
+    entries: list[dict] = []
+    for schedule in cup_schedules:
+        comp_color = competition_colors.get(schedule.competition_id, _DEFAULT_COMP_COLOR)
+        for placement in schedule.rounds:
+            for team_id, team_date in placement.dates.items():
+                club_id = world.team(team_id).club_id
+                entries.append(
+                    {
+                        "is_cup": True,
+                        "date": team_date,
+                        "weekday": team_date.strftime("%a"),
+                        "competition_id": schedule.competition_id,
+                        "competition_name": schedule.competition_name,
+                        "comp_fg": comp_color["fg"],
+                        "comp_bg": comp_color["bg"],
+                        "round_name": placement.round_name,
+                        "team": world.team_short_label(team_id),
+                        "team_full": world.team_label(team_id),
+                        "club_id": club_id,
+                        "color": club_colors.get(club_id, ""),
+                        "venue_type": placement.venue_type,
+                        "venue_label": _cup_venue_label(world, team_id, placement.venue_type),
+                    }
+                )
+    return entries
+
+
 def _cup_venue_label(world: World, team_id: str, venue_type: str) -> str:
     if venue_type == "home":
         return world.home_venue_of(team_id).name
@@ -412,16 +685,7 @@ def _fairness_row_for(
     competition) or whose relevant entity universe has fewer than two
     members to compare.
     """
-    club_events: list[Event] = []
-    team_events: list[Event] = []
-    for event in result.events:
-        if not event.team_ids:
-            continue
-        clubs = {world.team(t).club_id for t in event.team_ids}
-        if len(event.team_ids) > 1 and len(clubs) == 1:
-            club_events.append(event)
-        else:
-            team_events.append(event)
+    club_events, team_events = _classify_events(world, result.events)
 
     if not club_events and not team_events:
         return None
@@ -433,12 +697,8 @@ def _fairness_row_for(
     if len(club_events) >= len(team_events):
         if len(dual_club_ids) < 2:
             return None
-        counts = {club_id: 0 for club_id in dual_club_ids}
-        for event in club_events:
-            club_id = world.team(event.team_ids[0]).club_id
-            if club_id in counts:
-                counts[club_id] += 1
-        entries = [(world.club(cid).name, n) for cid, n in counts.items()]
+        raw_counts = _count_by_club(world, club_events)
+        entries = [(world.club(cid).name, raw_counts.get(cid, 0)) for cid in dual_club_ids]
     else:
         if len(participant_teams) < 2:
             return None
@@ -486,11 +746,20 @@ def _round_date_label(entries: list[dict]) -> str:
 
 def write_json(result: SolverResult, output_path: Path) -> Path:
     """Machine-readable twin of the HTML, for diffing and test snapshots."""
+    stats = result.search_stats
     payload = {
         "solver": result.solver,
         "iterations": result.iterations,
         "elapsed_s": round(result.elapsed_s, 2),
         "notes": result.notes,
+        "search_stats": {
+            "investigated": stats.investigated,
+            "feasible": stats.feasible,
+            "hard_violation_scenarios": stats.hard_violation_scenarios,
+            "feasible_rate": round(stats.feasible_rate, 4),
+            "difficulty": stats.difficulty,
+            "hard_violation_counts": dict(stats.hard_violation_counts.most_common()),
+        },
         "options": [
             {
                 "label": candidate.label,
@@ -516,6 +785,7 @@ def write_json(result: SolverResult, output_path: Path) -> Path:
                         "home": m.home_team,
                         "away": m.away_team,
                         "venue": m.venue,
+                        "kickoff_time": m.kickoff_time,
                     }
                     for m in candidate.matches
                 ],
