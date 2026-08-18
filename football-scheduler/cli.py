@@ -390,7 +390,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_refresh_travel = sub.add_parser(
         "refresh-travel-times",
-        help="fetch real ground travel times between venues via OSRM (read-only, needs network)",
+        help=(
+            "fetch real ground travel times between venues via OSRM and cache them "
+            "(never touches data/*.yml; needs network)"
+        ),
     )
     p_refresh_travel.add_argument(
         "--force", action="store_true", help="ignore the cache and re-fetch every pair"
