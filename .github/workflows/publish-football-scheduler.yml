@@ -7,10 +7,8 @@ on:
   push:
     branches: [main]
     paths:
-      - "football-scheduler/data/**"
-      - "football-scheduler/terminliste/**"
-      - "football-scheduler/cli.py"
-      - "football-scheduler/scripts/publish_web.py"
+      - "football-scheduler/**"
+      - "!docs/football-scheduler/**"
 
 jobs:
   publish:
