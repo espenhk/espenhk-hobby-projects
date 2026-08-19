@@ -690,7 +690,7 @@ class TvTimeSpread:
             has_early = any(m.kickoff_time == spread.early_kickoff_time for m in on_day)
             has_late = any(m.kickoff_time == spread.late_kickoff_time for m in on_day)
             primary_count = sum(1 for m in on_day if m.kickoff_time == spread.primary_kickoff_time)
-            expected_primary = max(len(on_day) - 2, 0)
+            expected_primary = len(on_day) if len(on_day) < 2 else len(on_day) - 2
             shaped = primary_count == expected_primary and (len(on_day) < 2 or (has_early and has_late))
             if not shaped:
                 continue

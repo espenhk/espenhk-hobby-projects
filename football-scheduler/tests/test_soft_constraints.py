@@ -431,6 +431,19 @@ def test_tv_time_spread_does_not_reward_a_round_missing_the_early_or_late_slot()
     assert result.result("tv_time_spread").total == 0.0
 
 
+def test_tv_time_spread_rewards_a_single_on_day_match_at_the_primary_time():
+    world, season, comp = _tv_spread_world()
+    constraint = TvTimeSpread(competitions=[comp])
+    sunday = date(2026, 6, 7)
+    # `kickoff.py::_tv_time_spread_assignments` gives a round's lone
+    # preferred-weekday match the primary time — no room for an early/late
+    # split — and this is the shaped state, not a miss.
+    matches = [f.match("comp", "t1", "t2", sunday, "v1", kickoff_time="17:00")]
+    result = evaluate(matches, [constraint], _ctx(world, season))
+    assert result.result("tv_time_spread").total == 3.0
+    assert result.result("tv_time_spread").count == 1
+
+
 def test_tv_time_spread_is_silent_when_not_configured():
     v = f.venue("v1")
     t1, t2 = f.team("t1", "c1", "v1"), f.team("t2", "c2", "v1")
@@ -467,7 +480,11 @@ def test_tv_time_spread_penalises_a_collision_with_another_competition():
     spread = TvTimeSpreadConfig(primary_kickoff_time="17:00")
     elite = f.competition(
         "elite", ["t1", "t2"], preferred_weekday="sunday",
-        tv_time_spread=spread, weights={"tv_time_spread_collision": 2.0},
+        tv_time_spread=spread,
+        # Zero out the shape reward so this test isolates the collision
+        # penalty — elite's lone match is otherwise correctly shaped
+        # (primary time) and would earn its own reward too.
+        weights={"tv_time_spread": 0.0, "tv_time_spread_collision": 2.0},
     )
     topp = f.competition("topp", ["t3", "t4"], preferred_weekday="sunday")
     world = f.world(clubs, [v], [elite, topp])
