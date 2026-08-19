@@ -103,7 +103,9 @@ class BlackoutDates:
             if day not in required_dates
         }
         venue_blackouts: dict[tuple[str, date], str] = {
-            (b.venue, b.date): b.reason for b in season.venue_blackouts
+            (venue_id, day): reason
+            for venue_id, dated in season.venue_blacked_out_dates.items()
+            for day, reason in dated.items()
         }
 
         count = 0

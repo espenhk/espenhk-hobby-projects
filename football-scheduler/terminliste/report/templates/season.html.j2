@@ -279,20 +279,21 @@
 </div>
 {% endif %}
 
-{% if season.global_blackouts or season.excluded_date_ranges %}
+{% if season_exclusions %}
 <details>
   <summary>
     Season exclusions
     <span style="font-weight:400;color:var(--muted)">
-      · {{ season.global_blackouts|length + season.excluded_date_ranges|length }} entr{{ 'y' if (season.global_blackouts|length + season.excluded_date_ranges|length) == 1 else 'ies' }}
+      · {{ season_exclusions|length }} entr{{ 'y' if season_exclusions|length == 1 else 'ies' }}
     </span>
   </summary>
   <div class="item-body">
-    {% for blackout in season.global_blackouts|sort(attribute='date') %}
-    <div class="desc">{{ blackout.date.strftime('%d %b %Y') }}{% if blackout.reason %} — {{ blackout.reason }}{% endif %}</div>
-    {% endfor %}
-    {% for excluded in season.excluded_date_ranges|sort(attribute='start') %}
-    <div class="desc">{{ excluded.start.strftime('%d %b %Y') }} – {{ excluded.end.strftime('%d %b %Y') }}{% if excluded.reason %} — {{ excluded.reason }}{% endif %}</div>
+    {% for entry in season_exclusions %}
+    <div class="desc">
+      {{ entry.start.strftime('%d %b %Y') }}{% if entry.end != entry.start %} – {{ entry.end.strftime('%d %b %Y') }}{% endif %}
+      {%- if entry.venue_label %} ({{ entry.venue_label }}){% endif %}
+      {%- if entry.reason %} — {{ entry.reason }}{% endif %}
+    </div>
     {% endfor %}
   </div>
 </details>

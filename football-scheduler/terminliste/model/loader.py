@@ -326,6 +326,12 @@ def validate_world(world: World) -> list[str]:
                 errors.append(
                     f"season {season.id!r} blacks out unknown venue {blackout.venue!r}"
                 )
+        for blackout_range in season.venue_blackout_ranges:
+            if blackout_range.venue not in world.venues:
+                errors.append(
+                    f"season {season.id!r} blacks out unknown venue {blackout_range.venue!r} "
+                    f"(date range {blackout_range.start}..{blackout_range.end})"
+                )
         errors.extend(_validate_fixed_requirements(world, season))
         errors.extend(_validate_full_round_requirements(world, season))
         errors.extend(_validate_rivalry_fixtures(world, season))
@@ -497,10 +503,10 @@ def _validate_fixed_requirements(world: World, season: Season) -> list[str]:
                 f"requirement {requirement.id!r} demands a match on {requirement.date}, which is "
                 f"also a global blackout — these cannot both hold"
             )
-        if any(r.start <= requirement.date <= r.end for r in season.excluded_date_ranges):
+        if any(r.start <= requirement.date <= r.end for r in season.global_blackout_ranges):
             errors.append(
                 f"requirement {requirement.id!r} demands a match on {requirement.date}, which "
-                f"falls inside an excluded date range — these cannot both hold"
+                f"falls inside a global blackout range — these cannot both hold"
             )
     return errors
 
@@ -538,10 +544,10 @@ def _validate_full_round_requirements(world: World, season: Season) -> list[str]
                 f"full-round requirement {requirement.id!r} demands a round on "
                 f"{requirement.date}, which is also a global blackout — these cannot both hold"
             )
-        if any(r.start <= requirement.date <= r.end for r in season.excluded_date_ranges):
+        if any(r.start <= requirement.date <= r.end for r in season.global_blackout_ranges):
             errors.append(
                 f"full-round requirement {requirement.id!r} demands a round on "
-                f"{requirement.date}, which falls inside an excluded date range — these cannot "
+                f"{requirement.date}, which falls inside a global blackout range — these cannot "
                 f"both hold"
             )
     return errors

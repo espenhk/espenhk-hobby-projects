@@ -125,13 +125,13 @@ def test_anchor_dates_falls_back_to_midweek_when_short_on_preferred_days():
     assert len(anchors) == 10
 
 
-def test_excluded_date_range_blocks_every_day_inside_it():
+def test_global_blackout_range_blocks_every_day_inside_it():
     import factories as f
-    from terminliste.model.schema import ExcludedDateRange
+    from terminliste.model.schema import GlobalBlackoutRange
 
     season = f.season(
-        excluded_date_ranges=[
-            ExcludedDateRange(
+        global_blackout_ranges=[
+            GlobalBlackoutRange(
                 start=date(2026, 6, 1), end=date(2026, 6, 14), reason="international break"
             )
         ],
@@ -144,17 +144,17 @@ def test_excluded_date_range_blocks_every_day_inside_it():
     assert calendar.is_allowed(date(2026, 6, 15))
 
 
-def test_hard_fixed_requirement_overrides_an_excluded_date_range():
+def test_hard_fixed_requirement_overrides_a_global_blackout_range():
     import factories as f
-    from terminliste.model.schema import ExcludedDateRange, FixedRequirement
+    from terminliste.model.schema import GlobalBlackoutRange, FixedRequirement
 
     clash_date = date(2026, 6, 7)
     requirement = FixedRequirement(
         id="req", date=clash_date, home_team="t1", competition="comp", hard=True
     )
     season = f.season(
-        excluded_date_ranges=[
-            ExcludedDateRange(
+        global_blackout_ranges=[
+            GlobalBlackoutRange(
                 start=date(2026, 6, 1), end=date(2026, 6, 14), reason="international break"
             )
         ],
@@ -162,3 +162,23 @@ def test_hard_fixed_requirement_overrides_an_excluded_date_range():
     )
     calendar = build_calendar(f.world([], [], []), season)
     assert calendar.is_allowed(clash_date)
+
+
+def test_venue_blackout_range_blocks_only_that_venue_across_every_day():
+    import factories as f
+    from terminliste.model.schema import VenueBlackoutRange
+
+    season = f.season(
+        venue_blackout_ranges=[
+            VenueBlackoutRange(
+                venue="v1", start=date(2026, 6, 1), end=date(2026, 6, 3), reason="ground works"
+            )
+        ],
+    )
+    calendar = build_calendar(f.world([], [], []), season)
+    for day in (date(2026, 6, 1), date(2026, 6, 2), date(2026, 6, 3)):
+        assert not calendar.is_allowed(day, "v1")
+        # Unaffected at another venue, and unaffected globally.
+        assert calendar.is_allowed(day, "v2")
+        assert calendar.is_allowed(day)
+    assert calendar.is_allowed(date(2026, 6, 4), "v1")

@@ -119,16 +119,16 @@ def build_calendar(world: World, season: Season) -> SeasonCalendar:
 
     global_allowed = frozenset(d for d in all_dates if d not in blackouts or d in required)
 
-    venue_blocked: dict[str, set[date]] = {}
-    for blackout in season.venue_blackouts:
-        venue_blocked.setdefault(blackout.venue, set()).add(blackout.date)
+    venue_blocked = {
+        venue_id: frozenset(dated) for venue_id, dated in season.venue_blacked_out_dates.items()
+    }
 
     return SeasonCalendar(
         season=season,
         all_dates=tuple(all_dates),
         global_allowed=global_allowed,
         discouraged=frozenset(d.date for d in season.discouraged_dates),
-        _venue_blocked={k: frozenset(v) for k, v in venue_blocked.items()},
+        _venue_blocked=venue_blocked,
     )
 
 
