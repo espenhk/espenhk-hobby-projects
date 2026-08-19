@@ -5,7 +5,11 @@ gender: women
 format: league
 
 # Season report colour (issue #77) — see eliteserien_2026.yml's comment.
-color: "#8e44ad"
+# Green, not the purple this used to be: purple sits almost equidistant in
+# hue from Eliteserien's orange and Cup (menn)'s red, so at a glance it read
+# as too close to Eliteserien. Green is the only unused stretch of hue space
+# once you account for the navy/blue European cluster and the red/pink cups.
+color: "#1e8449"
 
 # Scheduler-controlled, same as eliteserien_2026.yml — see its comment and
 # issue #31.
