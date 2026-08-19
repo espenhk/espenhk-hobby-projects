@@ -206,9 +206,11 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
-# Claude Code: local-only, machine/user-specific — commands/agents/skills stay tracked
-.claude/settings.local.json
-.claude/*.local.json
+# Claude Code: ignore everything local/generated, keep shareable definitions tracked
+.claude/*
+!.claude/commands/
+!.claude/agents/
+!.claude/skills/
 
 docs/codestyle/
 
