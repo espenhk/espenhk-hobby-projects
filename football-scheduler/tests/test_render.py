@@ -446,6 +446,32 @@ def test_european_entries_use_unknown_venue_type_when_home_leg_is_not_set():
     assert all(e["opponent"] == "TBD" for e in entries)
 
 
+def test_european_entries_and_views_skip_a_main_tournament_competition():
+    """Main tournament competitions (issue #79) have no `european_rounds` —
+    the report doesn't (yet) show their league-phase matchdays or knockout
+    rounds, but a main tournament competition in the mix shouldn't crash or
+    contribute empty/broken rows either."""
+    from terminliste.report.render import _european_views
+
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    club_colors = {c.id: c.color for c in world.clubs.values()}
+    main = f.competition(
+        "cl_main",
+        [],
+        format="european",
+        is_main_tournament=True,
+        league_phase_matchdays=[f.european_matchday("md1", forced_date=date(2026, 9, 10))],
+    )
+
+    entries = _european_entries(world, [main], {}, club_colors, {})
+    assert entries == []
+
+    views = _european_views(world, [main], {}, club_colors)
+    assert len(views) == 1
+    assert views[0]["match_count"] == 0
+    assert views[0]["rounds"] == []
+
+
 def test_combined_views_include_european_rounds_alongside_league_matches():
     """A European round used to be invisible in the report — it must show up
     both under "By competition" and in the combined calendar/list views,

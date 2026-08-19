@@ -78,10 +78,16 @@ def cmd_validate(args: argparse.Namespace) -> int:
                 f"movable={competition.movable}"
             )
         elif competition.format == "european":
-            print(
-                f"     {competition.name}: {competition.team_count} teams entered, "
-                f"{competition.rounds} rounds tracked, movable={competition.movable}"
-            )
+            if competition.is_main_tournament:
+                print(
+                    f"     {competition.name}: main tournament, {competition.rounds} rounds "
+                    f"tracked, movable={competition.movable}"
+                )
+            else:
+                print(
+                    f"     {competition.name}: {competition.team_count} teams entered, "
+                    f"{competition.rounds} rounds tracked, movable={competition.movable}"
+                )
         else:
             print(
                 f"     {competition.name}: {competition.team_count} teams, "
