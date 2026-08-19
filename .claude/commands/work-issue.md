@@ -73,12 +73,26 @@ Do this immediately after selection and before writing any code, to minimize rac
 ```
 git push -u origin fix/issue-<number>-<short-slug>
 gh pr create --title "<concise summary>" --body "=== work-issue ===
-Closing #<number>
+Closes #<number>
 
 <description of the fix, approach, and testing performed>"
 ```
 
-If the repo has a PR template, fill it in rather than overwriting it. Ensure `Closing #<number>` (or `Closes #<number>`) appears verbatim so GitHub auto-links and auto-closes on merge.
+If the repo has a PR template, fill it in rather than overwriting it. GitHub only auto-links and auto-closes on merge for a recognized closing keyword — `close`/`closes`/`closed`, `fix`/`fixes`/`fixed`, or `resolve`/`resolves`/`resolved` — immediately followed by `#<number>`. Ensure one of these (e.g. `Closes #<number>`, matching this repo's `CLAUDE.md` convention where present) appears verbatim in the PR body; phrasing like "Closing #<number>" does **not** count and will silently fail to link.
+
+After creating the PR, verify the keyword actually made it into the final body (a PR template merge can drop it):
+
+```
+gh pr view <pr-number> --json body --jq .body
+```
+
+Check the output for a recognized keyword + `#<number>` pattern (case-insensitive: `close(s|d)`, `fix(es|ed)`, or `resolve(s|d)` directly followed by `#<number>`). If it's missing or uses a non-recognized phrasing, fix it immediately:
+
+```
+gh pr edit <pr-number> --body "<corrected body with 'Closes #<number>' included>"
+```
+
+Do not proceed to Step 5 until this is confirmed.
 
 ## Step 5 — Monitor CI
 
