@@ -86,7 +86,7 @@ When new commits land, go back to Step 3 and re-review, scoped primarily to whet
 
 ## Step 7 — End
 
-Once "Ready to merge" has been posted, your work on this PR is done. Stop polling/listening on it and return to Step 1 to look for the next eligible PR, using the same immediate-check-then-poll logic.
+Once "Ready to merge" has been posted, your work on this PR is done. Stop polling/listening on it and terminate the run — do not go back to Step 1 to look for another PR.
 
 ## Escalation — when to actually stop and ask
 
