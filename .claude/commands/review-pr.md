@@ -35,9 +35,12 @@ gh pr list --state open --json number,title,body,createdAt --limit 100
 
 A PR matches if its body contains `Closes #$1`, `Fixes #$1`, or `Closing #$1` (any case, any of the standard GitHub closing keywords — `close`/`closes`/`closed`, `fix`/`fixes`/`fixed`, `resolve`/`resolves`/`resolved` — followed by `#$1`).
 
-- **No open PR matches** (this is the expected outcome if `$1` is actually a PR number rather than an issue number, or the issue has no PR yet): **stop here — this is a clean, expected exit, not a failure.** Report that no open PR closes issue #$1 and end the run.
+- **No open PR matches:** the coder agent may simply be at work but not have opened the PR yet. Before doing anything else, check whether issue #$1 itself exists: `gh issue view $1`.
+  - **Issue does not exist:** this is a malformed request — **stop here** and report that issue #$1 could not be found. End the run.
+  - **Issue exists:** check for a comment from the coder agent on the issue (`gh issue view $1 --json comments`) indicating it has started work — this is informational context, not a gate, so proceed with polling regardless of whether you find one. Wait 15 minutes, then re-run the PR search (`gh pr list --state open --json number,title,body,createdAt --limit 100`, searching bodies for a closing reference to issue #$1 as above). Keep polling on this 15-minute interval for up to 2 hours of total wait time (the initial check plus checks at +15, +30, +45, +60, +75, +90, and +105 minutes — 8 checks total). Stop polling the moment a PR closing #$1 appears — don't wait out the rest of that interval. Once a matching PR shows up, apply the same eligibility criteria as the "one or more PRs match" case below and, if eligible, proceed immediately to Step 2, commenting that you're on it and starting the review process as normal.
+    If the full 2 hours elapses with no matching PR ever appearing, **stop here — clean exit.** Report that no PR was opened for issue #$1 within 2 hours of polling and end the run.
 - **One or more PRs match:** apply the same two eligibility criteria as the oldest-first scan below (no existing review, no "reviewing now" claim) and take the oldest eligible match. If matches exist but none are eligible, **stop here — clean exit.** Report that the PR(s) closing issue #$1 are already reviewed or claimed and end the run.
-- **Exactly one eligible match:** proceed immediately to Step 2 with that PR, skipping the oldest-first scan below. Do not poll or wait — a preferred issue with no match is a terminal outcome, not something to retry later.
+- **Exactly one eligible match:** proceed immediately to Step 2 with that PR, skipping the oldest-first scan below. Do not poll or wait — a preferred issue with no match yet is handled by the polling branch above, not retried here.
 
 ### Otherwise (no issue number given)
 
