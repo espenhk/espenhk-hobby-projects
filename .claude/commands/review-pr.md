@@ -12,11 +12,9 @@ Every comment you post to GitHub (issue-style comments, top-level PR comments, r
 
 This makes it clear at a glance which agent authored the comment, since a separate coder agent is also posting to the same PR. Prepend this line to every `--body` you construct below, including the "reviewing now" claim, review comments, and the "Ready to merge" comment.
 
-## Step 1 — Initial delay
+## Step 1 — Find a PR to review
 
-Wait 15 minutes before doing anything else. This gives newly opened PRs a moment to settle (e.g. CI to start, description edits) before you evaluate them.
-
-## Step 2 — Select a PR
+Check immediately for an eligible PR — do not wait before this first check.
 
 List open PRs sorted oldest-first:
 
@@ -29,18 +27,22 @@ For each PR, in order from oldest, check it is eligible by confirming **both** o
 1. **No existing review comment.** Run `gh pr view <number> --json comments,reviews` and confirm there is no prior review (approval, changes-requested, or comment-only review) and no top-level comment that constitutes a review.
 2. **No "reviewing now" claim.** Confirm no comment body (case-insensitive) contains "reviewing now" — this indicates another review agent has already claimed it.
 
-Take the **first eligible PR** in oldest-first order. If none are eligible, **stop here — this is a clean, expected exit, not a failure.** Report briefly (e.g. "No eligible PRs found; N open PRs checked, all already reviewed or claimed") and end the run. Do not wait, retry, or fabricate a PR to review.
+Take the **first eligible PR** in oldest-first order. If one is found, proceed immediately to Step 2.
 
-## Step 3 — Claim the PR
+If none are eligible: wait 15 minutes, then repeat the check above. Keep polling on a 15-minute interval for up to 2 hours of total wait time (the initial check plus checks at +15, +30, +45, +60, +75, +90, and +105 minutes — 8 checks total). Stop polling the moment an eligible PR turns up and move on to Step 2 right away; don't wait out the rest of that interval.
+
+If the full 2 hours elapses with no eligible PR ever found, **stop here — this is a clean, expected exit, not a failure.** Report briefly (e.g. "No eligible PRs found after 2 hours of polling; N open PRs checked each round, all already reviewed or claimed") and end the run. Do not poll past 2 hours, or fabricate a PR to review.
+
+## Step 2 — Claim the PR
 
 ```
 gh pr comment <number> --body "=== review-pr ===
 reviewing now, please wait."
 ```
 
-Do this immediately after selection and before reading the diff in depth, to minimize race conditions with other review agents. Re-check eligibility criterion 2 right before commenting (another agent may have claimed it in the meantime); if it's now claimed, abandon it and go back to Step 2 for the next eligible PR.
+Do this immediately after selection and before reading the diff in depth, to minimize race conditions with other review agents. Re-check eligibility criterion 2 right before commenting (another agent may have claimed it in the meantime); if it's now claimed, abandon it and go back to Step 1 for the next eligible PR.
 
-## Step 4 — Review the implementation
+## Step 3 — Review the implementation
 
 - Identify the linked issue: look for `Closes #X` / `Closing #X` / `Fixes #X` in the PR body, and fetch it with `gh issue view <X>`.
 - Read the full diff: `gh pr diff <number>`.
@@ -49,7 +51,7 @@ Do this immediately after selection and before reading the diff in depth, to min
 - Check the repo root (and any nested `CLAUDE.md` relevant to the touched paths) for review standards — style conventions, required checks, things to always/never flag. Apply these on top of your own judgment; if `CLAUDE.md` is silent on a point, use general good-engineering judgment.
 - Check CI status: `gh pr checks <number>`. If CI is currently running, wait for it to complete before finalizing your review — don't review against a moving target.
 
-## Step 5 — Post the review
+## Step 4 — Post the review
 
 Post inline comments on specific lines where you have concrete, actionable feedback:
 
@@ -70,7 +72,7 @@ gh pr review <number> --comment --body "=== review-pr ===
   ```
   Do not combine "Ready to merge" with any open fix request in the same review round — if you have even one substantive ask, this PR is not ready yet.
 
-## Step 6 — Wait for changes
+## Step 5 — Wait for changes
 
 After posting a review that includes fix requests (i.e., not yet "Ready to merge"):
 
@@ -78,13 +80,13 @@ After posting a review that includes fix requests (i.e., not yet "Ready to merge
 - If event-based listening isn't available, poll on a **15-minute interval**: `gh pr view <number> --json commits,updatedAt` and compare against the last-seen commit SHA.
 - While waiting, don't re-review prematurely — only re-evaluate once you detect a new commit (or a comment from the coder agent indicating a fix is ready for re-review).
 
-## Step 7 — Repeat
+## Step 6 — Repeat
 
-When new commits land, go back to Step 4 and re-review, scoped primarily to whether your prior fix requests were addressed (plus a sanity check that nothing new was broken). Repeat Steps 5–6 until you reach the "Ready to merge" comment.
+When new commits land, go back to Step 3 and re-review, scoped primarily to whether your prior fix requests were addressed (plus a sanity check that nothing new was broken). Repeat Steps 4–5 until you reach the "Ready to merge" comment.
 
-## Step 8 — End
+## Step 7 — End
 
-Once "Ready to merge" has been posted, your work on this PR is done. Stop polling/listening on it and return to Step 2 to look for the next eligible PR (after the Step 1 delay is not required again — that's a one-time startup wait, not per-PR).
+Once "Ready to merge" has been posted, your work on this PR is done. Stop polling/listening on it and terminate the run — do not go back to Step 1 to look for another PR.
 
 ## Escalation — when to actually stop and ask
 
