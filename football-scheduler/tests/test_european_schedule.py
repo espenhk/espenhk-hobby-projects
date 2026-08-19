@@ -418,3 +418,76 @@ def test_resolve_european_commitments_avoids_a_blacked_out_leg_and_warns():
     )
     assert len(warnings) == 1
     assert "second leg" in warnings[0]
+
+
+def test_resolve_european_commitments_avoids_an_excluded_date_range():
+    from terminliste.model.schema import ExcludedDateRange
+
+    comp = f.competition(
+        "cl",
+        ["glimt"],
+        format="european",
+        european_rounds=[
+            f.european_round(
+                "q3",
+                entrants=["glimt"],
+                first_leg=f.european_leg(window_start=date(2026, 8, 4), window_end=date(2026, 8, 5)),
+                second_leg=f.european_leg(forced_date=date(2026, 8, 11)),
+            )
+        ],
+    )
+    season = f.season(
+        european_competitions=["cl"],
+        excluded_date_ranges=[
+            ExcludedDateRange(
+                start=date(2026, 8, 1), end=date(2026, 8, 4), reason="international break"
+            )
+        ],
+    )
+    result, warnings = resolve_european_commitments([comp], season)
+    dates = [c.date for c in result["glimt"]]
+    assert dates == [date(2026, 8, 5), date(2026, 8, 11)], (
+        "the window resolves around the excluded range; the forced date does not move"
+    )
+    assert warnings == []
+
+
+def test_cli_report_data_and_solver_commitments_agree_on_excluded_range_dates():
+    """Regression: `cli.py::_european_report_data` (the report's display
+    path) used to build its own blackout set from `season.global_blackouts`
+    alone, so a windowed leg overlapping an `excluded_date_ranges` entry
+    resolved to a different date there than in
+    `resolve_european_commitments` (what the solver treats as the real
+    commitment) — the report would show a leg on a date the scheduler
+    believes it isn't played on."""
+    import cli
+    from terminliste.model.schema import ExcludedDateRange
+
+    comp = f.competition(
+        "cl",
+        ["glimt"],
+        format="european",
+        european_rounds=[
+            f.european_round(
+                "q2",
+                entrants=["glimt"],
+                first_leg=f.european_leg(window_start=date(2026, 7, 21), window_end=date(2026, 7, 22)),
+                second_leg=f.european_leg(forced_date=date(2026, 7, 28)),
+            )
+        ],
+    )
+    season = f.season(
+        european_competitions=["cl"],
+        excluded_date_ranges=[
+            ExcludedDateRange(start=date(2026, 7, 21), end=date(2026, 7, 21), reason="break")
+        ],
+    )
+    world = f.world([], [], [comp])
+
+    commitments, _ = resolve_european_commitments([comp], season)
+    commitment_dates = tuple(c.date for c in commitments["glimt"])
+
+    _, resolved_legs = cli._european_report_data(world, season)
+    report_dates = resolved_legs[("cl", "q2")]
+
+    assert commitment_dates == report_dates == (date(2026, 7, 22), date(2026, 7, 28))

@@ -542,3 +542,49 @@ def test_render_report_omits_search_difficulty_section_when_no_stats():
         rendered = out.read_text(encoding="utf-8")
 
     assert "How hard was this to schedule?" not in rendered
+
+
+def test_render_report_shows_season_exclusions_with_their_reasons():
+    from terminliste.model.schema import DatedNote, ExcludedDateRange
+
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    season = f.season(
+        competitions=["elite", "topp"],
+        global_blackouts=[DatedNote(date=date(2026, 5, 17), reason="national day")],
+        excluded_date_ranges=[
+            ExcludedDateRange(
+                start=date(2026, 6, 1), end=date(2026, 6, 14), reason="international break"
+            )
+        ],
+    )
+    matches = [f.match("elite", "a_m", "opp_m", date(2026, 3, 1), "va")]
+    candidate = _candidate(world, season, matches, [])
+    result = SolverResult(candidates=[candidate], solver="test")
+
+    from pathlib import Path
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = render_report(world, season, result, Path(tmp) / "out.html")
+        rendered = out.read_text(encoding="utf-8")
+
+    assert "Season exclusions" in rendered
+    assert "national day" in rendered
+    assert "international break" in rendered
+    assert "01 Jun 2026" in rendered and "14 Jun 2026" in rendered
+
+
+def test_render_report_omits_season_exclusions_section_when_none_configured():
+    world, season, comp_m, comp_w = _two_dual_clubs_world()
+    matches = [f.match("elite", "a_m", "opp_m", date(2026, 3, 1), "va")]
+    candidate = _candidate(world, season, matches, [])
+    result = SolverResult(candidates=[candidate], solver="test")
+
+    from pathlib import Path
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = render_report(world, season, result, Path(tmp) / "out.html")
+        rendered = out.read_text(encoding="utf-8")
+
+    assert "Season exclusions" not in rendered

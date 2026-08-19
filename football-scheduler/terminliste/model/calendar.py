@@ -108,7 +108,7 @@ def _outward_offsets(days: int) -> list[int]:
 
 def build_calendar(world: World, season: Season) -> SeasonCalendar:
     all_dates = _date_range(season.start, season.end)
-    blackouts = set(season.blacked_out_dates())
+    blackouts = set(season.blacked_out_dates)
     # A date demanded by a hard fixed requirement (or a hard full-round
     # requirement) can never be a blackout or fall inside an excluded date
     # range; the loader already rejects both combinations, so this is just

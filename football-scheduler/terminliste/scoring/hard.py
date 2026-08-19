@@ -99,7 +99,7 @@ class BlackoutDates:
         required_dates = {r.date for r in season.fixed_requirements if r.hard}
         global_blackouts = {
             day: reason
-            for day, reason in season.blacked_out_dates().items()
+            for day, reason in season.blacked_out_dates.items()
             if day not in required_dates
         }
         venue_blackouts: dict[tuple[str, date], str] = {

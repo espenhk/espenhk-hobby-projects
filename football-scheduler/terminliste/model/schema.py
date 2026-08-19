@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
+from functools import cached_property
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -559,6 +560,7 @@ class Season(BaseModel):
     full_round_requirements: list[FullRoundRequirement] = Field(default_factory=list)
     rivalry_fixtures: list[RivalryFixture] = Field(default_factory=list)
 
+    @cached_property
     def blacked_out_dates(self) -> dict[date, str]:
         """Every individual date this season blacks out, mapped to a reason —
         `global_blackouts`'s single dates plus every day inside
@@ -566,7 +568,13 @@ class Season(BaseModel):
         consumer (the candidate calendar, `BlackoutDates` scoring, cup/
         European round resolution) reads from, so a multi-day exclusion
         behaves exactly like a run of single-day ones everywhere blackouts
-        matter."""
+        matter.
+
+        Cached rather than recomputed: `BlackoutDates.evaluate` runs inside
+        the annealer's inner loop, once per candidate move, and a season is
+        loaded once and never mutated, so expanding every excluded range
+        (potentially tens of dates each) on every call would be pure waste.
+        """
         result: dict[date, str] = {}
         for excluded in self.excluded_date_ranges:
             for day in excluded.dates:
