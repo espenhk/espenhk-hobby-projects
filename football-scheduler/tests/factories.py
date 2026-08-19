@@ -84,6 +84,7 @@ def competition(
     end: date | None = None,
     final_round_kickoff_time: str = "18:00",
     kickoff_slots: list[str] | None = None,
+    color: str | None = "#336699",
 ) -> Competition:
     return Competition(
         id=id,
@@ -106,6 +107,7 @@ def competition(
         end=end,
         final_round_kickoff_time=final_round_kickoff_time,
         kickoff_slots=kickoff_slots or ["14:00", "18:00", "20:00"],
+        color=color,
     )
 
 

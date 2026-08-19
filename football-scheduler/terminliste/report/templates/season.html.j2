@@ -245,10 +245,38 @@
   .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); margin: 14px 0 0; align-items: center; }
   footer { margin-top: 40px; color: var(--muted); font-size: 12.5px; }
 
+  /* -- month calendar (issue #77) -- */
+  .month { margin-top: 26px; }
+  .month h4 { margin: 0 0 8px; font-size: 15px; }
+  .month-grid { display: flex; flex-direction: column; gap: 3px; min-width: 420px; }
+  .month-grid-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .month-grid-head {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted);
+    text-align: center; padding-bottom: 2px;
+  }
+  .cal-day {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    gap: 4px; min-height: 52px; padding: 6px 2px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--panel); color: var(--ink); font: inherit; cursor: pointer;
+  }
+  .cal-day:hover, .cal-day:focus-visible { border-color: var(--accent); outline: none; }
+  .cal-day.selected { border-color: var(--accent); background: #eaf2f8; }
+  .cal-day.out-month { color: var(--muted); background: #fbfbfa; }
+  .cal-daynum { font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .cal-dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: center; min-height: 8px; }
+  .cal-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+  .day-details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 14px; }
+  .day-detail-empty { color: var(--muted); font-size: 13.5px; }
+  .day-detail .rlabel { margin-bottom: 8px; }
+  .day-detail .rlabel b { display: block; color: var(--ink); font-size: 14px; }
+  .day-detail .fixtures { display: flex; flex-wrap: wrap; gap: 8px; }
+
   @media (max-width: 480px) {
     .round { grid-template-columns: 1fr; gap: 4px; }
     .fx { white-space: normal; }
     .fairness-bar { grid-template-columns: 110px 1fr 24px; }
+    .month-grid { min-width: 0; }
+    .cal-day { min-height: 40px; padding: 4px 1px; }
   }
 </style>
 </head>
@@ -557,6 +585,7 @@
   <div class="controls">
     <div class="view-toggle">
       <button type="button" class="view-btn" data-view="by-competition">By competition</button>
+      <button type="button" class="view-btn" data-view="month-calendar">Month calendar</button>
       <button type="button" class="view-btn" data-view="combined-calendar">Combined · calendar</button>
       <button type="button" class="view-btn" data-view="combined-list">Combined · list</button>
     </div>
@@ -635,6 +664,57 @@
       {% endif %}
     </div>
   {% endfor %}
+  </div>
+
+  <div class="cal-wrap view-pane" data-view="month-calendar" hidden>
+    <div class="desc" style="margin-top:8px">
+      One dot per competition with something on that day (a match, cup round, or European leg) —
+      tap a day to see its games below.
+    </div>
+    {% if option.month_calendar %}
+    {% for month in option.month_calendar %}
+    <div class="month">
+      <h4>{{ month.label }}</h4>
+      <div class="month-grid">
+        <div class="month-grid-row month-grid-head">
+          <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+        </div>
+        {% for week in month.weeks %}
+        <div class="month-grid-row">
+          {% for day in week %}
+          <button type="button" class="cal-day {{ '' if day.in_month else 'out-month' }}"
+                  data-date="{{ day.date_iso }}">
+            <span class="cal-daynum">{{ day.day_num }}</span>
+            <span class="cal-dots">
+              {% for dot in day.dots %}
+              <span class="cal-dot" style="background:{{ dot.color }}" title="{{ dot.name }}" aria-hidden="true"></span>
+              {% endfor %}
+            </span>
+          </button>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    <div class="day-details">
+      <div class="day-detail-empty">Tap a day above to see its games here.</div>
+      {% for day in option.month_calendar_details %}
+      <div class="day-detail" data-date="{{ day.date_iso }}" hidden>
+        <div class="rlabel"><b>{{ day.label }}</b></div>
+        <div class="fixtures">
+          {% for match in day.matches %}
+            {% if match.is_cup %}{{ cup_fx_card(match, show_competition=True) }}
+            {% elif match.is_european %}{{ european_fx_card(match, show_competition=True) }}
+            {% else %}{{ fx_card(match, show_competition=True) }}{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="desc">Nothing scheduled yet.</div>
+    {% endif %}
   </div>
 
   <div class="cal-wrap view-pane" data-view="combined-calendar" hidden>
@@ -837,6 +917,38 @@
     if (clubSelect) {
       clubSelect.addEventListener('change', applyClubFilter);
     }
+
+    // Month calendar: tapping a day cell shows that day's games in the
+    // per-day detail blocks rendered below the grid (issue #77) — every
+    // block starts hidden, and a tap shows the one matching the clicked
+    // date while re-hiding whichever was shown before.
+    var calDays = panel.querySelectorAll('.cal-day[data-date]');
+    var dayDetails = panel.querySelectorAll('.day-detail[data-date]');
+    var dayDetailEmpty = panel.querySelector('.day-detail-empty');
+    calDays.forEach(function (dayBtn) {
+      dayBtn.addEventListener('click', function () {
+        var chosenDate = dayBtn.dataset.date;
+        calDays.forEach(function (other) {
+          other.classList.toggle('selected', other.dataset.date === chosenDate);
+        });
+        var anyShown = false;
+        var shownDetail = null;
+        dayDetails.forEach(function (detail) {
+          var show = detail.dataset.date === chosenDate;
+          detail.hidden = !show;
+          if (show) {
+            anyShown = true;
+            shownDetail = detail;
+          }
+        });
+        if (dayDetailEmpty) dayDetailEmpty.hidden = anyShown;
+        // The calendar can span well over a year (cup rounds run into next
+        // spring), so the shared detail block sits far below a day tapped in
+        // an early month — scroll it into view rather than leaving the
+        // reader to hunt for it themselves.
+        (shownDetail || dayDetailEmpty).scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      });
+    });
 
     setView(viewButtons[0].dataset.view);
     applyClubFilter();
