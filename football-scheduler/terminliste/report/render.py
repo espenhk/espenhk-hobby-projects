@@ -163,6 +163,7 @@ def _build_option(
     headlines = _headlines(world, candidate)
     club_headlines = _club_headlines(world, candidate, dual_club_ids)
     month_calendar, month_calendar_details = _month_calendar_view(combined_entries)
+    calendar_legend = _calendar_legend(world, competition_colors)
     return {
         "label": candidate.label,
         "seed": candidate.seed,
@@ -196,6 +197,7 @@ def _build_option(
         "combined_list": _combined_list_view(combined_entries),
         "month_calendar": month_calendar,
         "month_calendar_details": month_calendar_details,
+        "calendar_legend": calendar_legend,
     }
 
 
@@ -332,6 +334,22 @@ def _competition_colors(world: World) -> dict[str, dict]:
         for competition in world.competitions.values()
         if competition.color
     }
+
+
+def _calendar_legend(world: World, competition_colors: dict[str, dict]) -> list[dict]:
+    """Competition name -> dot colour, for the month calendar's colour key
+    (issue #77 review) — `title` on the dots themselves only surfaces on
+    desktop hover, no help on the phone this view targets, so the legend is
+    the only way a reader learns what a colour means without tapping a day
+    and reading the tags."""
+    return sorted(
+        (
+            {"name": competition.name, "color": competition_colors[competition.id]["fg"]}
+            for competition in world.competitions.values()
+            if competition.id in competition_colors
+        ),
+        key=lambda row: row["name"],
+    )
 
 
 def _headlines(world: World, candidate: Candidate) -> list[dict]:
@@ -611,16 +629,36 @@ def _month_grid(month_start: date, by_day: dict[date, list[dict]]) -> dict:
 
 
 def _day_dots(day_entries: list[dict]) -> list[dict]:
-    """One dot per competition present on the day — first entry wins, since
-    every entry for the same competition on the same day carries the same
-    `comp_fg`/`competition_name` anyway (issue #77: "only one dot per league
-    per day" even when several of that competition's matches fall on it)."""
-    seen: dict[str, dict] = {}
+    """One dot per competition present on the day — name/colour come from the
+    first entry seen, since every entry for the same competition on the same
+    day carries the same `comp_fg`/`competition_name` anyway (issue #77:
+    "only one dot per league per day" even when several of that
+    competition's matches fall on it). `club_ids` is the union of every club
+    touching that competition that day, so the template can put it on the
+    dot's own `data-clubs` — without it, the season report's club filter
+    (`applyClubFilter` in season.html.j2) would have no way to reach the
+    calendar's dots the way it already reaches every other view's cards."""
+    names: dict[str, str] = {}
+    colors: dict[str, str] = {}
+    club_ids: dict[str, set[str]] = defaultdict(set)
     for entry in day_entries:
         competition_id = entry["competition_id"]
-        if competition_id not in seen:
-            seen[competition_id] = {"name": entry["competition_name"], "color": entry["comp_fg"]}
-    return [seen[cid] for cid in sorted(seen, key=lambda cid: seen[cid]["name"])]
+        names.setdefault(competition_id, entry["competition_name"])
+        colors.setdefault(competition_id, entry["comp_fg"])
+        club_ids[competition_id].update(_entry_club_ids(entry))
+    return [
+        {"name": names[cid], "color": colors[cid], "club_ids": sorted(club_ids[cid])}
+        for cid in sorted(names, key=lambda cid: names[cid])
+    ]
+
+
+def _entry_club_ids(entry: dict) -> set[str]:
+    """The club id(s) a combined-view entry belongs to, regardless of which
+    of the three entry shapes it is: a league match carries `home_club`/
+    `away_club`, a cup or European entry carries `club_id`."""
+    if "home_club" in entry:
+        return {entry["home_club"], entry["away_club"]}
+    return {entry["club_id"]}
 
 
 def _cup_views(

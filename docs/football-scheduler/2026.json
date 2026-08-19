@@ -1,22 +1,22 @@
 {
   "solver": "local",
-  "iterations": 34900,
-  "elapsed_s": 63.09,
+  "iterations": 35040,
+  "elapsed_s": 62.14,
   "notes": [],
   "search_stats": {
-    "investigated": 34900,
-    "feasible": 3592,
-    "hard_violation_scenarios": 31308,
-    "feasible_rate": 0.1029,
+    "investigated": 35040,
+    "feasible": 3616,
+    "hard_violation_scenarios": 31424,
+    "feasible_rate": 0.1032,
     "difficulty": "moderate",
     "hard_violation_counts": {
-      "min_rest_days": 27376,
-      "one_match_per_team_per_day": 21164,
-      "cup_round_conflict": 15282,
-      "european_commitment_conflict": 8833,
-      "venue_double_booking": 6479,
-      "blackout_dates": 3141,
-      "leg_ordering": 2539
+      "min_rest_days": 27489,
+      "one_match_per_team_per_day": 21251,
+      "cup_round_conflict": 15290,
+      "european_commitment_conflict": 8845,
+      "venue_double_booking": 6515,
+      "blackout_dates": 3154,
+      "leg_ordering": 2550
     }
   },
   "options": [
