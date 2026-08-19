@@ -870,6 +870,7 @@ def _european_views(
                 "id": competition.id,
                 "name": competition.name,
                 "is_european": True,
+                "is_main_tournament": competition.is_main_tournament,
                 "match_count": len(competition.european_rounds),
                 "rounds": [
                     {

@@ -341,6 +341,26 @@ before the domestic solver ever runs (same as qualifying), "European games
 should be placed first, and specific dates shouldn't move" falls out of the
 existing architecture for free rather than needing new placement-order code.
 
+**Report display.** `report/render.py`'s `_european_views`/`_european_entries`
+only know how to read a competition's `european_rounds` — a main tournament
+has none, since its dates live in `league_phase_matchdays`/`knockout_rounds`
+instead. Rather than teach those two functions a second shape,
+`build_main_tournament_rounds_for_display` (`rounds/european_schedule.py`)
+adapts a main tournament into the same `EuropeanRound`/`ResolvedLegs` shape
+`resolve_all_legs` already produces for qualifying — every reachable team
+becomes a synthetic `EuropeanTie` (opponent "TBD", `home_leg` unset, since
+pairings this far ahead genuinely aren't known) — and `cli.py`'s
+`_european_report_data` swaps in a display-only copy of the competition
+(`Competition.model_copy(update={"european_rounds": ...})`, which doesn't
+re-validate) carrying that adapted round list. The rendering code itself
+needed no changes at all beyond one label branch (`is_main_tournament` in
+the by-competition card's summary text) and folding a knockout round's
+`venue_name` into its displayed `note`, since neither `_european_venue_type`
+nor `_european_venue_label` distinguish a synthetic tie's ground from a
+real one's — both read "unknown"/"not yet confirmed" for every main
+tournament fixture, which is honest but doesn't call out a final's actual,
+known venue on its own fixture rows the way the round-level note does.
+
 ## Constraints implemented
 
 **Hard** (`terminliste/scoring/hard.py`) — a schedule with any of these

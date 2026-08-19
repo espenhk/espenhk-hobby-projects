@@ -43,7 +43,7 @@ from ..model.schema import (
     EuropeanLeg,
     EuropeanMatchday,
     EuropeanRound,
-    MainTournamentRound,
+    EuropeanTie,
     Season,
     Weekday,
 )
@@ -308,6 +308,22 @@ def resolve_main_tournament_dates(
     return dated, warnings
 
 
+def _reachable_teams(competition: Competition, by_id: dict[str, Competition]) -> set[str]:
+    """Every team reachable for `competition` (a main tournament) — the
+    union of every entrant of every round of every qualifying competition
+    named in `reachable_from`. Shared by `resolve_main_tournament_commitments`
+    (what to block) and `build_main_tournament_rounds_for_display` (who to
+    show as a synthetic entrant in the report)."""
+    reachable: set[str] = set()
+    for source_id in competition.reachable_from:
+        source = by_id.get(source_id)
+        if source is None:
+            continue  # loader validation already catches a dangling reference
+        for round_ in source.european_rounds:
+            reachable.update(round_.entrants)
+    return reachable
+
+
 def resolve_main_tournament_commitments(
     competitions: list[Competition], season: Season
 ) -> tuple[dict[str, list[EuropeanCommitmentDate]], list[str]]:
@@ -333,15 +349,7 @@ def resolve_main_tournament_commitments(
         dated, competition_warnings = resolve_main_tournament_dates(competition, blackouts)
         warnings.extend(competition_warnings)
 
-        reachable_teams: set[str] = set()
-        for source_id in competition.reachable_from:
-            source = by_id.get(source_id)
-            if source is None:
-                continue  # loader validation already catches a dangling reference
-            for round_ in source.european_rounds:
-                reachable_teams.update(round_.entrants)
-
-        for team_id in sorted(reachable_teams):
+        for team_id in sorted(_reachable_teams(competition, by_id)):
             commitments_by_team.setdefault(team_id, []).extend(
                 EuropeanCommitmentDate(
                     team_id=team_id,
@@ -353,6 +361,78 @@ def resolve_main_tournament_commitments(
             )
 
     return commitments_by_team, warnings
+
+
+def build_main_tournament_rounds_for_display(
+    competition: Competition, competitions: list[Competition], blackouts: set[date]
+) -> tuple[list[EuropeanRound], ResolvedLegs]:
+    """Adapts a main tournament's `league_phase_matchdays`/`knockout_rounds`
+    into the same `EuropeanRound`/`ResolvedLegs` shape `resolve_all_legs`
+    produces for a qualifying competition, so `report/render.py`'s existing
+    `_european_views`/`_european_fixtures`/`_european_entries` can display a
+    main tournament without any changes of their own.
+
+    A main tournament's actual pairings aren't modelled — only its dates —
+    so every reachable team (`_reachable_teams`) becomes a synthetic
+    `EuropeanTie` with the same team on every synthetic round, opponent
+    left at `EuropeanTie`'s own "TBD" default and `home_leg` left `None`
+    (`_european_venue_type` already renders that as "unknown", the same
+    "not yet confirmed" state a qualifying tie without a drawn pairing
+    shows). A single-match knockout round (the final, `second_leg is
+    None`) becomes a synthetic round whose two legs share one date, the
+    same shape `_european_round_date_label` already collapses to a single
+    displayed date for a same-day double round; its `venue_name` (a real,
+    fixed venue this project doesn't otherwise have anywhere to show) is
+    folded into the synthetic round's `note` instead of taught to
+    `_european_venue_type`/`_european_venue_label`, which are shaped around
+    a *team's* venue, not a neutral one — same reason `venue_type` here
+    stays "unknown" rather than cup_schedule.py's "neutral": nothing
+    downstream distinguishes a synthetic tie's ground from a real one's.
+    """
+    by_id = {c.id: c for c in competitions}
+    ties = [EuropeanTie(team=team_id) for team_id in sorted(_reachable_teams(competition, by_id))]
+
+    rounds: list[EuropeanRound] = []
+    resolved_legs: ResolvedLegs = {}
+
+    for matchday in competition.league_phase_matchdays:
+        resolved_date, _ = resolve_leg_date(matchday, blackouts, competition.preferred_weekday)
+        resolved_legs[(competition.id, matchday.id)] = (resolved_date, resolved_date)
+        rounds.append(
+            EuropeanRound(
+                id=matchday.id,
+                name=matchday.name,
+                first_leg=EuropeanLeg(forced_date=resolved_date),
+                second_leg=EuropeanLeg(forced_date=resolved_date),
+                ties=ties,
+                note=matchday.note,
+            )
+        )
+
+    for round_ in competition.knockout_rounds:
+        first_date, _ = resolve_leg_date(round_.first_leg, blackouts, competition.preferred_weekday)
+        if round_.second_leg is None:
+            second_date = first_date
+        else:
+            second_date, _ = resolve_leg_date(
+                round_.second_leg, blackouts, competition.preferred_weekday
+            )
+        resolved_legs[(competition.id, round_.id)] = (first_date, second_date)
+        note = round_.note
+        if round_.venue_name:
+            note = f"{note} Venue: {round_.venue_name}." if note else f"Venue: {round_.venue_name}."
+        rounds.append(
+            EuropeanRound(
+                id=round_.id,
+                name=round_.name,
+                first_leg=EuropeanLeg(forced_date=first_date),
+                second_leg=EuropeanLeg(forced_date=second_date),
+                ties=ties,
+                note=note,
+            )
+        )
+
+    return rounds, resolved_legs
 
 
 def resolve_european_commitments(
@@ -442,6 +522,7 @@ def european_conflict(
 __all__ = [
     "EuropeanCascadeError",
     "EuropeanCommitmentDate",
+    "build_main_tournament_rounds_for_display",
     "european_conflict",
     "resolve_all_legs",
     "resolve_european_commitments",

@@ -446,30 +446,51 @@ def test_european_entries_use_unknown_venue_type_when_home_leg_is_not_set():
     assert all(e["opponent"] == "TBD" for e in entries)
 
 
-def test_european_entries_and_views_skip_a_main_tournament_competition():
-    """Main tournament competitions (issue #79) have no `european_rounds` —
-    the report doesn't (yet) show their league-phase matchdays or knockout
-    rounds, but a main tournament competition in the mix shouldn't crash or
-    contribute empty/broken rows either."""
+def test_main_tournament_renders_via_the_display_adapter():
+    """Main tournament competitions (issue #79) have no `european_rounds` of
+    their own — `build_main_tournament_rounds_for_display`
+    (`rounds/european_schedule.py`) adapts `league_phase_matchdays`/
+    `knockout_rounds` into that shape first, so `_european_views`/
+    `_european_entries` show every reachable team's matchdays and knockout
+    legs exactly like a qualifying competition's, without needing any
+    changes of their own."""
     from terminliste.report.render import _european_views
+    from terminliste.rounds.european_schedule import build_main_tournament_rounds_for_display
 
     world, season, comp_m, comp_w = _two_dual_clubs_world()
     club_colors = {c.id: c.color for c in world.clubs.values()}
+    qualifying = f.competition(
+        "cl",
+        ["a_m"],
+        format="european",
+        european_rounds=[f.european_round("playoff", entrants=["a_m"], forced_date=date(2026, 8, 18))],
+    )
     main = f.competition(
         "cl_main",
         [],
         format="european",
         is_main_tournament=True,
+        reachable_from=["cl"],
         league_phase_matchdays=[f.european_matchday("md1", forced_date=date(2026, 9, 10))],
+        knockout_rounds=[
+            f.main_tournament_round("final", forced_date=date(2027, 6, 5), venue_name="Wembley Stadium")
+        ],
     )
 
-    entries = _european_entries(world, [main], {}, club_colors, {})
-    assert entries == []
+    rounds, resolved_legs = build_main_tournament_rounds_for_display(main, [qualifying, main], set())
+    display_main = main.model_copy(update={"european_rounds": rounds})
 
-    views = _european_views(world, [main], {}, club_colors)
+    entries = _european_entries(world, [display_main], resolved_legs, club_colors, {})
+    assert {e["date"] for e in entries} == {date(2026, 9, 10), date(2027, 6, 5)}
+    assert all(e["team"] == world.team_short_label("a_m") for e in entries)
+    assert all(e["opponent"] == "TBD" for e in entries)
+
+    views = _european_views(world, [display_main], resolved_legs, club_colors)
     assert len(views) == 1
-    assert views[0]["match_count"] == 0
-    assert views[0]["rounds"] == []
+    assert views[0]["is_main_tournament"] is True
+    assert views[0]["match_count"] == 2
+    final_round = next(r for r in views[0]["rounds"] if r["name"] == "final")
+    assert "Wembley Stadium" in final_round["note"]
 
 
 def test_combined_views_include_european_rounds_alongside_league_matches():
