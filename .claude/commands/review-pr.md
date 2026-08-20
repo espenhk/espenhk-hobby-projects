@@ -120,12 +120,14 @@ gh pr review <number> --comment --body "=== review-pr ===
 - Use **inline comments** for line-specific issues (a bug, a missed edge case, a style violation).
 - Use a **top-level comment** for anything that applies to the PR as a whole (missing tests, doesn't fully address the issue, architectural concern).
 - Be specific and actionable — say what's wrong and what would fix it, not just "this looks off."
-- If the issue is fully resolved and you have no fix requests, post exactly:
+- If the issue is fully resolved and you have no fix requests, post a comment with a short description of what you checked and confirmed OK (the issue it closes, and the specific parts of the implementation you verified), followed by a blank line and `Ready to merge.` on its own separate line:
   ```
   gh pr comment <number> --body "=== review-pr ===
-  Ready to merge"
+  <description indicating that you checked issue #X and that Y, Z, and the other relevant parts of the implementation are OK>
+
+  Ready to merge."
   ```
-  Do not combine "Ready to merge" with any open fix request in the same review round — if you have even one substantive ask, this PR is not ready yet.
+  Do not combine this with any open fix request in the same review round — if you have even one substantive ask, this PR is not ready yet.
 
 ## Step 5 — Wait for changes
 
