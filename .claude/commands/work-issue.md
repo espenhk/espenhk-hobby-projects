@@ -112,6 +112,8 @@ Poll for new comments and reviews periodically:
 gh pr view <pr-number> --json comments,reviews
 ```
 
+Prefer event-based listening (e.g. a PR activity subscription) over polling when it's available. If event-based listening isn't available or isn't firing, fall back to scheduling a re-check every **30 minutes** — not the hour-long default used elsewhere — so this review loop doesn't stall waiting on an update that never arrives as an event. Cap this fallback polling at **2.5 hours** total (five 30-minute checks) with no reviewer activity; if that cap is reached, treat it as an escalation case (see below) rather than continuing to re-check indefinitely.
+
 For each new review comment or requested change:
 
 - Address it with a code change, or reply with reasoning if you believe no change is needed (rare — prefer making the change). Any reply comment must start with the `=== work-issue ===` line as described above.
@@ -177,5 +179,6 @@ Only interrupt Auto mode for:
 - Review feedback that contradicts the original issue's requirements (i.e., satisfying the reviewer would mean not actually fixing what was reported).
 - Credentials, permissions, or repo access failures you cannot resolve.
 - Any sign the fix could have security or data-loss implications beyond the scope implied by the issue.
+- The Step 6 fallback re-check cap (2.5 hours, five 30-minute checks) is reached with no reviewer activity.
 
 Otherwise, keep moving through the workflow autonomously.
