@@ -112,6 +112,8 @@ Poll for new comments and reviews periodically:
 gh pr view <pr-number> --json comments,reviews
 ```
 
+Prefer event-based listening (e.g. a PR activity subscription) over polling when it's available. If event-based listening isn't available or isn't firing, fall back to scheduling a re-check every **30 minutes** — not the hour-long default used elsewhere — so this review loop doesn't stall waiting on an update that never arrives as an event.
+
 For each new review comment or requested change:
 
 - Address it with a code change, or reply with reasoning if you believe no change is needed (rare — prefer making the change). Any reply comment must start with the `=== work-issue ===` line as described above.
