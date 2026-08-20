@@ -17,7 +17,7 @@ Every comment you post to GitHub (issue-style comments, top-level PR comments, r
 === review-pr ===
 ```
 
-This makes it clear at a glance which agent authored the comment, since a separate coder agent is also posting to the same PR. Prepend this line to every `--body` you construct below, including the "reviewing now" claim, review comments, and the "ready to merge" comment.
+This makes it clear at a glance which agent authored the comment, since a separate coder agent is also posting to the same PR. Prepend this line to every `--body` you construct below, including the "reviewing now" claim, review comments, and the "Ready to merge" comment.
 
 ## Step 1 — Find a PR to review
 
@@ -120,18 +120,18 @@ gh pr review <number> --comment --body "=== review-pr ===
 - Use **inline comments** for line-specific issues (a bug, a missed edge case, a style violation).
 - Use a **top-level comment** for anything that applies to the PR as a whole (missing tests, doesn't fully address the issue, architectural concern).
 - Be specific and actionable — say what's wrong and what would fix it, not just "this looks off."
-- If the issue is fully resolved and you have no fix requests, post a very short confirmation that the linked issue was checked and the implementation is good, then end the comment with `ready to merge` on its own separate line:
+- If the issue is fully resolved and you have no fix requests, post a comment with a short description of what you checked and confirmed OK (the issue it closes, and the specific parts of the implementation you verified), followed by a blank line and `Ready to merge.` on its own separate line:
   ```
   gh pr comment <number> --body "=== review-pr ===
-  Checked against issue #<X> — implementation looks good.
+  <description indicating that you checked issue #X and that Y, Z, and the other relevant parts of the implementation are OK>
 
-  ready to merge"
+  Ready to merge."
   ```
   Do not combine this with any open fix request in the same review round — if you have even one substantive ask, this PR is not ready yet.
 
 ## Step 5 — Wait for changes
 
-After posting a review that includes fix requests (i.e., not yet "ready to merge"):
+After posting a review that includes fix requests (i.e., not yet "Ready to merge"):
 
 - If the environment supports it, listen/subscribe for new commits pushed to the PR branch.
 - If event-based listening isn't available, poll on a **15-minute interval**: `gh pr view <number> --json commits,updatedAt` and compare against the last-seen commit SHA.
@@ -139,11 +139,11 @@ After posting a review that includes fix requests (i.e., not yet "ready to merge
 
 ## Step 6 — Repeat
 
-When new commits land, go back to Step 3 and re-review, scoped primarily to whether your prior fix requests were addressed (plus a sanity check that nothing new was broken). Repeat Steps 4–5 until you reach the "ready to merge" comment.
+When new commits land, go back to Step 3 and re-review, scoped primarily to whether your prior fix requests were addressed (plus a sanity check that nothing new was broken). Repeat Steps 4–5 until you reach the "Ready to merge" comment.
 
 ## Step 7 — End
 
-Once "ready to merge" has been posted, your work on this PR is done. Stop polling/listening on it and terminate the run — do not go back to Step 1 to look for another PR.
+Once "Ready to merge" has been posted, your work on this PR is done. Stop polling/listening on it and terminate the run — do not go back to Step 1 to look for another PR.
 
 ## Escalation — when to actually stop and ask
 
