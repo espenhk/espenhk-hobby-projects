@@ -431,6 +431,11 @@ def test_cpsat_relaxes_min_rest_days_rather_than_reporting_zero_candidates():
     assert violated == ["min_rest_days"]
     stats = result.search_stats
     assert stats.feasible + stats.hard_violation_scenarios == stats.investigated
+    # A rescued pass reports only what the scorer found genuinely broken —
+    # not the discarded first attempt's culprits, which name whatever
+    # `SufficientAssumptionsForInfeasibility` echoed back rather than the
+    # real conflict (the fixed requirements above are a red herring here).
+    assert not any(k.startswith("fixed_requirement:") for k in stats.hard_violation_counts)
 
 
 @pytest.mark.skipif(not HAS_ORTOOLS, reason="needs ortools")

@@ -391,9 +391,25 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins, re
         if len(vars_) > 1:
             model.Add(sum(vars_) <= 1).OnlyEnforceIf(venue_literal)
 
-    # H1 minimum rest, and by implication one match per team per day: within
-    # any window of `min_gap_days` (`min_rest_days` full rest days plus both
-    # matchdays) consecutive days a team plays at most once.
+    # H2 one match per team per day, on its own assumption literal that
+    # `relax_rules` never names — kept independent of H1 below precisely so
+    # relaxing `min_rest_days` can never reach it. A team playing twice in
+    # one day is the same category as a double-booked venue or an
+    # out-of-order return leg: an impossibility, not the survivable
+    # inconvenience short rest is (review of issue #95's PR: relaxing the
+    # shared window this used to live in as the `offset == 0` slice let
+    # CP-SAT schedule a team home in one city and away in another hours
+    # later on the same date).
+    day_literal = assume("one_match_per_team_per_day")
+    for vars_ in team_on_date.values():
+        if len(vars_) > 1:
+            model.Add(sum(vars_) <= 1).OnlyEnforceIf(day_literal)
+
+    # H1 minimum rest: within any window of `min_gap_days` (`min_rest_days`
+    # full rest days plus both matchdays) consecutive days a team plays at
+    # most once. H2 above already covers the single-day case on its own,
+    # always-hard literal, so this window is only ever the *additional*
+    # rest requirement beyond that.
     rest_literal = assume("min_rest_days")
     minimum_by_team: dict[str, int] = {}
     for plan in planned:
