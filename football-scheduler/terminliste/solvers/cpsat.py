@@ -82,27 +82,55 @@ class CpSatScheduler:
         stats = SearchStats()
 
         for pass_index in range(request.top_n):
-            built = _build_model(
-                cp_model, request, planned, calendar, forbidden, round_pins
+            status, solver, built = _solve_pass(
+                cp_model, request, planned, calendar, forbidden, round_pins,
+                pass_index, budget_per_pass, stats,
             )
             if built is None:
                 notes.append(f"pass {pass_index}: no candidate dates could be built")
                 break
-
             model, placement, fixtures, assumptions = built
-            solver = cp_model.CpSolver()
-            solver.parameters.max_time_in_seconds = budget_per_pass
-            solver.parameters.num_search_workers = 8
-            solver.parameters.random_seed = request.seed + pass_index
 
-            status = solver.Solve(model)
-            stats.investigated += 1
             if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
                 culprits = _infeasibility_culprits(solver, status, assumptions, cp_model)
+                # This attempt is a real investigated scenario regardless of
+                # whether the retry below rescues the pass, so it's counted
+                # here rather than folded into whichever branch follows —
+                # otherwise a rescued pass would leave `investigated` ahead
+                # of `feasible + hard_violation_scenarios`.
                 stats.hard_violation_scenarios += 1
                 stats.hard_violation_counts.update(culprits or ["unknown"])
-                notes.append(_infeasibility_note(solver, status, culprits, cp_model, pass_index))
-                break
+                # min_rest_days is the one hard rule this backend treats as
+                # negotiable rather than absolute (see `_build_model`) — a
+                # club playing deep into continental qualifying can run out
+                # of legal rest windows in a way that isn't a modelling bug
+                # to fix but a real, if uncomfortable, scheduling trade-off
+                # (issue #95). Retry once with it off the assumption list
+                # before giving up on the pass entirely.
+                retry_status, retry_solver, retry_built = _solve_pass(
+                    cp_model, request, planned, calendar, forbidden, round_pins,
+                    pass_index, budget_per_pass, stats,
+                    relax_rules=frozenset({"min_rest_days"}),
+                )
+                if retry_built is not None and retry_status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+                    status, solver, built = retry_status, retry_solver, retry_built
+                    model, placement, fixtures, assumptions = built
+                    notes.append(
+                        f"pass {pass_index}: min_rest_days relaxed to find a schedule — "
+                        "some matches fall on short rest; see the min_rest_days row in "
+                        "the score breakdown for how many."
+                    )
+                else:
+                    if retry_built is not None:
+                        # The retry was itself an investigated scenario (see
+                        # `_solve_pass`), so it needs its own tally too.
+                        retry_culprits = _infeasibility_culprits(
+                            retry_solver, retry_status, retry_built[3], cp_model
+                        )
+                        stats.hard_violation_scenarios += 1
+                        stats.hard_violation_counts.update(retry_culprits or ["unknown"])
+                    notes.append(_infeasibility_note(solver, status, culprits, cp_model, pass_index))
+                    break
 
             matches = _extract(solver, placement, fixtures, request)
             matches.sort(key=lambda m: (m.date, m.competition_id, m.home_team))
@@ -146,6 +174,31 @@ class CpSatScheduler:
         )
 
 
+def _solve_pass(
+    cp_model, request, planned, calendar, forbidden, round_pins,
+    pass_index, budget_per_pass, stats, relax_rules=frozenset(),
+):
+    """Build and solve one CP-SAT pass. Returns `(status, solver, built)`.
+
+    `built` is `_build_model`'s return value, or `None` if no candidate
+    dates could be constructed at all (distinct from the model solving to
+    infeasible) — callers check that before touching `status`/`solver`.
+    """
+    built = _build_model(
+        cp_model, request, planned, calendar, forbidden, round_pins, relax_rules
+    )
+    if built is None:
+        return None, None, built
+    model, _placement, _fixtures, _assumptions = built
+    solver = cp_model.CpSolver()
+    solver.parameters.max_time_in_seconds = budget_per_pass
+    solver.parameters.num_search_workers = 8
+    solver.parameters.random_seed = request.seed + pass_index
+    status = solver.Solve(model)
+    stats.investigated += 1
+    return status, solver, built
+
+
 def _with_detail(ctx):
     from ..scoring.base import EvalContext
 
@@ -158,8 +211,19 @@ def _with_detail(ctx):
     )
 
 
-def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
-    """Assemble the CP-SAT model. Returns None if no fixture can be placed."""
+def _build_model(cp_model, request, planned, calendar, forbidden, round_pins, relax_rules=frozenset()):
+    """Assemble the CP-SAT model. Returns None if no fixture can be placed.
+
+    `relax_rules` names hard rules (by their `assume()` name) whose literal
+    should be left a free boolean instead of pinned true via `AddAssumption` —
+    the model can then satisfy the rest of its hard rules by setting that one
+    false, at the cost of losing its `OnlyEnforceIf` protection everywhere at
+    once. Only `min_rest_days` is meant to be passed here (see `solve`):
+    unlike a double-booked venue or an out-of-order return leg, playing on
+    short rest is a real but survivable inconvenience, not an impossibility,
+    so it is the one hard rule this backend will trade away rather than
+    report zero candidates.
+    """
     world = request.world
     season = request.season
     model = cp_model.CpModel()
@@ -469,9 +533,12 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
     model.Maximize(sum(coefficient * var for coefficient, var in objective_terms))
 
     # Assumption literals default to true; the solver only relaxes them when
-    # asked to explain an infeasibility.
-    for literal in assumptions.values():
-        model.AddAssumption(literal)
+    # asked to explain an infeasibility. A name in `relax_rules` is left off
+    # entirely, so its literal is a free boolean the objective (not an
+    # assumption) decides — see `_build_model`'s docstring.
+    for name, literal in assumptions.items():
+        if name not in relax_rules:
+            model.AddAssumption(literal)
 
     return model, placement, fixtures, assumptions
 
