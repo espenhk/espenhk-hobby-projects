@@ -38,6 +38,12 @@ from .greedy import align_dual_clubs, align_home_teams_to_round_pins, plan_compe
 
 _ONE_DAY = timedelta(days=1)
 
+# Well above any real soft weight (the highest, `consecutive_home_days`,
+# defaults to 25.0) so a relaxed `min_rest_days` is only ever traded away
+# when the model has no legal alternative, not whenever it's merely
+# cheaper than some other preference.
+_MIN_REST_RELAX_PENALTY = 500.0
+
 
 class CpSatScheduler:
     name = "cpsat"
@@ -99,29 +105,37 @@ class CpSatScheduler:
                 # otherwise a rescued pass would leave `investigated` ahead
                 # of `feasible + hard_violation_scenarios`.
                 stats.hard_violation_scenarios += 1
-                stats.hard_violation_counts.update(culprits or ["unknown"])
-                # min_rest_days is the one hard rule this backend treats as
-                # negotiable rather than absolute (see `_build_model`) — a
-                # club playing deep into continental qualifying can run out
-                # of legal rest windows in a way that isn't a modelling bug
-                # to fix but a real, if uncomfortable, scheduling trade-off
-                # (issue #95). Retry once with it off the assumption list
-                # before giving up on the pass entirely.
-                retry_status, retry_solver, retry_built = _solve_pass(
-                    cp_model, request, planned, calendar, forbidden, round_pins,
-                    pass_index, budget_per_pass, stats,
-                    relax_rules=frozenset({"min_rest_days"}),
-                )
-                if retry_built is not None and retry_status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
-                    status, solver, built = retry_status, retry_solver, retry_built
-                    model, placement, fixtures, assumptions = built
-                    notes.append(
-                        f"pass {pass_index}: min_rest_days relaxed to find a schedule — "
-                        "some matches fall on short rest; see the min_rest_days row in "
-                        "the score breakdown for how many."
+
+                rescued = False
+                if status == cp_model.INFEASIBLE:
+                    # min_rest_days is the one hard rule this backend treats
+                    # as negotiable rather than absolute (see
+                    # `_build_model`) — a club playing deep into continental
+                    # qualifying can run out of legal rest windows in a way
+                    # that isn't a modelling bug to fix but a real, if
+                    # uncomfortable, scheduling trade-off (issue #95). Retry
+                    # once with it relaxed before giving up on the pass
+                    # entirely. Gated to a *proven* infeasibility, not
+                    # `UNKNOWN` (budget exhausted) or any other status — a
+                    # mere timeout isn't evidence the rule is the problem,
+                    # and retrying would both risk relaxing a rule a
+                    # perfectly feasible model just needed more time for,
+                    # and spend this pass's time budget twice over.
+                    retry_status, retry_solver, retry_built = _solve_pass(
+                        cp_model, request, planned, calendar, forbidden, round_pins,
+                        pass_index, budget_per_pass, stats,
+                        relax_rules=frozenset({"min_rest_days"}),
                     )
-                else:
-                    if retry_built is not None:
+                    if retry_built is not None and retry_status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+                        status, solver, built = retry_status, retry_solver, retry_built
+                        model, placement, fixtures, assumptions = built
+                        notes.append(
+                            f"pass {pass_index}: min_rest_days relaxed to find a schedule — "
+                            "some matches fall on short rest; see the min_rest_days row in "
+                            "the score breakdown for how many."
+                        )
+                        rescued = True
+                    elif retry_built is not None:
                         # The retry was itself an investigated scenario (see
                         # `_solve_pass`), so it needs its own tally too.
                         retry_culprits = _infeasibility_culprits(
@@ -129,6 +143,15 @@ class CpSatScheduler:
                         )
                         stats.hard_violation_scenarios += 1
                         stats.hard_violation_counts.update(retry_culprits or ["unknown"])
+
+                if not rescued:
+                    # Only an attempt that actually ended the pass names its
+                    # culprits — `SufficientAssumptionsForInfeasibility`
+                    # echoes back nearly every hard rule regardless of which
+                    # one is truly responsible (issue #95), so a rescued
+                    # pass's discarded first attempt would otherwise print
+                    # misleading "dead ends" for a run that succeeded.
+                    stats.hard_violation_counts.update(culprits or ["unknown"])
                     notes.append(_infeasibility_note(solver, status, culprits, cp_model, pass_index))
                     break
 
@@ -214,15 +237,15 @@ def _with_detail(ctx):
 def _build_model(cp_model, request, planned, calendar, forbidden, round_pins, relax_rules=frozenset()):
     """Assemble the CP-SAT model. Returns None if no fixture can be placed.
 
-    `relax_rules` names hard rules (by their `assume()` name) whose literal
-    should be left a free boolean instead of pinned true via `AddAssumption` —
-    the model can then satisfy the rest of its hard rules by setting that one
-    false, at the cost of losing its `OnlyEnforceIf` protection everywhere at
-    once. Only `min_rest_days` is meant to be passed here (see `solve`):
-    unlike a double-booked venue or an out-of-order return leg, playing on
-    short rest is a real but survivable inconvenience, not an impossibility,
-    so it is the one hard rule this backend will trade away rather than
-    report zero candidates.
+    `relax_rules` names hard rules (by their `assume()` name) to build as a
+    penalised objective term instead of an `AddAssumption`-pinned hard
+    constraint — see the H1 block below for `min_rest_days`, the only rule
+    that currently reads this set (see `solve`). Unlike a double-booked
+    venue or an out-of-order return leg, playing on short rest is a real but
+    survivable inconvenience, not an impossibility, so it's the one hard
+    rule this backend will trade away — at a heavy but finite cost, so the
+    solver still avoids it wherever the rest of the model allows — rather
+    than report zero candidates.
     """
     world = request.world
     season = request.season
@@ -383,6 +406,16 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins, re
     for (team_id, day) in team_on_date:
         dates_by_team[team_id].append(day)
 
+    # When relaxed, `rest_literal` is never pinned true (see the assumption
+    # loop below), so on its own it would cost nothing to set false — every
+    # window's `OnlyEnforceIf` would switch off at once, at whatever count of
+    # short-rest matches the rest of the objective happens to prefer, with
+    # nothing minimising it. `relax_terms` gives each window its own
+    # indicator instead, folded into the objective (see its use near
+    # `model.Maximize` below) with a penalty well above any real soft
+    # weight, so the solver still avoids short rest everywhere it can and
+    # only accepts it where the model would otherwise be infeasible.
+    relax_terms: list[tuple[int, object]] = []
     for team_id, days in dates_by_team.items():
         minimum = minimum_by_team.get(team_id, 1)
         ordered = sorted(set(days))
@@ -391,7 +424,12 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins, re
             for offset in range(minimum):
                 window_vars.extend(team_on_date.get((team_id, start + timedelta(days=offset)), []))
             if len(window_vars) > 1:
-                model.Add(sum(window_vars) <= 1).OnlyEnforceIf(rest_literal)
+                if "min_rest_days" in relax_rules:
+                    ok = model.NewBoolVar(f"restok_{team_id}_{start}")
+                    model.Add(sum(window_vars) <= 1).OnlyEnforceIf(ok)
+                    relax_terms.append((_scaled(_MIN_REST_RELAX_PENALTY), ok))
+                else:
+                    model.Add(sum(window_vars) <= 1).OnlyEnforceIf(rest_literal)
 
     # H4 club home clash: a club's teams never both at home on one day.
     club_literal = assume("club_home_clash")
@@ -530,12 +568,14 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins, re
             # Force at least a fifth of the fixtures onto different dates.
             model.Add(sum(same) <= int(len(same) * 0.8))
 
-    model.Maximize(sum(coefficient * var for coefficient, var in objective_terms))
+    model.Maximize(sum(coefficient * var for coefficient, var in objective_terms + relax_terms))
 
     # Assumption literals default to true; the solver only relaxes them when
     # asked to explain an infeasibility. A name in `relax_rules` is left off
-    # entirely, so its literal is a free boolean the objective (not an
-    # assumption) decides — see `_build_model`'s docstring.
+    # entirely, so its literal is never pinned — nothing in this model still
+    # reads it once relaxed (`relax_terms` above replaces its per-window
+    # role), so it's just an unused free boolean — see `_build_model`'s
+    # docstring.
     for name, literal in assumptions.items():
         if name not in relax_rules:
             model.AddAssumption(literal)

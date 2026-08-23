@@ -370,20 +370,32 @@ has very little free August.
 
 The chosen fix is to accept partial infeasibility rather than force full
 feasibility: `solvers/cpsat.py`'s `_solve_pass` now retries a pass that
-comes back infeasible with `min_rest_days` left off the assumption list
-(see `_build_model`'s `relax_rules` parameter) before giving up on it.
-`min_rest_days` is the one hard rule this backend treats as negotiable —
-short rest is a real inconvenience, unlike a double-booked venue or a
-return leg played before the first, which stay hard requirements no retry
-relaxes. This mirrors local search, which was never all-or-nothing about
-hard rules to begin with: both backends now publish their best-effort
-schedule with whatever hard-rule violations remain called out in the score
-breakdown, rather than one of them refusing to answer at all. Loosening
-`match_window_days` specifically for teams with active European commitments
-was considered as a more surgical alternative but not pursued — it would
-need per-team scheduling flexibility the model doesn't have anywhere else,
-for a conflict that's a real, once-in-a-while calendar squeeze rather than
-a recurring modelling gap worth that extra machinery.
+comes back *proven* infeasible (`cp_model.INFEASIBLE` specifically, not a
+mere `UNKNOWN` timeout — retrying on a timeout could relax a rule a
+perfectly feasible model just needed more time for, and would spend that
+pass's time budget twice over) with `min_rest_days` rebuilt as a penalised
+objective term instead of an `AddAssumption`-pinned hard constraint (see
+`_build_model`'s `relax_rules` parameter). The penalty is a per-window
+indicator weighted well above any real soft weight, not a single global
+switch — an earlier version left the whole rule's literal a free, unpenalised
+boolean, which cost the solver nothing to drop everywhere at once and cut
+short rest by rather more than the crunch actually required; scoping the
+penalty to each window individually keeps the same fix but roughly halves
+the violations on the real 2026 data (6 down to 3-4, depending on the
+option) since the solver now only pays it where a window genuinely has no
+legal alternative. `min_rest_days` is the one hard rule this backend treats
+as negotiable at all — short rest is a real inconvenience, unlike a
+double-booked venue or a return leg played before the first, which stay
+hard requirements no retry relaxes. This mirrors local search, which was
+never all-or-nothing about hard rules to begin with: both backends now
+publish their best-effort schedule with whatever hard-rule violations
+remain called out in the score breakdown, rather than one of them refusing
+to answer at all. Loosening `match_window_days` specifically for teams with
+active European commitments was considered as a more surgical alternative
+but not pursued — it would need per-team scheduling flexibility the model
+doesn't have anywhere else, for a conflict that's a real, once-in-a-while
+calendar squeeze rather than a recurring modelling gap worth that extra
+machinery.
 
 `resolve_main_tournament_commitments` (`rounds/european_schedule.py`)
 resolves each main tournament's own dates once — no branching to walk, since
