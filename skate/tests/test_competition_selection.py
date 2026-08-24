@@ -3,9 +3,9 @@
 Test the competition selection feature.
 """
 
-from models.competition import Competition
-from models.race_preset import RacePreset
 from engine.predictor import PredictionEngine
+from models.competition import Competition
+
 
 def test_competition_selection():
     """Test the competition selection functionality."""

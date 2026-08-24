@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import pytest
-
 from fjordroast.duck import get_connection
 from fjordroast.semantic.loader import load_semantic_model
 

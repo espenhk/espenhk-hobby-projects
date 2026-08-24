@@ -1,5 +1,20 @@
 # GitHub-side setup for mobile POC previews
 
+## 0. Turn on secret scanning and Dependabot alerts (one-time)
+
+`pr-checks.yml` covers lint and dependency-CVE scanning, but leaves two
+things to repo *settings* rather than a workflow, since GitHub's own
+versions are free (public repo) and better than a CI job re-implementing
+them after the fact:
+
+1. **Settings** → **Code security** in the left sidebar.
+2. Under **Secret scanning**, enable both **Secret scanning** and **Push
+   protection**.
+3. Under **Dependabot**, enable **Dependabot alerts**.
+
+No further action needed after this — GitHub surfaces findings in the
+Security tab and blocks pushes containing recognizable secrets.
+
 Everything here can be done from a phone. Steps that need repo *settings*
 use your phone's browser at github.com (the GitHub mobile app doesn't
 expose Pages settings); starting Claude Code tasks and merging PRs can be

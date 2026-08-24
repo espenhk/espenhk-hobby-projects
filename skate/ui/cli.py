@@ -1,13 +1,13 @@
 """
 Command-line interface for live race tracking.
 """
-from typing import Optional
-from models.race import Race
-from models.skater import Skater
-from models.race_preset import RacePreset
+
 from models.competition import Competition
 from models.person import Person
-from engine.predictor import PredictionEngine
+from models.race import Race
+from models.race_preset import RacePreset
+from models.skater import Skater
+
 from .base_ui import BaseRaceUI
 
 
@@ -67,7 +67,7 @@ class RaceCLI(BaseRaceUI):
         for i in (1, 2):
             chosen = None
             if available_people:
-                print(f"\nAvailable people:")
+                print("\nAvailable people:")
                 for idx, p in enumerate(available_people, 1):
                     print(f"  {idx}. {p['name']}")
                 print("  n. Enter a new name")
@@ -577,7 +577,7 @@ if __name__ == "__main__":
             )
             print(f"\n⏱️  {description}")
     
-    def _compare_with_leader(self, skater, leader_ref) -> Optional[str]:
+    def _compare_with_leader(self, skater, leader_ref) -> str | None:
         """
         Compare current skater's progress with leader reference.
         

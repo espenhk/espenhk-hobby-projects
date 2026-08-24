@@ -5,7 +5,6 @@ live-API regression test lives in test_verified_answers.py."""
 from __future__ import annotations
 
 import pytest
-
 from fjordroast.agent.nl_to_query import AgentError, nl_to_logical_query
 from fjordroast.semantic.logical_query import LogicalQuery
 

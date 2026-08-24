@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import pandas as pd
-
 from fjordroast.dashboard.render import render_dashboard_html, title_from_question
 
 

@@ -172,7 +172,7 @@ def _required_tables(model: SemanticModel, lq: LogicalQuery, extra_refs: list[tu
 
 
 def _from_join_sql(model: SemanticModel, tables: set[str]) -> str:
-    fact = model.get_table("fact_sales")
+    model.get_table("fact_sales")
     lines = [f"read_parquet('{model.resolve_source_path('fact_sales')}') AS fact_sales"]
     for table_name in sorted(tables):
         rel = model.relationship_to(table_name)

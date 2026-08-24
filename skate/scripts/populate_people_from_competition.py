@@ -2,8 +2,8 @@
 """Create person profiles and populate their history from a competition JSON file.
 Usage: python3 populate_people_from_competition.py data/competitions/parsed_competition_fixed.json
 """
-import json
 import argparse
+import json
 import os
 import sys
 
@@ -17,7 +17,7 @@ def populate(filepath: str):
         print(f"File not found: {filepath}")
         return
 
-    with open(filepath, 'r') as f:
+    with open(filepath) as f:
         data = json.load(f)
 
     results = data.get('results', [])
