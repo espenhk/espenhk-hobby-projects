@@ -157,7 +157,10 @@ football-scheduler/
 │   ├── refresh_baselines.py  # re-score baselines/sources/ -> baselines/reports/
 │   └── fetch_real_schedule.py # convert a real fixture-API JSON into a baseline CSV
 ├── schedules/                # generated HTML + JSON output (gitignored)
-└── tests/
+└── tests/                    # mirrors terminliste/'s structure — model/, rounds/,
+                               # scoring/, solvers/, report/, refdata/, scripts/,
+                               # integration/ — see tests/README.md for which
+                               # folders to run for a given change
 ```
 
 ### State
