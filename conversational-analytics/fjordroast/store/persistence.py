@@ -13,7 +13,7 @@ import json
 import sqlite3
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 SCHEMA = """
@@ -50,7 +50,7 @@ class DashboardRecord:
     updated_at: str
 
     @classmethod
-    def _from_row(cls, row: sqlite3.Row) -> "DashboardRecord":
+    def _from_row(cls, row: sqlite3.Row) -> DashboardRecord:
         return cls(
             id=row["id"],
             question=row["question"],
@@ -90,7 +90,7 @@ class DashboardStore:
         html_path: str,
         record_id: str | None = None,
     ) -> DashboardRecord:
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         rid = record_id or uuid.uuid4().hex[:12]
         self._con.execute(
             """

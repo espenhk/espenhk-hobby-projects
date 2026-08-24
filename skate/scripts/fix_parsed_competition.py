@@ -8,7 +8,7 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 INPATH = os.path.join(BASE_DIR, 'data', 'competitions', 'parsed_competition.json')
 OUTPATH = os.path.join(BASE_DIR, 'data', 'competitions', 'parsed_competition_fixed.json')
 
-with open(INPATH, 'r') as f:
+with open(INPATH) as f:
     data = json.load(f)
 
 race_distance = data.get('race_distance')

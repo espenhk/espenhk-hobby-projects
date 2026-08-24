@@ -2,9 +2,9 @@
 Base UI class for race display operations shared between CLI and demo.
 Provides common display methods for race status, results, and leaderboards.
 """
-from typing import Optional
-from models.competition import Competition
+
 from engine.predictor import PredictionEngine
+from models.competition import Competition
 
 
 class BaseRaceUI:
@@ -141,7 +141,7 @@ class BaseRaceUI:
             )
             print(f"\n⏱️  {description}")
     
-    def _compare_with_leader(self, skater, leader_ref) -> Optional[str]:
+    def _compare_with_leader(self, skater, leader_ref) -> str | None:
         """
         Compare current skater's progress with leader reference.
         
@@ -175,7 +175,7 @@ class BaseRaceUI:
         else:
             return f"{RED}+{diff:.2f}s{RESET}"
     
-    def _get_individual_lap_difference(self, current_lap_time, leader_lap_time) -> Optional[str]:
+    def _get_individual_lap_difference(self, current_lap_time, leader_lap_time) -> str | None:
         """
         Get the difference between current lap time and leader's lap time for that lap.
         
@@ -199,7 +199,7 @@ class BaseRaceUI:
         else:
             return f"{RED}(+{diff:.2f}s){RESET}"
     
-    def _get_lap_time_difference(self, current_total_time, leader_ref, laps_completed) -> Optional[str]:
+    def _get_lap_time_difference(self, current_total_time, leader_ref, laps_completed) -> str | None:
         """
         Get the difference between current cumulative time and leader's cumulative time at same lap.
         
@@ -228,7 +228,7 @@ class BaseRaceUI:
         else:
             return f" {RED}(+{diff:.1f}s){RESET}"
     
-    def _get_pred_time_difference(self, current_pred_time, leader_ref) -> Optional[str]:
+    def _get_pred_time_difference(self, current_pred_time, leader_ref) -> str | None:
         """
         Get the difference between predicted finish time and leader's predicted time.
         
@@ -275,7 +275,7 @@ class BaseRaceUI:
         
         return sorted_skaters
     
-    def display_leaderboard(self, race_distance: Optional[str] = None):
+    def display_leaderboard(self, race_distance: str | None = None):
         """Display competition leaderboard."""
         print("\n📊 LEADERBOARD")
         if race_distance:

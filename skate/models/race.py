@@ -1,15 +1,14 @@
 """
 Race management module for tracking race state and skaters.
 """
-from typing import List, Optional, Tuple
-from models.skater import Skater
 from models.race_preset import RacePreset
+from models.skater import Skater
 
 
 class Race:
     """Manages a skating race with multiple skaters."""
     
-    def __init__(self, preset: RacePreset, skaters: List[Skater]):
+    def __init__(self, preset: RacePreset, skaters: list[Skater]):
         """
         Initialize a race.
         
@@ -44,7 +43,7 @@ class Race:
             return True
         return False
     
-    def get_skater_by_name(self, name: str) -> Optional[Skater]:
+    def get_skater_by_name(self, name: str) -> Skater | None:
         """
         Get a skater by name.
         
@@ -59,7 +58,7 @@ class Race:
                 return skater
         return None
     
-    def get_current_leader(self) -> Optional[Skater]:
+    def get_current_leader(self) -> Skater | None:
         """
         Get the current race leader based on total elapsed time.
         
@@ -74,7 +73,7 @@ class Race:
         # Sort by total time (lower is better)
         return min(active_skaters, key=lambda s: s.get_total_time())
     
-    def get_predicted_winner(self) -> Optional[Skater]:
+    def get_predicted_winner(self) -> Skater | None:
         """
         Get the predicted winner based on projected finish times.
         
@@ -134,7 +133,7 @@ class Race:
         """
         return all(skater.finished for skater in self.skaters)
     
-    def get_comparison(self, skater_name: str) -> Optional[dict]:
+    def get_comparison(self, skater_name: str) -> dict | None:
         """
         Get comparison of a skater with the current leader.
         

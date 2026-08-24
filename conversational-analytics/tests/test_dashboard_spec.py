@@ -5,7 +5,6 @@ guarantees the chart never references a column that isn't in the result."""
 from __future__ import annotations
 
 import pandas as pd
-
 from fjordroast.agent.dashboard_spec import _extract_json, validate_specs
 
 COLUMNS = ["city", "net_revenue"]

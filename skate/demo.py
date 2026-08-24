@@ -3,9 +3,10 @@ Automated demo of live race tracking with pre-determined times.
 Uses the shared BaseRaceUI for display while automating lap time inputs.
 """
 import time
-from models.skater import Skater
+
 from models.race import Race
 from models.race_preset import RacePreset
+from models.skater import Skater
 from ui.base_ui import BaseRaceUI
 
 

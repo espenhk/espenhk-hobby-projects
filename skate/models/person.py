@@ -4,8 +4,8 @@ Each person is stored as a JSON file under `data/people/`.
 """
 import json
 import os
-from dataclasses import dataclass, field, asdict
-from typing import List, Dict, Optional
+from dataclasses import asdict, dataclass, field
+from typing import Optional
 
 # Default people directory located under the skate package: skate/data/people
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -16,9 +16,9 @@ DEFAULT_PEOPLE_DIR = os.path.join(BASE_DIR, 'data', 'people')
 class Person:
     name: str
     slug: str
-    history: List[Dict] = field(default_factory=list)
+    history: list[dict] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         return asdict(self)
 
     def save(self, directory: str = None) -> str:
@@ -35,14 +35,14 @@ class Person:
         if not os.path.exists(filepath):
             return None
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = json.load(f)
             return cls(name=data['name'], slug=data['slug'], history=data.get('history', []))
         except Exception:
             return None
 
     @classmethod
-    def list_people(cls, directory: str = None) -> List[Dict]:
+    def list_people(cls, directory: str = None) -> list[dict]:
         if directory is None:
             directory = DEFAULT_PEOPLE_DIR
         if not os.path.exists(directory):
@@ -57,12 +57,12 @@ class Person:
         return sorted(people, key=lambda x: x['name'])
 
     @classmethod
-    def create(cls, name: str, slug: Optional[str] = None) -> 'Person':
+    def create(cls, name: str, slug: str | None = None) -> 'Person':
         if not slug:
             slug = name.lower().replace(' ', '_')
         return cls(name=name, slug=slug)
 
-    def add_history_entry(self, entry: Dict, directory: str = None) -> None:
+    def add_history_entry(self, entry: dict, directory: str = None) -> None:
         """Add a history entry to this person and save the file."""
         self.history.append(entry)
         self.save(directory)

@@ -4,11 +4,11 @@ Parse PDF race data into competition JSON format.
 Converts lap-by-lap skating data from PDF documents into the JSON format
 used by the competition tracking system.
 """
+import datetime
+import json
 import os
 import re
-import json
-import datetime
-from typing import List, Dict, Any, Optional
+from typing import Any
 
 # Optional: Camelot for lattice-based table extraction
 try:
@@ -24,7 +24,7 @@ try:
 except Exception:
     HAS_PDFPLUMBER = False
 
-def parse_time_to_seconds(s: str) -> Optional[float]:
+def parse_time_to_seconds(s: str) -> float | None:
     """
     Parse a time string to seconds.
     Supports formats like:
@@ -51,7 +51,7 @@ def parse_time_to_seconds(s: str) -> Optional[float]:
     except ValueError:
         return None
 
-def parse_date_from_header(text: str) -> Optional[str]:
+def parse_date_from_header(text: str) -> str | None:
     """
     Extract date like "THU 19 FEB 2026" from PDF header text and return ISO datetime string.
     If time-of-day isn't present, default to "00:00:00" local.
@@ -71,7 +71,7 @@ def parse_date_from_header(text: str) -> Optional[str]:
             return dt.isoformat()
     return None
 
-def clean_header_names(cols: List[str]) -> List[str]:
+def clean_header_names(cols: list[str]) -> list[str]:
     """
     Normalize column names for easier matching.
     """
@@ -98,28 +98,28 @@ def is_split_col(colname: str) -> bool:
     cn = colname.lower()
     return "split" in cn and "time" in cn
 
-def find_name_col(cols: List[str]) -> Optional[int]:
+def find_name_col(cols: list[str]) -> int | None:
     for i, c in enumerate(cols):
         lc = c.lower()
         if "name" in lc:
             return i
     return None
 
-def find_noc_col(cols: List[str]) -> Optional[int]:
+def find_noc_col(cols: list[str]) -> int | None:
     for i, c in enumerate(cols):
         lc = c.lower()
         if "noc" in lc or "noccode" in lc:
             return i
     return None
 
-def find_lane_col(cols: List[str]) -> Optional[int]:
+def find_lane_col(cols: list[str]) -> int | None:
     for i, c in enumerate(cols):
         lc = c.lower()
         if "lane" in lc:
             return i
     return None
 
-def find_final_time_col(cols: List[str]) -> Optional[int]:
+def find_final_time_col(cols: list[str]) -> int | None:
     """
     Typically the final time column is simply "Time".
     """
@@ -129,14 +129,14 @@ def find_final_time_col(cols: List[str]) -> Optional[int]:
             return i
     return None
 
-def find_rank_col(cols: List[str]) -> Optional[int]:
+def find_rank_col(cols: list[str]) -> int | None:
     for i, c in enumerate(cols):
         lc = c.lower()
         if "rank" in lc or lc == "position" or lc == "pos":
             return i
     return None
 
-def camelot_extract(pdf_path: str) -> List[Dict[str, Any]]:
+def camelot_extract(pdf_path: str) -> list[dict[str, Any]]:
     tables = camelot.read_pdf(pdf_path, flavor="lattice", pages="all")
     rows = []
     for t in tables:
@@ -208,7 +208,7 @@ def camelot_extract(pdf_path: str) -> List[Dict[str, Any]]:
             rows.append(item)
     return rows
 
-def pdfplumber_extract(pdf_path: str) -> Dict[str, Any]:
+def pdfplumber_extract(pdf_path: str) -> dict[str, Any]:
     rows = []
     header_text = ""
     with pdfplumber.open(pdf_path) as pdf:
@@ -281,7 +281,7 @@ def pdfplumber_extract(pdf_path: str) -> Dict[str, Any]:
                     rows.append(item)
     return {"rows": rows, "header_text": header_text}
 
-def build_results(rows: List[Dict[str, Any]], event_name: str, date_iso: Optional[str]) -> Dict[str, Any]:
+def build_results(rows: list[dict[str, Any]], event_name: str, date_iso: str | None) -> dict[str, Any]:
     """
     Convert extracted rows to the requested JSON structure.
     - skater_name from item["name"]

@@ -13,11 +13,13 @@ from __future__ import annotations
 import os
 
 import pytest
-
 from fjordroast.agent.nl_to_query import nl_to_logical_query
 from fjordroast.semantic.loader import load_semantic_model
 from fjordroast.semantic.logical_query import LogicalQuery
-from fjordroast.semantic.query_builder import execute_logical_query, validate_logical_query
+from fjordroast.semantic.query_builder import (
+    execute_logical_query,
+    validate_logical_query,
+)
 from tests.conftest import SEMANTIC_MODEL_DIR
 
 # Parametrize decorators run at collection time, before fixtures are available,

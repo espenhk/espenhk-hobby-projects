@@ -23,7 +23,10 @@ from fjordroast.dashboard.render import title_from_question, write_dashboard
 from fjordroast.duck import get_connection
 from fjordroast.semantic.loader import SemanticModelError, load_semantic_model
 from fjordroast.semantic.logical_query import LogicalQuery
-from fjordroast.semantic.query_builder import execute_logical_query, validate_logical_query
+from fjordroast.semantic.query_builder import (
+    execute_logical_query,
+    validate_logical_query,
+)
 from fjordroast.store.persistence import DashboardStore
 
 PROJECT_ROOT = Path(__file__).resolve().parent
@@ -76,8 +79,10 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 def cmd_ask(args: argparse.Namespace) -> int:
     import anthropic
-
-    from fjordroast.agent.dashboard_spec import DashboardSpecError, generate_dashboard_specs
+    from fjordroast.agent.dashboard_spec import (
+        DashboardSpecError,
+        generate_dashboard_specs,
+    )
     from fjordroast.agent.narrative import generate_narrative_caption
     from fjordroast.agent.nl_to_query import AgentError, nl_to_logical_query
 
@@ -186,7 +191,6 @@ def cmd_refresh(args: argparse.Namespace) -> int:
 
 def cmd_serve(args: argparse.Namespace) -> int:
     import uvicorn
-
     from fjordroast.server import build_app
 
     app = build_app(PROJECT_ROOT)

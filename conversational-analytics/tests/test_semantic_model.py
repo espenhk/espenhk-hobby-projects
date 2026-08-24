@@ -8,8 +8,11 @@ import shutil
 
 import pytest
 import yaml
-
-from fjordroast.semantic.loader import SemanticModelError, load_semantic_model, validate_semantic_model
+from fjordroast.semantic.loader import (
+    SemanticModelError,
+    load_semantic_model,
+    validate_semantic_model,
+)
 from tests.conftest import SEMANTIC_MODEL_DIR
 
 

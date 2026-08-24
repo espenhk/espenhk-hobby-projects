@@ -1,8 +1,8 @@
 """
 Skater data model for tracking individual skater performance.
 """
-from typing import List, Optional, TYPE_CHECKING
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from models.race_preset import RacePreset
@@ -13,14 +13,14 @@ class Skater:
     """Represents a skater in a race."""
     
     name: str
-    bib_number: Optional[int] = None
-    lap_times: List[float] = field(default_factory=list)
+    bib_number: int | None = None
+    lap_times: list[float] = field(default_factory=list)
     finished: bool = False
-    finish_time: Optional[float] = None
+    finish_time: float | None = None
     
     # Future features - historical data
-    personal_best: Optional[float] = None
-    season_best: Optional[float] = None
+    personal_best: float | None = None
+    season_best: float | None = None
     
     def add_lap_time(self, lap_time: float) -> None:
         """
@@ -40,7 +40,7 @@ class Skater:
         """
         return sum(self.lap_times)
     
-    def get_average_lap_time(self) -> Optional[float]:
+    def get_average_lap_time(self) -> float | None:
         """
         Calculate average lap time.
         
@@ -70,7 +70,7 @@ class Skater:
         self.finished = True
         self.finish_time = finish_time
     
-    def predict_finish_time(self, preset: 'RacePreset') -> Optional[float]:
+    def predict_finish_time(self, preset: 'RacePreset') -> float | None:
         """
         Predict finish time based on current average pace, accounting for variable lap distances.
         

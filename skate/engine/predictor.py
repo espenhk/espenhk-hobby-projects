@@ -1,7 +1,6 @@
 """
 Prediction engine for race finish times and analysis.
 """
-from typing import Dict, List, Optional, Tuple
 from models.skater import Skater
 
 
@@ -9,7 +8,7 @@ class PredictionEngine:
     """Advanced prediction algorithms for race outcomes."""
     
     @staticmethod
-    def predict_finish_time_simple(skater: Skater, total_laps: int) -> Optional[float]:
+    def predict_finish_time_simple(skater: Skater, total_laps: int) -> float | None:
         """
         Simple average-based prediction.
         
@@ -24,7 +23,7 @@ class PredictionEngine:
     
     @staticmethod
     def predict_finish_time_weighted(skater: Skater, total_laps: int, 
-                                     recent_weight: float = 0.6) -> Optional[float]:
+                                     recent_weight: float = 0.6) -> float | None:
         """
         Weighted prediction giving more importance to recent laps.
         
@@ -70,7 +69,7 @@ class PredictionEngine:
     
     @staticmethod
     def predict_with_fatigue(skater: Skater, total_laps: int, 
-                            fatigue_factor: float = 0.005) -> Optional[float]:
+                            fatigue_factor: float = 0.005) -> float | None:
         """
         Predict with fatigue factor (times get slower over race).
         
@@ -104,7 +103,7 @@ class PredictionEngine:
         return current_time + predicted_remaining
     
     @staticmethod
-    def calculate_gap(skater1: Skater, skater2: Skater) -> Tuple[float, str]:
+    def calculate_gap(skater1: Skater, skater2: Skater) -> tuple[float, str]:
         """
         Calculate time gap between two skaters.
         
@@ -154,7 +153,7 @@ class PredictionEngine:
             return f"{remaining_seconds:.3f}s"
     
     @staticmethod
-    def parse_time_input(time_str: str) -> Optional[float]:
+    def parse_time_input(time_str: str) -> float | None:
         """
         Parse time input from various formats.
         Supports: MM:SS.mmm, SS.mmm, SS
