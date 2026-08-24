@@ -2,8 +2,11 @@
 
 `tests/` mirrors `terminliste/`'s package structure so a change to a given
 source path maps to one or a few `tests/<area>/` folders — the point being
-to always run what could plausibly break, not the whole 389-test suite on
-every edit (issue #104).
+to always run what could plausibly break, not the whole suite on every edit
+(issue #104). The full count varies by environment — `tests/solvers/`
+collects extra cases when the optional `ortools` dependency is installed
+(`poetry install --with football-scheduler-cpsat`) — so nothing here pins
+an exact number.
 
 ```
 tests/
