@@ -54,7 +54,8 @@ def build_constraints(
     `competitions` are the league(s) being scheduled. `cup_schedules` and
     `european_commitments` are already-resolved dates for competitions sharing
     their teams — never scheduled here, only kept clear of, by
-    `CupRoundConflict` and the two European constraints.
+    `CupRoundConflict` and the two European constraints (the soft one covers
+    the `certain=False`, cascade-fork dates the hard one skips — #93).
     """
     hard_requirements = [r for r in season.fixed_requirements if r.hard]
 

@@ -1,4 +1,5 @@
-"""Resolves each Norwegian entrant's UEFA qualifying cascade to blocked dates.
+"""Resolves each Norwegian entrant's UEFA qualifying cascade to blocked dates
+(#29, #32).
 
 A cup round's opponent is unknown but its place in the competition is taken as
 given (see `rounds/cup_schedule.py`). A European qualifying round is the
@@ -48,12 +49,12 @@ class EuropeanCommitmentDate:
     round. `competition_id` is carried separately from the free-text `label`
     so a main tournament's `reachable_from` can be matched against it.
 
-    `certain` is False for a commitment reachable only via one of several
-    mutually-exclusive cascade branches. The entry round is always certain,
-    and certainty carries down a branch that never forks; once a round offers
-    both win-progression and a drop, everything beyond either is uncertain
-    and stays that way. The hard and soft European constraints split on this
-    flag.
+    `certain` (#93) is False for a commitment reachable only via one of
+    several mutually-exclusive cascade branches. The entry round is always
+    certain, and certainty carries down a branch that never forks; once a
+    round offers both win-progression and a drop, everything beyond either is
+    uncertain and stays that way. The hard and soft European constraints split
+    on this flag.
     """
 
     team_id: str
@@ -80,7 +81,7 @@ def resolve_leg_date(
     non-blackout day, falling back to `window_start` (flagged) if every day is
     blacked out.
 
-    `preferred_weekday` biases a *window* towards its first matching
+    `preferred_weekday` (#79) biases a *window* towards its first matching
     non-blacked-out day — a confirmed date is confirmed whatever weekday it
     falls on, so a `forced_date` ignores it, as does a window with no matching
     day.
@@ -150,7 +151,7 @@ def resolve_team_cascade(
     A round offering only one continuation keeps the walk's current
     certainty. One offering both is a genuine fork, so everything beyond
     either becomes uncertain; the entry round, reached before any fork, is
-    always certain.
+    always certain (#93).
     """
     entry = _entry_round(team_id, home_competition)
     if entry is None:
@@ -257,7 +258,7 @@ def resolve_main_tournament_dates(
     competition: Competition, blackouts: set[date]
 ) -> tuple[list[tuple[str, date]], list[str]]:
     """Every league-phase matchday and knockout-round leg date for one main
-    tournament, each with a display label.
+    tournament (#79), each with a display label.
 
     No branching to walk: every reachable team is assumed able to reach the
     final (see `Competition.reachable_from`), so the dates don't depend on
@@ -323,7 +324,7 @@ def _reachable_with_certainty(
     qualifying_commitments_by_team: dict[str, list[EuropeanCommitmentDate]],
 ) -> bool:
     """Whether `team_id` is guaranteed to reach a main tournament, rather
-    than only via one of several mutually-exclusive qualifying branches.
+    than only via one of several mutually-exclusive qualifying branches (#93).
 
     A `reachable_from` source counts as a guaranteed route in if the team has
     commitments there and every one is certain. One such route among several
@@ -342,16 +343,16 @@ def resolve_main_tournament_commitments(
     season: Season,
     qualifying_commitments_by_team: dict[str, list[EuropeanCommitmentDate]],
 ) -> tuple[dict[str, list[EuropeanCommitmentDate]], list[str]]:
-    """Block every reachable team's dates for every main tournament among
-    `competitions` — which should be every European competition in the season,
-    qualifying and main tournament alike.
+    """Block every reachable team's dates for every main tournament (#79)
+    among `competitions` — which should be every European competition in the
+    season, qualifying and main tournament alike.
 
     A team is reachable if it entered any round of any qualifying competition
     in the tournament's `reachable_from`. `qualifying_commitments_by_team`
     decides whether each block is certain (hard) or only reachable via a
-    cascade fork (soft), so a team reachable from two tournaments only via
-    mutually-exclusive branches doesn't block its domestic calendar against
-    both full seasons.
+    cascade fork (soft, #93), so a team reachable from two tournaments only
+    via mutually-exclusive branches doesn't block its domestic calendar
+    against both full seasons.
     """
     blackouts = set(season.blacked_out_dates)
     by_id = {c.id: c for c in competitions}
@@ -448,7 +449,7 @@ def resolve_qualifying_commitments(
     """Resolve every team's qualifying cascade across every European
     competition given — `resolve_european_commitments` minus the main
     tournament merge, split out so `resolve_main_tournament_commitments` can
-    consult each team's certainty without recomputing it.
+    consult each team's certainty (#93) without recomputing it.
 
     `competitions` should be every European competition in the season, so a
     `drop_to_competition` pointer always resolves. Only global blackouts are

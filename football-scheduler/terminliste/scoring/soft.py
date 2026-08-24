@@ -736,7 +736,7 @@ def _weights_by_team(
 class EuropeanCommitmentSoftConflict:
     """Discourage a league match too close to a *conditional* European
     qualifying leg — one reachable only via a mutually-exclusive cascade
-    branch.
+    branch (#93).
 
     A team wins a round and advances or loses it and drops, never both, so
     hard-blocking every branch at once would over-constrain the calendar for

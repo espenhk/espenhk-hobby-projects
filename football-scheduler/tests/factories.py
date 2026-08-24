@@ -130,7 +130,7 @@ def competition(
         tv_time_spread=tv_time_spread,
         # Derived from `id` so several colourless competitions in one test
         # world still get distinct colours and pass
-        # `_validate_competition_colors`.
+        # `_validate_competition_colors` (#77).
         color=(f"#{abs(hash(id)) % 0xFFFFFF:06x}" if color is _AUTO_COLOR else color),
     )
 

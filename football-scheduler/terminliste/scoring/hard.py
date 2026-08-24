@@ -432,10 +432,10 @@ class EuropeanCommitmentConflict:
 
     `CupRoundConflict`'s counterpart, reading from
     `resolve_european_commitments`. Each commitment is one leg date rather
-    than a span covering a whole tie, so a normal Thu-Sun-Thu European week
-    stays legal.
+    than a span covering a whole tie (#29), so a normal Thu-Sun-Thu European
+    week stays legal.
 
-    Only `commitment.certain` dates count: one reachable solely via a
+    Only `commitment.certain` dates count (#93): one reachable solely via a
     mutually-exclusive cascade branch isn't a guaranteed fixture, so it lands
     in `EuropeanCommitmentSoftConflict` as a penalty instead.
     """

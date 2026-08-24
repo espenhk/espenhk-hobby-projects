@@ -286,8 +286,8 @@ def test_win_and_drop_branches_at_the_same_depth_both_produce_commitments():
     both branches open until a result narrows it down, so the resolver blocks
     dates from both rather than picking one.
 
-    Only the pre-fork commitment is `certain`: the two branches are mutually
-    exclusive, so neither is a guaranteed fixture on its own."""
+    Only the pre-fork commitment is `certain` (#93): the two branches are
+    mutually exclusive, so neither is a guaranteed fixture on its own."""
     el = f.competition(
         "el",
         ["tromso"],

@@ -69,9 +69,9 @@ class CpSatScheduler:
         forbidden: list[dict[str, date]] = []
         budget_per_pass = request.time_budget_s / max(1, request.top_n)
 
-        # One pass is this backend's "scenario investigated" — local search's
-        # unit, a proposed move, has no CP-SAT analogue, so a pass is the
-        # coarsest unit both backends' stats compare at.
+        # One pass is this backend's "scenario investigated" (#34) — local
+        # search's unit, a proposed move, has no CP-SAT analogue, so a pass is
+        # the coarsest unit both backends' stats compare at.
         stats = SearchStats()
 
         for pass_index in range(request.top_n):
@@ -158,10 +158,10 @@ def _build_model(cp_model, request, planned, calendar, forbidden, round_pins):
     model = cp_model.CpModel()
     by_competition = calendars_by_competition(calendar, request.competitions)
     cup_windows = resolved_cup_windows(request.cup_schedules)
-    # Only `certain` commitments narrow the candidate domain: one reachable
-    # solely via a mutually-exclusive cascade branch isn't a guaranteed
-    # fixture, so `EuropeanCommitmentSoftConflict` discourages its date
-    # instead of this excluding it outright.
+    # Only `certain` commitments narrow the candidate domain (#93): one
+    # reachable solely via a mutually-exclusive cascade branch isn't a
+    # guaranteed fixture, so `EuropeanCommitmentSoftConflict` discourages its
+    # date instead of this excluding it outright.
     european_commitments = {
         team_id: [c for c in commitments if c.certain]
         for team_id, commitments in request.european_commitments.items()

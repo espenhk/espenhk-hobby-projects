@@ -29,9 +29,9 @@ from ..solvers.base import Candidate, SearchStats, SolverResult
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 
-# Fallback for a competition with no declared `color`. The loader catches this
-# in the shipped data, but a `World` built without it — a test factory, say —
-# can still lack one.
+# Fallback for a competition with no declared `color` (#77). The loader
+# catches this in the shipped data, but a `World` built without it — a test
+# factory, say — can still lack one.
 _DEFAULT_COMP_COLOR = {"fg": "var(--muted)", "bg": "var(--line)"}
 
 
@@ -162,7 +162,7 @@ def _build_option(
         "points": score.points,
         "headlines": headlines,
         # JSON twins of the headline shapes, embedded as data attributes so
-        # the club filter can swap between them without a page reload.
+        # the club filter can swap between them without a page reload (#61).
         "headlines_json": _json_attr(headlines),
         "club_headlines_json": _json_attr(club_headlines),
         "hard_violation_detail": (
@@ -190,8 +190,9 @@ def _build_option(
 def _season_exclusions(world: World, season: Season) -> list[dict]:
     """Every date this season blacks out — global and venue-scoped, single
     dates and ranges alike — sorted by start date for the "Season exclusions"
-    overview. Merged here rather than in the template, which would render four
-    separately-sorted blocks and put every range after every single date.
+    overview (#33). Merged here rather than in the template, which would
+    render four separately-sorted blocks and put every range after every
+    single date.
     """
     entries: list[dict] = []
     for blackout in season.global_blackouts:
@@ -242,8 +243,8 @@ _DIFFICULTY_COPY = {
 
 
 def _search_stats_view(stats: SearchStats) -> dict | None:
-    """How hard the search had to work, shaped for the template. `None` when
-    nothing was tracked, as on the imported-schedule path, which builds a
+    """How hard the search had to work (#34), shaped for the template. `None`
+    when nothing was tracked, as on the imported-schedule path, which builds a
     `SolverResult` without running a search."""
     if not stats.investigated:
         return None
@@ -287,7 +288,8 @@ def _result_row(result: ConstraintResult, world: World, full: bool = False) -> d
         "examples": [e.detail for e in result.events[: (8 if full else 3)] if e.detail],
         "more": max(0, len([e for e in result.events if e.detail]) - (8 if full else 3)),
         # Per-team/per-club occurrence counts, shown instead of the raw
-        # example list when a "biggest upsides"/"problems" entry is expanded.
+        # example list when a "biggest upsides"/"problems" entry is expanded
+        # (#61).
         "occurrences": _entity_counts(world, result),
     }
 
@@ -345,10 +347,10 @@ def _entity_counts(world: World, result: ConstraintResult) -> list[dict]:
 
 
 def _competition_colors(world: World) -> dict[str, dict]:
-    """One (text, background) colour pair per competition id, the background a
-    light tint of the same hue so a competition's calendar dot and its
-    combined-view tag read as one colour. A competition with no `color` is
-    omitted; callers fall back to `_DEFAULT_COMP_COLOR`."""
+    """One (text, background) colour pair per competition id (#77), the
+    background a light tint of the same hue so a competition's calendar dot
+    and its combined-view tag read as one colour. A competition with no
+    `color` is omitted; callers fall back to `_DEFAULT_COMP_COLOR`."""
     return {
         competition.id: {"fg": competition.color, "bg": _tint(competition.color)}
         for competition in world.competitions.values()
@@ -357,9 +359,10 @@ def _competition_colors(world: World) -> dict[str, dict]:
 
 
 def _calendar_legend(world: World, competition_colors: dict[str, dict]) -> list[dict]:
-    """Competition name -> dot colour, for the month calendar's colour key.
-    A dot's `title` only surfaces on desktop hover, no help on the phone this
-    view targets, so the legend is how a reader learns what a colour means."""
+    """Competition name -> dot colour, for the month calendar's colour key
+    (#77). A dot's `title` only surfaces on desktop hover, no help on the
+    phone this view targets, so the legend is how a reader learns what a
+    colour means."""
     return sorted(
         (
             {
@@ -413,9 +416,9 @@ def _club_event_counts(world: World, result: ConstraintResult | None) -> dict[st
 
 def _club_headlines(world: World, candidate: Candidate, dual_club_ids: set[str]) -> dict[str, list[dict]]:
     """The same three headline numbers as `_headlines`, narrowed to one club's
-    matches — what the calendar's club filter shows once a club is selected.
-    Keyed by club id and consumed as JSON, never rendered server-side, since
-    the selection happens client-side.
+    matches — what the calendar's club filter shows once a club is selected
+    (#61). Keyed by club id and consumed as JSON, never rendered server-side,
+    since the selection happens client-side.
     """
     score = candidate.score
     club_matches: dict[str, list[Match]] = defaultdict(list)
@@ -549,9 +552,9 @@ def _combined_calendar_view(entries: list[dict]) -> list[dict]:
     into one calendar, grouped by ISO week.
 
     Round numbers don't line up across competitions running different round
-    counts, so week-of-year is the only grouping that interleaves them. The
-    sort key falls back to a cup entry's team name where a league entry has
-    `home`, so both shapes interleave by date without a KeyError.
+    counts, so week-of-year is the only grouping that interleaves them (#24).
+    The sort key falls back to a cup entry's team name where a league entry
+    has `home`, so both shapes interleave by date without a KeyError.
     """
     weeks: dict[tuple[int, int], list[dict]] = defaultdict(list)
     for entry in entries:
@@ -584,7 +587,7 @@ def _combined_list_view(entries: list[dict]) -> list[dict]:
 
 
 def _month_calendar_view(entries: list[dict]) -> tuple[list[dict], list[dict]]:
-    """A month-grid calendar: one cell per day, with at most one dot per
+    """A month-grid calendar (#77): one cell per day, with at most one dot per
     competition that has something on it.
 
     Returns `(months, day_details)` — the grid itself, one entry per month
@@ -648,11 +651,12 @@ def _month_grid(month_start: date, by_day: dict[date, list[dict]]) -> dict:
 
 
 def _day_dots(day_entries: list[dict]) -> list[dict]:
-    """One dot per competition present on the day, however many of its matches
-    fall on it — name and colour come from the first entry seen, since every
-    entry for the same competition carries the same ones. `club_ids` is the
-    union of every club playing it that day, which the template puts on the
-    dot's `data-clubs` so the report's club filter can reach the calendar."""
+    """One dot per competition present on the day (#77), however many of its
+    matches fall on it — name and colour come from the first entry seen, since
+    every entry for the same competition carries the same ones. `club_ids` is
+    the union of every club playing it that day, which the template puts on
+    the dot's `data-clubs` so the report's club filter can reach the
+    calendar."""
     names: dict[str, str] = {}
     colors: dict[str, str] = {}
     club_ids: dict[str, set[str]] = defaultdict(set)
@@ -955,7 +959,7 @@ def _european_round_date_label(leg_dates: tuple[date, date]) -> str:
 def _fairness_rows(world: World, candidate: Candidate) -> list[dict]:
     """Per-team/per-club view of every soft rule that can play favourites, so
     a schedule showering one team in rewards another never sees is visible
-    before it's accepted.
+    before it's accepted (#23).
 
     Discovered from `candidate.score.soft_results()` rather than a maintained
     id list: a rule earns a row the moment its events carry `team_ids`, so a
@@ -1029,7 +1033,7 @@ def _fairness_row(constraint_id: str, entries: list[tuple[str, int]]) -> dict:
         "max": hi,
         # Flagged when best-to-worst spread is at least as wide as the average
         # count, and at least 2, so one stray event on an otherwise-flat rule
-        # doesn't trip it.
+        # doesn't trip it (#23).
         "flagged": hi > 0 and (hi - lo) >= max(2, round(mean)),
     }
 

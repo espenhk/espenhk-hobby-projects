@@ -1,4 +1,4 @@
-"""Unit tests for `solvers/greedy.py`'s round-pin resolution.
+"""Unit tests for `solvers/greedy.py`'s round-pin resolution (#94).
 
 A pinned round — a league's final, or a hard `FullRoundRequirement`'s — must
 clear resolved cup and European commitments the same way every other

@@ -8,8 +8,8 @@ this fills in `Match.kickoff_time` once a schedule's dates are fixed:
   `FinalRoundSameSlot` pass.
 * A match named by a hard `FixedRequirement` with an explicit `kickoff_time`
   (Tromsø's Midnight Sun Match) gets that time.
-* A competition opted into `Competition.tv_time_spread` gets its preferred-day
-  matches shaped for TV — see `_tv_time_spread_assignments`.
+* A competition opted into `Competition.tv_time_spread` (#76) gets its
+  preferred-day matches shaped for TV — see `_tv_time_spread_assignments`.
 * Everything else gets one of `Competition.kickoff_slots`, picked by a stable
   hash of the fixture key so kickoffs don't move between identical runs.
 """

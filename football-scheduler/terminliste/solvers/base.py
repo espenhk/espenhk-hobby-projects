@@ -24,8 +24,8 @@ from ..scoring.base import Constraint, EvalContext, Score
 DIVERSITY_THRESHOLD = 0.15
 
 # `SearchStats.feasible_rate` thresholds for the qualitative difficulty
-# read-out. Calibrated loosely, not measured: under 5% feasible draws is a
-# search fighting for every viable date, over 50% one where a workable
+# read-out (#34). Calibrated loosely, not measured: under 5% feasible draws
+# is a search fighting for every viable date, over 50% one where a workable
 # arrangement was the common case.
 _DIFFICULTY_HARD = 0.05
 _DIFFICULTY_EASY = 0.50
@@ -33,7 +33,7 @@ _DIFFICULTY_EASY = 0.50
 
 @dataclass
 class SearchStats:
-    """How hard the search had to work.
+    """How hard the search had to work (#34).
 
     A "scenario" is one candidate state evaluated against the full constraint
     set: a proposed move in local search, a solved pass in CP-SAT.

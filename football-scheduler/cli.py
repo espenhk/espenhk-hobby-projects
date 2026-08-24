@@ -145,8 +145,8 @@ def cmd_generate(args: argparse.Namespace) -> int:
     ctx = EvalContext(world=world, season=season, travel=travel)
 
     scheduler = get_scheduler(args.solver)
-    # Terminal only: piped output would fill a CI log with carriage-return
-    # updates that mean nothing once flattened to lines.
+    # Terminal only (#34): piped output would fill a CI log with
+    # carriage-return updates that mean nothing once flattened to lines.
     live = sys.stdout.isatty()
     request = SolveRequest(
         world=world,
@@ -346,7 +346,7 @@ def cmd_refresh_travel_times(args: argparse.Namespace) -> int:
 
 
 def _print_progress(update: ProgressUpdate) -> None:
-    """Live "how's it going" line, overwritten in place."""
+    """Live "how's it going" line (#34), overwritten in place."""
     pct = 100 * update.iterations / max(1, update.total_iterations)
     stats = update.stats
     feasible_pct = 100 * stats.feasible_rate if stats.investigated else 0.0
@@ -449,8 +449,8 @@ def _european_report_data(world, season):
     `_resolve_european_or_exit`'s flattened commitment list, which is shaped
     for conflict-checking.
 
-    A main tournament has no `european_rounds`, which is all the report knows
-    how to display, so `build_main_tournament_rounds_for_display` adapts its
+    A main tournament (#79) has no `european_rounds`, which is all the report
+    knows how to display, so `build_main_tournament_rounds_for_display` adapts its
     matchdays and knockout rounds into that shape onto a display-only copy of
     the competition.
     """

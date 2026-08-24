@@ -19,7 +19,7 @@ rejected outright, so the search can cross infeasible ground to reach
 something better; if the answer is still infeasible the report says which
 rules are broken rather than failing silently.
 
-Search runs in two phases. The restarts each rebuild from a fresh greedy
+Search runs in two phases (#98). The restarts each rebuild from a fresh greedy
 schedule, covering ground broadly. `_polish_candidates` then anneals each
 shortlisted candidate further from its own final state at a low temperature,
 nudging dates locally — how a published fixture list actually gets adjusted,
@@ -97,7 +97,7 @@ class LocalSearchScheduler:
     # occasional escape.
     #
     # `polish_fraction` diverts that share of the budget from the restarts to
-    # the polish phase, which cools from `end_temperature` down to
+    # the polish phase (#98), which cools from `end_temperature` down to
     # `polish_end_temperature` — near hill-climbing, to fix the last trouble
     # spots rather than explore again.
     def __init__(
@@ -246,7 +246,7 @@ def _polish_candidates(
     notes: list[str],
 ) -> tuple[int, SearchStats]:
     """Anneal each shortlisted candidate further from its own final state, at a
-    low temperature so moves stay local.
+    low temperature so moves stay local (#98).
 
     A polished candidate replaces the original only when it scores strictly
     better, so this phase can never leave a schedule worse than phase one

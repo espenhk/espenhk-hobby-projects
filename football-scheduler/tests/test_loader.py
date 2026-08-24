@@ -440,8 +440,8 @@ def test_european_commitments_resolve_cleanly_from_the_shipped_data(world):
     # Tromsø's cascade crosses into conference_league_2026 at Q3 -> playoff,
     # so Q2, Q3 and *both* still-open play-off branches give 8 qualifying leg
     # dates; Brann's uncascaded Q2 -> Q3 -> play-off gives 6. Main tournaments
-    # add every matchday and knockout leg of each reachable competition: 17 +
-    # 15 for Tromsø, 15 for Brann.
+    # (#79) add every matchday and knockout leg of each reachable competition:
+    # 17 + 15 for Tromsø, 15 for Brann.
     assert len(commitments_by_team["tromso_m"]) == 8 + 32
     assert len(commitments_by_team["brann_m"]) == 6 + 15
     assert warnings == []
@@ -759,8 +759,8 @@ def test_calendar_capacity_uses_the_competitions_own_narrower_window():
 
 
 def test_every_shipped_competition_has_a_distinct_color(world):
-    """The report's calendar dots need one colour per competition, distinct
-    enough to tell them apart at a glance."""
+    """The report's calendar dots need one colour per competition (#77),
+    distinct enough to tell them apart at a glance."""
     colors = [c.color for c in world.competitions.values()]
     assert all(color is not None for color in colors)
     assert len(colors) == len(set(colors))

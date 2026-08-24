@@ -87,7 +87,7 @@ RoundGranularity = Literal["week", "month", "quarter"]
 
 
 class _DateSpec(BaseModel):
-    """Shared mechanics for a date that may still be imprecise.
+    """Shared mechanics for a date that may still be imprecise (#30).
 
     A near-term date may be confirmed (`forced_date`); a distant one is known
     only to the week, month or quarter (`window_start`/`window_end`, with
@@ -173,8 +173,8 @@ class EuropeanTie(BaseModel):
 
     More than one of a competition's teams can enter the same round, each
     against a different opponent, so opponent and home/away are per-tie.
-    `opponent` stays `"TBD"` while it depends on another fixture in the draw,
-    and `home_leg` is `None` when even that isn't settled.
+    `opponent` stays `"TBD"` while it depends on another fixture in the draw
+    (#32), and `home_leg` is `None` when even that isn't settled.
     """
 
     team: str
@@ -184,7 +184,7 @@ class EuropeanTie(BaseModel):
 
 class EuropeanRound(BaseModel):
     """One qualifying round of a UEFA competition, for the Norwegian team(s)
-    entered in it.
+    entered in it (#29, #32).
 
     Unlike a cup round, not every team on the competition enters every round —
     a Champions League runner-up enters at the third qualifying round while
@@ -238,13 +238,14 @@ class EuropeanRound(BaseModel):
 
 
 class EuropeanMatchday(_ScheduledRound):
-    """One league-phase matchday of a UEFA main tournament — a single date (or
-    window), like a `CupRound`, since a matchday is one fixture per team
-    rather than a two-legged tie."""
+    """One league-phase matchday of a UEFA main tournament (#79) — a single
+    date (or window), like a `CupRound`, since a matchday is one fixture per
+    team rather than a two-legged tie."""
 
 
 class MainTournamentRound(BaseModel):
-    """One knockout round of a UEFA main tournament, following the league phase.
+    """One knockout round of a UEFA main tournament, following the league
+    phase (#79).
 
     Two legs, like `EuropeanRound`, except the final: `second_leg` is `None`
     for a single-match round, and `venue_name` then names where it's played,
@@ -323,7 +324,7 @@ class Competition(BaseModel):
     # of the shipped data.
     short_name: str | None = None
 
-    # This competition's colour for the report's dots and tags. Declared in
+    # This competition's colour for the report's dots and tags (#77). Declared in
     # the data rather than cycled through a palette, so the mapping stays
     # stable across renders and the loader can catch two competitions sharing
     # one. `None` falls back to a neutral grey.
@@ -339,8 +340,8 @@ class Competition(BaseModel):
         return v.lower()
 
     # Whether the solver may place this competition's fixtures, or must
-    # schedule *around* its given dates. Explicit rather than inferred from
-    # `format` so the flag is visible in the data itself.
+    # schedule *around* its given dates (#31). Explicit rather than inferred
+    # from `format` so the flag is visible in the data itself.
     movable: bool = True
 
     rounds_per_pairing: int = 2
@@ -385,8 +386,8 @@ class Competition(BaseModel):
             _validate_hh_mm(slot)
         return v
 
-    # Opt-in TV-broadcast kickoff pattern; `None` leaves kickoff assignment to
-    # `kickoff_slots`.
+    # Opt-in TV-broadcast kickoff pattern (#76); `None` leaves kickoff
+    # assignment to `kickoff_slots`.
     tv_time_spread: TvTimeSpread | None = None
 
     # Cup-only: the real-world rounds this competition's teams are entered
@@ -394,13 +395,13 @@ class Competition(BaseModel):
     cup_rounds: list[CupRound] = Field(default_factory=list)
 
     # European-only: the UEFA qualifying rounds this competition's Norwegian
-    # entrant(s) play, in playing order. Empty for a main tournament, which
-    # uses `league_phase_matchdays`/`knockout_rounds` instead.
+    # entrant(s) play, in playing order (#29). Empty for a main tournament,
+    # which uses `league_phase_matchdays`/`knockout_rounds` instead.
     european_rounds: list[EuropeanRound] = Field(default_factory=list)
 
     # Separates a UEFA competition's qualifying rounds from its main
-    # tournament. Explicit rather than inferred from which field group is
-    # populated, same reasoning as `movable`.
+    # tournament (#79). Explicit rather than inferred from which field group
+    # is populated, same reasoning as `movable`.
     is_main_tournament: bool = False
 
     # Main-tournament-only: every league-phase matchday reachable entrants
@@ -412,7 +413,7 @@ class Competition(BaseModel):
     knockout_rounds: list[MainTournamentRound] = Field(default_factory=list)
 
     # Main-tournament-only: which qualifying competitions' entrants can reach
-    # this one. Every entrant of every listed competition is assumed able to
+    # this one (#79). Every entrant of every listed competition is assumed able to
     # reach the final — the same "assume it goes all the way" simplification
     # `rounds/cup_schedule.py` makes, since where a qualifying entrant lands
     # isn't known until results are in. Coarser than UEFA's round-by-round

@@ -389,7 +389,7 @@ def _validate_european_rounds(competition: Competition) -> list[str]:
 
     Mirrors `_validate_cup_rounds`, plus `entrants` — a European
     competition's rounds don't all share one team list the way a cup's do.
-    `_validate_main_tournament_rounds` covers a main tournament instead.
+    `_validate_main_tournament_rounds` covers a main tournament (#79) instead.
     """
     errors: list[str] = []
     if competition.format != "european":
@@ -476,9 +476,9 @@ def _validate_european_cascade(world: World) -> list[str]:
 
 
 def _validate_main_tournament_rounds(competition: Competition) -> list[str]:
-    """Structural check for a main tournament's `league_phase_matchdays` and
-    `knockout_rounds`: one of the two non-empty, ids unique within each list,
-    and the same ordering sanity `_validate_cup_rounds` applies."""
+    """Structural check for a main tournament's (#79) `league_phase_matchdays`
+    and `knockout_rounds`: one of the two non-empty, ids unique within each
+    list, and the same ordering sanity `_validate_cup_rounds` applies."""
     errors: list[str] = []
     if competition.european_rounds:
         errors.append(
@@ -527,7 +527,7 @@ def _validate_main_tournament_rounds(competition: Competition) -> list[str]:
 
 
 def _validate_main_tournaments(world: World) -> list[str]:
-    """Every `reachable_from` id names an existing UEFA *qualifying*
+    """Every `reachable_from` id (#79) names an existing UEFA *qualifying*
     competition: reachability is only ever computed from a qualifying
     entrant, never from one main tournament into another."""
     errors: list[str] = []
@@ -557,9 +557,9 @@ def _validate_main_tournaments(world: World) -> list[str]:
 
 
 def _validate_competition_colors(world: World) -> list[str]:
-    """Every competition declares its own report colour, and no two share
-    one — matching colours would be indistinguishable as dots on the season
-    report's month calendar."""
+    """Every competition declares its own report colour (#77), and no two
+    share one — matching colours would be indistinguishable as dots on the
+    season report's month calendar."""
     errors: list[str] = []
     by_color: dict[str, list[str]] = defaultdict(list)
     for competition in world.competitions.values():

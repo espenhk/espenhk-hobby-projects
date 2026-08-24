@@ -461,10 +461,10 @@ def test_round_legs_collapses_a_shared_date_to_one_entry():
 
 
 def test_main_tournament_renders_via_the_display_adapter():
-    """A main tournament has no `european_rounds`, so the display adapter
-    supplies them and the report's European views render its matchdays and
-    knockout legs like a qualifying competition's — without splitting a
-    same-date round into two fixture rows."""
+    """A main tournament (#79) has no `european_rounds`, so the display
+    adapter supplies them and the report's European views render its
+    matchdays and knockout legs like a qualifying competition's — without
+    splitting a same-date round into two fixture rows."""
     from terminliste.report.render import _european_views
     from terminliste.rounds.european_schedule import build_main_tournament_rounds_for_display
 
