@@ -223,10 +223,17 @@ Managed by Poetry. Run `poetry install` to create `.venv/` and install all depen
 Comments should be brief and explain *why*, not restate *what* the code
 already makes clear through legible naming and structure. A single line is
 usually enough to orient a reader; multiline comments are the exception, not
-the rule. Comments should describe the code as it stands now, not the
+the rule — reserve those for something genuinely intricate that a line
+can't carry. Comments should describe the code as it stands now, not the
 history of how it got there — don't reference a previous implementation, a
 past bug, or a since-changed approach. If it's not needed to understand or
 improve the current code, leave it out.
+
+If a *why* traces back to a GitHub issue, note the issue number in
+parentheses at the end of the relevant sentence, e.g. `(#42)`, rather than
+narrating the issue inline ("issue #42 needed..."). This keeps the comment
+itself terse while still giving a reader a thread to pull if they want the
+full history.
 
 ---
 
