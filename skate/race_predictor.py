@@ -6,10 +6,11 @@ A live prediction tool for ice skating races with real-time finish time
 calculations and leader comparisons.
 """
 
-import sys
-from ui.cli import RaceCLI
-from models.competition import Competition
 import os
+import sys
+
+from models.competition import Competition
+from ui.cli import RaceCLI
 
 
 def main():

@@ -5,7 +5,6 @@ number: every value below comes from DuckDB, not from a mocked agent."""
 from __future__ import annotations
 
 import pytest
-
 from fjordroast.semantic.logical_query import Filter, LogicalQuery, SortSpec
 from fjordroast.semantic.query_builder import (
     QueryCompileError,

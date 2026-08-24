@@ -3,9 +3,9 @@ Competition management for tracking multiple races and maintaining leaderboards.
 """
 import json
 import os
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import List, Optional, Dict
-from dataclasses import dataclass, field, asdict
+from typing import Optional
 
 
 @dataclass
@@ -13,7 +13,7 @@ class RaceResult:
     """Result from a single race."""
     skater_name: str
     finish_time: float  # in seconds
-    lap_times: List[float]  # individual lap times
+    lap_times: list[float]  # individual lap times
     race_distance: str  # e.g., "1500m"
     date: str  # ISO format
     position: int  # 1st, 2nd, etc.
@@ -32,9 +32,9 @@ class RaceResult:
 class Competition:
     """Manages a competition with multiple races and leaderboards."""
     name: str
-    results: List[RaceResult] = field(default_factory=list)
+    results: list[RaceResult] = field(default_factory=list)
     
-    def add_race_results(self, race_distance: str, skater_data: List[tuple]):
+    def add_race_results(self, race_distance: str, skater_data: list[tuple]):
         """
         Add results from a completed race.
         
@@ -60,7 +60,7 @@ class Competition:
         # Return the race date and list of created RaceResult objects for callers
         return date, created
     
-    def get_leaderboard(self, race_distance: Optional[str] = None) -> List[Dict]:
+    def get_leaderboard(self, race_distance: str | None = None) -> list[dict]:
         """
         Get leaderboard showing best times for each skater.
         
@@ -111,7 +111,7 @@ class Competition:
         
         return leaderboard
     
-    def get_current_leader(self, race_distance: Optional[str] = None) -> Optional[Dict]:
+    def get_current_leader(self, race_distance: str | None = None) -> dict | None:
         """
         Get the current leader (best time overall).
         
@@ -124,7 +124,7 @@ class Competition:
         leaderboard = self.get_leaderboard(race_distance)
         return leaderboard[0] if leaderboard else None
     
-    def get_recent_races(self, limit: int = 5) -> List[Dict]:
+    def get_recent_races(self, limit: int = 5) -> list[dict]:
         """
         Get recent race results.
         
@@ -175,7 +175,7 @@ class Competition:
             return None
         
         try:
-            with open(filepath, 'r') as f:
+            with open(filepath) as f:
                 data = json.load(f)
             
             results = [RaceResult.from_dict(r) for r in data.get('results', [])]
@@ -183,7 +183,7 @@ class Competition:
         except (json.JSONDecodeError, KeyError):
             return None
     
-    def get_leader_reference(self, race_distance: str) -> Optional[Dict]:
+    def get_leader_reference(self, race_distance: str) -> dict | None:
         """
         Get the best race (fastest time) for comparison during live races.
         
@@ -217,7 +217,7 @@ class Competition:
         return comp
     
     @classmethod
-    def list_competitions(cls, directory: str = 'data/competitions') -> List[Dict[str, str]]:
+    def list_competitions(cls, directory: str = 'data/competitions') -> list[dict[str, str]]:
         """
         List all available competitions in a directory.
         
@@ -245,7 +245,7 @@ class Competition:
         return sorted(competitions, key=lambda x: x['name'])
     
     @classmethod
-    def list_competitions_by_distance(cls, race_distance: str, directory: str = 'data/competitions') -> List[Dict]:
+    def list_competitions_by_distance(cls, race_distance: str, directory: str = 'data/competitions') -> list[dict]:
         """
         List competitions that have results for a specific distance.
         

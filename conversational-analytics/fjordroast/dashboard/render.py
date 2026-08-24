@@ -7,7 +7,7 @@ line, and a short narrative caption.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
@@ -49,7 +49,7 @@ def render_dashboard_html(
         table_columns=list(df.columns) if not specs else None,
         table_rows=records if not specs else None,
         data_json=_json_for_script(records),
-        created_at=(created_at or datetime.now(timezone.utc)).strftime("%Y-%m-%d %H:%M UTC"),
+        created_at=(created_at or datetime.now(UTC)).strftime("%Y-%m-%d %H:%M UTC"),
         vega_version=VEGA_VERSION,
         vega_lite_version=VEGA_LITE_VERSION,
         vega_embed_version=VEGA_EMBED_VERSION,

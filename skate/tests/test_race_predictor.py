@@ -2,10 +2,11 @@
 Unit tests for the Ice Skating Race Predictor.
 """
 import unittest
-from models.skater import Skater
-from models.race import Race
-from models.race_preset import RacePreset, LapInfo
+
 from engine.predictor import PredictionEngine
+from models.race import Race
+from models.race_preset import LapInfo, RacePreset
+from models.skater import Skater
 
 
 def _make_preset(n_laps: int, dist_per_lap: int = 400) -> RacePreset:

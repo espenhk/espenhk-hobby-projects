@@ -3,8 +3,8 @@ Race preset management for loading predefined race configurations.
 """
 import json
 import os
-from typing import List, Optional
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -20,14 +20,14 @@ class RacePreset:
     name: str
     total_distance: int  # in meters
     lap_distance: int  # standard lap distance (usually 400m)
-    laps: List[LapInfo]
+    laps: list[LapInfo]
     
     @property
     def total_laps(self) -> int:
         """Get total number of laps."""
         return len(self.laps)
     
-    def get_lap_distance(self, lap_number: int) -> Optional[int]:
+    def get_lap_distance(self, lap_number: int) -> int | None:
         """
         Get distance for a specific lap.
         
@@ -53,7 +53,7 @@ class RacePreset:
         Returns:
             RacePreset instance
         """
-        with open(filepath, 'r') as f:
+        with open(filepath) as f:
             data = json.load(f)
         
         laps = [LapInfo(lap_number=lap['lap'], distance=lap['distance']) 
@@ -90,7 +90,7 @@ class RacePreset:
         return cls.from_file(filepath)
     
     @classmethod
-    def list_available_presets(cls) -> List[str]:
+    def list_available_presets(cls) -> list[str]:
         """
         List all available race presets.
         
