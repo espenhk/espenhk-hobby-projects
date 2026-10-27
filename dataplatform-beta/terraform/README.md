@@ -1,32 +1,23 @@
 # Terraform Scaffold
 
-This scaffold defines a stack-based Terraform layout per environment and currently implements the Power BI RBAC stack.
+Single deployment root (`deployment/`) wiring reusable modules for the platform baseline. Environments (`dev`/`test`/`prod`) are selected with Terraform workspaces and tfvars, not per-environment stack folders.
 
-## Module
-- modules/powerbi
-
-## Environment Stacks
-- environments/dev/<stack>
-- environments/test/<stack>
-- environments/prod/<stack>
-
-Current implemented stack:
-- powerbi
+## Modules
+- modules/network: VNet, subnets, NSGs, private DNS zones, private endpoints
+- modules/storage: ADLS Gen2 storage account and filesystems
+- modules/key_vault: Key Vault baseline
+- modules/databricks: VNet-injected Databricks workspace
+- modules/unity_catalog: storage credential and external location
+- modules/foundry: Azure AI Foundry (ML workspace) and App Insights
+- modules/monitor_alerting: Log Analytics, saved searches, action group, metric alerts
+- modules/budget: resource group budgets
+- modules/powerbi: Entra groups for Power BI RBAC
+- modules/landing_zone: placeholder
 
 ## Usage
-1. Configure AzureAD provider credentials.
-2. Update owners in the target environment tfvars file.
-3. Run terraform init/plan/apply in the target environment stack folder.
-
-Example:
-- dev: environments/dev/powerbi/terraform.tfvars.example
-- test: environments/test/powerbi/terraform.tfvars.example
-- prod: environments/prod/powerbi/terraform.tfvars.example
+1. Copy `deployment/backend.hcl.example` and `deployment/terraform.tfvars.example` and fill them in.
+2. From `deployment/`, run `terraform init -backend-config=backend.hcl`, then plan/apply.
+3. Databricks workspace-level resources (Unity Catalog) need a second apply once the workspace exists; see `deployment/terraform.tfvars.example`.
 
 ## Outputs
-- admins_group
-- developers_group
-- testers_group
-- consumers_group
-
-These outputs should be used to bind workspace roles and deployment pipeline permissions.
+See `deployment/outputs.tf`. The Power BI group outputs should be used to bind workspace roles and deployment pipeline permissions.
