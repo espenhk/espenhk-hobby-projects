@@ -1,24 +1,24 @@
 {
   "solver": "local",
-  "iterations": 24513,
-  "elapsed_s": 60.89,
+  "iterations": 24303,
+  "elapsed_s": 60.74,
   "notes": [
     "polish phase refined 3 of 3 shortlisted candidate(s)"
   ],
   "search_stats": {
-    "investigated": 24513,
-    "feasible": 546,
-    "hard_violation_scenarios": 23967,
-    "feasible_rate": 0.0223,
+    "investigated": 24303,
+    "feasible": 538,
+    "hard_violation_scenarios": 23765,
+    "feasible_rate": 0.0221,
     "difficulty": "hard",
     "hard_violation_counts": {
-      "european_commitment_conflict": 19896,
-      "min_rest_days": 19022,
-      "one_match_per_team_per_day": 14005,
-      "cup_round_conflict": 13369,
-      "venue_double_booking": 4447,
-      "blackout_dates": 2119,
-      "leg_ordering": 1669
+      "european_commitment_conflict": 19704,
+      "min_rest_days": 18867,
+      "one_match_per_team_per_day": 13886,
+      "cup_round_conflict": 13326,
+      "venue_double_booking": 4400,
+      "blackout_dates": 2103,
+      "leg_ordering": 1653
     }
   },
   "options": [
