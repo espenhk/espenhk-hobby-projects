@@ -14,7 +14,6 @@ espenhk-hobby-projects/
 ├── docs/                        # GitHub Pages root — mobile-viewable POC frontends, one folder per project
 ├── skate/                       # Ice skating race predictor
 ├── conversational-analytics/    # NL -> semantic model -> DuckDB -> Vega-Lite dashboard prototype
-├── football-scheduler/          # Football league season scheduler (terminliste)
 ├── pyproject.toml               # Shared dependencies for all projects
 ├── poetry.lock                  # Locked dependency versions
 ├── GITHUB_PAGES_SETUP.md        # One-time GitHub Pages setup (do from a phone)
@@ -125,74 +124,10 @@ poetry run python -m pytest conversational-analytics/tests/
 
 ---
 
-## Project: `football-scheduler`
+## Moved out: football-scheduler
 
-### Purpose
-
-Generates a season fixture list for a set of related football leagues,
-scores it against hard rules and soft preferences, and reports the result as
-a browsable HTML page. Built around the Norwegian Eliteserien (men, 16 clubs)
-and Toppserien (women, 12 clubs) for 2026 — six clubs field a team in both,
-and scheduling the two leagues together so those pairs get back-to-back home
-weekends (rather than clashing, or scheduled independently) is the reason
-this project exists rather than a generic single-league scheduler.
-
-### Structure
-
-```sh
-football-scheduler/
-├── data/                   # source of truth: venues, clubs/teams, competitions,
-│                            # season calendar, curated travel-time overrides — all YAML
-├── baselines/              # real published fixture lists (sources/) + their committed
-│                            # score reports (reports/) — see baselines/README.md
-├── cli.py                  # validate / generate / score / explain
-├── terminliste/
-│   ├── model/               # Pydantic schema + loader (World), calendar, travel model
-│   ├── rounds/               # circle-method round-robin pairing generator
-│   ├── scoring/               # constraint framework: hard.py, soft.py, registry.py
-│   ├── solvers/                # local-search (default) and CP-SAT (--solver cpsat) backends
-│   ├── report/                  # Jinja2 -> self-contained HTML season report
-│   ├── external_schedule.py      # score a real/proposed CSV or JSON schedule
-│   └── baseline.py                # score the committed baselines, write their reports
-├── scripts/
-│   ├── publish_web.py       # generate + publish the report to docs/football-scheduler/
-│   ├── refresh_baselines.py  # re-score baselines/sources/ -> baselines/reports/
-│   └── fetch_real_schedule.py # convert a real fixture-API JSON into a baseline CSV
-├── schedules/                # generated HTML + JSON output (gitignored)
-└── tests/                    # mirrors terminliste/'s structure — model/, rounds/,
-                               # scoring/, solvers/, report/, refdata/, scripts/,
-                               # integration/ — see tests/README.md for which
-                               # folders to run for a given change
-```
-
-### State
-
-Complete and functional first version. `validate`, `generate` (local solver),
-and `score` all run fully offline with no external dependencies beyond
-`pydantic`/`pyyaml`/`jinja2`. `--solver cpsat` needs the optional
-`football-scheduler-cpsat` Poetry group (OR-Tools).
-`scripts/refresh_baselines.py` re-scores the real fixture lists committed
-under `baselines/` and rewrites their reports; run it (and commit the diff)
-after any change that could move a schedule's score, and note that its
-`--check` mode is asserted by the test suite. The committed 2026 baseline is
-currently round 1 only — `baselines/SOURCING_FIXTURES.md` has the recommended
-API and `scripts/fetch_real_schedule.py` usage for extending it to a full
-season from a machine with real network access (this sandbox's egress policy
-blocks every fixture source, so that path is written but unverified). Club/venue data in
-`data/` is marked `verified: false` — assembled from web search rather than a
-fetchable source, so check it before relying on it for anything real. See
-`football-scheduler/README.md` for the full architecture writeup, the
-constraint list, and suggested next steps (Norwegian Cup before European
-qualifiers, plus a handful of scoring rules the current set is missing).
-The season report is also published as a mobile-viewable POC — see
-`scripts/publish_web.py` and the "Mobile-viewable POC frontends" section
-above.
-
-### Running tests
-
-```bash
-poetry run python -m pytest football-scheduler/tests/
-```
+The football league season scheduler now lives in its own repo,
+[espenhk/season-scheduler](https://github.com/espenhk/season-scheduler) (#130).
 
 ---
 
@@ -205,9 +140,8 @@ within about a minute of a merge to `main`.
 
 Full convention, including the "vanilla JS, no build step, CDN dependencies"
 rule for hand-written frontends, is in `docs/README.md` — read it before
-adding a new project's POC. `football-scheduler/scripts/publish_web.py` is
-the reference example (publishes an already-self-contained generated HTML
-report rather than writing new frontend code).
+adding a new project's POC. `docs/discus-analysis/` is the reference
+example of a hand-written POC.
 
 One-time GitHub setup (enabling Pages itself) is documented in
 `GITHUB_PAGES_SETUP.md` at the repo root, written to be done from a phone.
