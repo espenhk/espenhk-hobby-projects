@@ -2,6 +2,8 @@
 
 This repo contains independent hobby projects sharing a single Python virtual environment managed by Poetry.
 
+How this repo fits with the other espenhk repos (Pages, portfolio, skills): [ARCHITECTURE.md](https://github.com/espenhk/espenhk.github.io/blob/main/ARCHITECTURE.md).
+
 ---
 
 ## Repository Structure
