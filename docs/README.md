@@ -13,8 +13,8 @@ named after the project:
 ```
 docs/
 ├── index.html              # landing page linking to each project below
-├── football-scheduler/
-│   └── index.html          # published at .../football-scheduler/
+├── discus-analysis/
+│   └── index.html          # published at .../discus-analysis/
 └── <new-project>/
     └── index.html          # published at .../<new-project>/
 ```
@@ -26,13 +26,12 @@ output for viewing gets copied or generated into `docs/<project>/`.
 
 ## Two ways to fill a project's folder
 
-**A. Pre-rendered static HTML (what `football-scheduler` does).** If a
+**A. Pre-rendered static HTML.** If a
 project can already render itself to a single self-contained HTML file
 (inline CSS/JS, no external assets), just publish that file as
-`docs/<project>/index.html`. `football-scheduler/scripts/publish_web.py`
-is the pattern: it runs the project's normal report generator and copies
-the result into `docs/football-scheduler/index.html`. Cheapest option —
-no new frontend code at all.
+`docs/<project>/index.html`, written by a small script that runs the
+project's normal report generator and copies the result into place.
+Cheapest option — no new frontend code at all.
 
 **B. Hand-written vanilla JS/HTML/CSS.** For a project with nothing to
 render ahead of time (interactive, needs live input), ask Claude to build

@@ -52,22 +52,9 @@ poetry run python conversational-analytics/cli.py validate
 
 ---
 
-### `football-scheduler` — Football League Season Scheduler
+### Football League Season Scheduler (moved)
 
-Generates a season fixture list for coupled Norwegian football leagues
-(Eliteserien and Toppserien), scores it against hard rules and soft
-preferences, and reports the result as a browsable HTML page.
-
-**State:** Functional first version, runs fully offline. Club/venue/travel-time
-data in `football-scheduler/data/` is marked `verified: false` throughout —
-it was assembled from web search rather than a fetchable source, not fact-checked,
-and shouldn't be relied on as accurate. See
-[`football-scheduler/README.md`](football-scheduler/README.md) for the full
-writeup and constraint list.
-
-```bash
-poetry run python football-scheduler/cli.py generate
-```
+Now in its own repo: [espenhk/season-scheduler](https://github.com/espenhk/season-scheduler).
 
 ---
 
@@ -76,7 +63,6 @@ poetry run python football-scheduler/cli.py generate
 ```bash
 python -m pytest skate/tests/ -v
 poetry run python -m pytest conversational-analytics/tests/
-poetry run python -m pytest football-scheduler/tests/
 ```
 
 ## Environment Setup

@@ -57,8 +57,8 @@ To add or update a POC frontend:
 
 1. Open the Claude mobile app, start a task against this repo (or continue
    an existing session). Ask for what you want — e.g. *"build a POC
-   frontend for `<project>`"* or *"publish the latest football-scheduler
-   report"*. Claude Code creates a branch and a PR.
+   frontend for `<project>`"* or *"update the discus-analysis
+   POC"*. Claude Code creates a branch and a PR.
 2. Review the PR (GitHub app or browser) and merge it.
 3. Reload your bookmarked Pages URL — the change is live within about a
    minute of the merge, no extra deploy step.
@@ -66,7 +66,7 @@ To add or update a POC frontend:
 `docs/README.md` in the repo has the convention Claude follows when asked
 to add a new project's POC (vanilla JS, no build step, CDN dependencies —
 or, if the project can already render itself to static HTML, publish that
-directly, as `football-scheduler` does).
+directly).
 
 ## Previewing before merging (optional)
 
